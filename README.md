@@ -195,9 +195,9 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 
 Your donation directly funds development, testing, certification, and documentation.
 
-<br>
 
-<table width="100%">
+
+<table>
 <tr>
 <td align="center">
 
@@ -219,7 +219,7 @@ Your donation directly funds development, testing, certification, and documentat
 </tr>
 </table>
 
-<br>
+
 
 > ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
 
