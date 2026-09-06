@@ -195,7 +195,7 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 
 Your donation directly funds development, testing, certification, and documentation.
 
-<br>
+
 
 <table>
 <tr>
@@ -207,6 +207,7 @@ Your donation directly funds development, testing, certification, and documentat
 
 </td>
 </tr>
+
 <tr>
 <td align="center">
 
@@ -218,7 +219,7 @@ Your donation directly funds development, testing, certification, and documentat
 </tr>
 </table>
 
-<br>
+
 
 > ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
 
@@ -228,10 +229,10 @@ Your donation directly funds development, testing, certification, and documentat
 
 <table>
 <tr>
-<td align="center">⭐<br><b>Star</b><br>the repo</td>
-<td align="center">🐛<br><b>Report</b><br>a bug</td>
-<td align="center">📝<br><b>Write</b><br>a tutorial</td>
-<td align="center">🗣️<br><b>Tell</b><br>someone</td>
+<td align="center" width="100%" >⭐<br><b>Star</b><br>the repo</td>
+<td align="center" width="100%" >🐛<br><b>Report</b><br>a bug</td>
+<td align="center" width="100%" >📝<br><b>Write</b><br>a tutorial</td>
+<td align="center" width="100%" >🗣️<br><b>Tell</b><br>someone</td>
 </tr>
 </table>
 
