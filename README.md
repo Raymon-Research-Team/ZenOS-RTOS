@@ -81,7 +81,7 @@ A complete RTOS application in under 20 lines:
 > ZenOS uses `SysTick` for its kernel tick. If HAL also uses `SysTick`, they will conflict. In CubeMX, go to **System Core** → **SYS** → **Timebase Source** and set it to `TIM1`. This gives HAL its own 1ms timebase on TIM1 while SysTick stays free for ZenOS.
 >
 > **⚠️ 2. Add `os_tick()` to `SysTick_Handler`:**
-> Open `Src/stm32f1xx_it.c` and call `os_tick()` inside `SysTick_Handler`. This is how ZenOS receives its tick interrupt:
+> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`. This is how ZenOS receives its tick interrupt:
 >
 > ```c
 > #include "ZenOS.hpp"  // Add at top of file
