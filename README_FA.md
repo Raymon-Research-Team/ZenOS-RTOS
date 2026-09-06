@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center" dir="rtl">
 
 <img src="ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
@@ -24,7 +24,10 @@
 
 ---
 
+<div dir="rtl">
+
 ## 🧘 درباره پروژه
+
 
 کلمه *Zen* به معنای شفافیت از طریق سادگی است — کنار گذاشتن زواید تا فقط آنچه اهمیت دارد باقی بماند. ایده پشت این سیستم‌عامل همین است.
 
@@ -34,7 +37,12 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 
 > **بدون Heap. بدون تخصیص‌های پنهان. بدون سورپرایز.**
 
+</div>
+
+<div dir="rtl">
+
 ### ✨ ویژگی‌ها
+
 
 | ویژگی | جزئیات |
 |:------|:-------|
@@ -45,7 +53,12 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 | 🧪 تست‌شده | روی سخت‌افزار واقعی (STM32F103C8T6) با بیش از 22 مجموعه تست |
 | 🔒 صفر هزینه | قالب‌های C++ و RAII — انتزاع بدون هزینه اجرا |
 
+</div>
+
+<div dir="rtl">
+
 ### ⚡ چرا ZenOS؟
+
 
 | مزیت | ZenOS | FreeRTOS | Zephyr |
 |:-----|:------|:---------|:-------|
@@ -60,7 +73,11 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 
 > 📖 [مقایسه فنی کامل → ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md)
 
+
+
 ### 🖥️ خانواده‌های پشتیبانی‌شده
+
+</div>
 
 ```
  STM32F1  STM32F2  STM32F4  STM32F7  STM32H7
@@ -72,9 +89,14 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 
 ---
 
+<div dir="rtl">
+
 ## 🚀 شروع سریع
 
+
 یک برنامه کامل سیستم‌عامل بلادرنگ در کمتر از 20 خط:
+
+</div>
 
 ```cpp
 #include "ZenOS.hpp"
@@ -97,9 +119,14 @@ int main(void) {
 }
 ```
 
+<div dir="rtl">
+
 > 💡 همین. زمان‌بند از `os_start()` کنترل را به دست می‌گیرد و هرگز برنمی‌گردد. تسک شما هر 500ms اجرا می‌شود، LED چشمک می‌زند، و شما حتی یک خط کد زمان‌بندی هم ننوشتید.
 
+
 ### 🏗️ معماری
+
+</div>
 
 ```
 ┌───────────────────────────────────────────────────┐
@@ -122,11 +149,18 @@ int main(void) {
 └───────────────────────────────────────────────────┘
 ```
 
+<div dir="rtl">
+
 راهنمای کامل API → [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | [English](API_TUTORIAL.md)
+
+</div>
 
 ---
 
+<div dir="rtl">
+
 ## 📚 مستندات
+
 
 | سند | محتوا |
 |:----|:------|
@@ -137,9 +171,14 @@ int main(void) {
 | ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | مقایسه فنی با FreeRTOS، Zephyr، RT-Thread |
 | ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | هر گزینه پیکربندی با یادداشت‌های ایمنی |
 
+</div>
+
 ---
 
+<div dir="rtl">
+
 ## 🛡️ ویژگی‌های ایمنی
+
 
 تمام مکانیسم‌ها به‌صورت **پیش‌فرض فعال** هستند و در `ZenOS_Config.hpp` قابل تنظیم‌اند.
 
@@ -155,35 +194,43 @@ int main(void) {
 | ✅ بررسی CRC | `OS_SAFETY_CRC_CHECK` | یکپارچگی فلش از طریق مدها CRC STM32 |
 | 🛡️ MPU | `OS_SAFETY_MPU` | حفاظت حافظه هر تسک (Cortex-M3+) |
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## 💰 حمایت از ZenOS
 
+
 این یک پروژه تک‌نفره است. من آن را می‌سازم، تست می‌کنم، مستندات می‌نویسم و نگهداری می‌کنم — همه در اوقات فراغت، بدون بودجه. اگر ZenOS برایتان مفید بوده، چه برای یادگیری، چه نمونه‌سازی و چه تولید محصول، از حمایت مالی استقبال می‌کنم.
+
 
 ### 🎯 پول به کجا می‌رود
 
+</div>
+
 <table>
 <tr>
-<td align="center" width="25%">
+<td align="center" width="25%" dir="rtl">
 
 ### 🏥 گواهینامه
 انطباق IEC 62304 و IEC 61508 ارزان نیست. مستندات رسمی، ردیابی، ممیزی — همه هزینه دارند.
 
 </td>
-<td align="center" width="25%">
+<td align="center" width="25%" dir="rtl">
 
 ### 🔧 سخت‌افزار
 بردهای STM32 جدید، تحلیل‌گرهای منطقی، پروب‌های JTAG — هر خانواده به تجهیزات تست خودش نیاز دارد.
 
 </td>
-<td align="center" width="25%">
+<td align="center" width="25%" dir="rtl">
 
 ### ☁️ زیرساخت
 خطوط CI، کلاود‌بیلدها، اجرای خودکار تست‌ها. نگهداری همه اینها منابع می‌خواهد.
 
 </td>
-<td align="center" width="25%">
+<td align="center" width="25%" dir="rtl">
 
 ### 📖 مستندات و جامعه
 نوشتن مستندات خوب زمان‌بر است. پاسخ به Issues زمان‌بر است. هر دو مهم هستند.
@@ -192,15 +239,20 @@ int main(void) {
 </tr>
 </table>
 
+<div dir="rtl">
+
 ## 💸 کمک مالی
 
+
 حمایت مالی شما مستقیماً توسعه، تست، گواهینامه و مستندات را تأمین می‌کند.
+
+</div>
 
 <br>
 
 <table>
 <tr>
-<td align="center">
+<td align="center" width="100%" dir="rtl">
 
 🟠 **بیت‌کوین (BTC)**
 
@@ -209,7 +261,7 @@ int main(void) {
 </td>
 </tr>
 <tr>
-<td align="center">
+<td align="center" width="100%" dir="rtl">
 
 🔵 **اتریوم (ETH) / تتر (USDT - ERC-20)**
 
@@ -224,24 +276,26 @@ int main(void) {
 
 > 📩 **پس از انجام پرداخت، لطفاً آدرس ایمیل یا شناسه تراکنش خود را به [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com) ارسال کنید تا شخصاً از شما قدردانی شود.** 
 
-</div>
 
 ### 🌟 راه‌های دیگر کمک
 
+</div>
+
 <table>
 <tr>
-<td align="center">⭐<br><b>ستاره</b><br>بدهید</td>
-<td align="center">🐛<br><b>باگ</b><br>گزارش کنید</td>
-<td align="center">📝<br><b>آموزش</b><br>بنویسید</td>
-<td align="center">🗣️<br><b>معرفی</b><br>کنید</td>
+<td align="center" width="25%" dir="rtl">⭐<br><b>ستاره</b><br>بدهید</td>
+<td align="center" width="25%" dir="rtl">🐛<br><b>باگ</b><br>گزارش کنید</td>
+<td align="center" width="25%" dir="rtl">📝<br><b>آموزش</b><br>بنویسید</td>
+<td align="center" width="25%" dir="rtl">🗣️<br><b>معرفی</b><br>کنید</td>
 </tr>
 </table>
 
 ---
 
+<div dir="rtl">
+
 ## 📬 ارتباط با ما
 
-<div dir="rtl">
 
 **تیم تحقیقاتی رایمون** — Rahman Heidari
 
@@ -253,7 +307,7 @@ int main(void) {
 
 ---
 
-<div align="center">
+<div align="center" dir="rtl">
 
 <br>
 
