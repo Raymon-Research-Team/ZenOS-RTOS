@@ -2,13 +2,19 @@
 <img src="ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 </div>
 
+<div dir="rtl">
+
 # آموزش جامع API سیستم‌عامل بلادرنگ ZenOS
 
 **نسخه:** 1.0.0 | **پلتفرم:** ARM Cortex-M (STM32) | **زبان:** C++11 / C
 
 > **📝 توجه:** تمام مثال‌ها و نمونه کدهای این آموزش برای **STM32F103C8T6** (Blue Pill، Cortex-M3، 72MHz، 64KB فلش، 20KB RAM) نوشته شده‌اند. کد قابل انتقال به خانواده‌های دیگر STM32 است — فقط نام پین‌ها و هندلرهای مد را مطابق برد خود تنظیم کنید.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## فهرست مطالب
 
@@ -27,7 +33,11 @@
 12. [نکات و ترفندهای پیشرفته](#۱۲-نکات-و-ترفندهای-پیشرفته)
 13. [کتابخانه الگوهای رایج](#۱۳-کتابخانه-الگوهای-رایج)
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۰. شروع از صفر (راهنمای مبتدی)
 
@@ -61,6 +71,8 @@
 
 **هزینه کل: ~۱۰ دلار**
 
+</div>
+
 ```
 ┌─────────────────────────────────────────────────┐
 │              تنظیم سخت‌افزار                      │
@@ -74,6 +86,8 @@
 │   [CH340G USB-UART] ←→ [PA9/PA10 روی Blue Pill] │
 └─────────────────────────────────────────────────┘
 ```
+
+<div dir="rtl">
 
 ### ۰.۳ نصب نرم‌افزار
 
@@ -131,9 +145,14 @@
 ### ۰.۵ اضافه کردن ZenOS به پروژه
 
 #### مرحله ۱: دانلود ZenOS
+
+</div>
+
 ```bash
 git clone https://github.com/rahmanh22/ZenOS.git
 ```
+
+<div dir="rtl">
 
 #### مرحله ۲: کپی فایل‌ها
 این فایل‌ها را از `ZenOS/ZenOS/` به پروژه خود کپی کنید:
@@ -160,6 +179,8 @@ git clone https://github.com/rahmanh22/ZenOS.git
 
 فایل `Src/stm32f1xx_it.c` را باز کنید و اضافه کنید:
 
+</div>
+
 ```c
 #include "ZenOS.hpp"  // در بالای فایل اضافه کنید
 
@@ -171,9 +192,13 @@ void SysTick_Handler(void)
 }
 ```
 
+<div dir="rtl">
+
 ### ۰.۶ نوشتن اولین برنامه ZenOS
 
 فایل `Src/main.cpp` را باز کنید و محتوا را جایگزین کنید:
+
+</div>
 
 ```cpp
 #include "ZenOS.hpp"
@@ -201,6 +226,8 @@ int main(void) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۰.۷ کامپایل و فلش
 
 1. روی **Build** (آیکون چکش) کلیک کنید — باید با ۰ خطا کامپایل شود
@@ -215,6 +242,8 @@ int main(void) {
 2. نرخ بیت: `115200`
 3. این تابع کمکی را در `main.cpp` اضافه کنید:
 
+</div>
+
 ```cpp
 #include <cstdio>
 
@@ -223,6 +252,8 @@ extern "C" int _write(int fd, char* ptr, int len) {
     return len;
 }
 ```
+
+<div dir="rtl">
 
 4. حالا می‌توانید از `printf()` برای دیباگ استفاده کنید!
 
@@ -246,7 +277,11 @@ extern "C" int _write(int fd, char* ptr, int len) {
 | C++ فعال نشده | خطاهای کامپایل | `-std=c++11` را به پرچم‌های کامپایلر اضافه کنید |
 | تسک بعد از `os_start()` ایجاد شده | مقدار -۱ برمی‌گرداند | تمام تسک‌ها را قبل از `os_start()` ایجاد کنید |
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۰. راه‌اندازی CubeMX (پیش از اولین build)
 
@@ -280,6 +315,8 @@ CubeMX فایل `stm32f1xx_hal_timebase_tim.c` را با پیکربندی TIM1 �
 
 فایل `Src/stm32f1xx_it.c` را باز کنید و `os_tick()` را داخل `SysTick_Handler` اضافه کنید:
 
+</div>
+
 ```c
 void SysTick_Handler(void)
 {
@@ -293,15 +330,21 @@ void SysTick_Handler(void)
 }
 ```
 
+<div dir="rtl">
+
 > **⚠️ مهم:** `os_tick()` باید از `SysTick_Handler` فراخوانی شود — این تنها راه دریافت وقفه تیک توسط ZenOS است.
 
 #### مرحله ۴: اضافه کردن هدر
 
 در فایل `stm32f1xx_it.c`، include را در بالای فایل اضافه کنید:
 
+</div>
+
 ```c
 #include "ZenOS.hpp"
 ```
+
+<div dir="rtl">
 
 ### ۰.۲ کپی فایل‌های ZenOS به پروژه خود
 
@@ -337,6 +380,8 @@ ZenOS از **ARM GCC** inline assembly، `__attribute__((naked))` و ویژگی�
 
 **پرچم‌های الزامی کامپایلر:**
 
+</div>
+
 ```
 -std=c++11        # C++11 الزامی (template، static_assert، nullptr، RAII)
 -mcpu=cortex-m3    # برای MCU خود تنظیم کنید: m3, m4, m7, m0plus
@@ -344,12 +389,17 @@ ZenOS از **ARM GCC** inline assembly، `__attribute__((naked))` و ویژگی�
 -O2                # سطح بهینه‌سازی پیشنهادی
 ```
 
+<div dir="rtl">
+
 **تنظیم STM32CubeIDE:**
 - Project → Properties → C/C++ Build → Settings
 - **MCU C++ Compiler** → Miscellaneous → `-std=c++11 -mcpu=cortex-m3 -mthumb`
 - **MCU C++ Compiler** → Optimization → `-O2`
 
 **تنظیم PlatformIO (`platformio.ini`):**
+
+</div>
+
 ```ini
 [env:bluepill]
 platform = ststm32
@@ -357,6 +407,8 @@ board = bluepill_f103c8
 framework = stm32hal
 compiler.cppflags = -std=c++11
 ```
+
+<div dir="rtl">
 
 > **⚠️ مهم:**
 > 1. فایل‌های `.cpp` **باید** به‌عنوان C++ کامپایل شوند (نه C)
@@ -393,11 +445,17 @@ compiler.cppflags = -std=c++11
 | تنظیمات کامپایلر | C++11 برای تمام فایل‌های `.cpp` فعال باشد |
 | `ZenOS/ZenOS_Port.hpp` | خانواده MCU را خودکار تشخیص می‌دهد — نیازی به تغییر نیست |
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۱. شروع سریع
 
 ### ۱.۱ اضافه کردن و راه‌اندازی
+
+</div>
 
 ```cpp
 #include "ZenOS.hpp"
@@ -418,7 +476,11 @@ int main() {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱.۲ حداقل تسک مورد نیاز
+
+</div>
 
 ```cpp
 void task_blink(void) {
@@ -429,9 +491,13 @@ void task_blink(void) {
 }
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** هر تسکی باید شامل `while(1)` باشد و باید به‌صورت دوره‌ای واگذاری کند (از طریق `os_delay_ms`، `os_yield` یا انتظار روی IPC). تسکی که هرگز واگذاری نکند توسط تایمر نرم‌افزاری ایمنی شناسایی و ریست می‌شود.
 
 ### ۱.۳ ترتیب راه‌اندازی
+
+</div>
 
 ```
 os_init()  →  ایجاد تسک‌ها  →  os_start()  →  زمان‌بند تا ابد اجرا می‌کند
@@ -439,13 +505,21 @@ os_init()  →  ایجاد تسک‌ها  →  os_start()  →  زمان‌بن�
     └──────── os_start() هرگز برنمی‌گردد ─────────────────────┘
 ```
 
+<div dir="rtl">
+
 **قانون حیاتی:** تمام تسک‌ها باید **قبل از** `os_start()` ایجاد شوند. ایجاد تسک بعد از `os_start()` مقدار -1 برمی‌گرداند و `TASK_AFTER_START` گزارش می‌کند.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۲. مدیریت تسک‌ها
 
 ### ۲.۱ ایجاد تسک
+
+</div>
 
 ```cpp
 // اندازه پشته پیش‌فرض (OS_KERNEL_STACK_SIZE = 512 بایت)
@@ -455,6 +529,8 @@ os_task_create(task_function, priority, period_ms);   // + دوره‌ای
 // اندازه پشته سفارشی (به بایت)
 os_task_create_st(task_function, priority, period_ms, stack_bytes);
 ```
+
+<div dir="rtl">
 
 **پارامترها:**
 | پارامتر | نوع | توضیح |
@@ -466,6 +542,8 @@ os_task_create_st(task_function, priority, period_ms, stack_bytes);
 
 ### ۲.۲ شروع و توقف تسک‌ها
 
+</div>
+
 ```cpp
 os_task_start(task_function);    // فعال‌سازی تسک متوقف‌شده
 os_task_stop(task_function);     // غیرفعال‌سازی (حافظه آزاد نمی‌شود)
@@ -475,14 +553,20 @@ bool running = os_task_isActive(task_function);
 uint8_t state = os_task_get_state(task_function); // enum TaskState
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** توقف تسک حافظه آن را آزاد نمی‌کند — حافظه به‌صورت ایستا تخصیص یافته است. می‌توانید همان تسک را هر تعداد بار که نیاز دارید شروع/توقف کنید. این مکانیسم اصلی کنترل تسک در زمان اجراست.
 
 ### ۲.۳ اولویت تسک
+
+</div>
 
 ```cpp
 uint8_t prio = os_get_task_priority(task_function);
 // اولویت فعال را برمی‌گرداند (ممکن است موقتاً توسط سقف IPC افزایش یافته باشد)
 ```
+
+<div dir="rtl">
 
 **راهنمای اولویت‌ها:**
 - 1: کمترین اولویت برنامه
@@ -493,6 +577,8 @@ uint8_t prio = os_get_task_priority(task_function);
 - 255: رزرو شده (استفاده نکنید)
 
 ### ۲.۴ تسک‌های دوره‌ای
+
+</div>
 
 ```cpp
 // تسک هر 100 میلی‌ثانیه به‌صورت خودکار اجرا می‌شود
@@ -507,6 +593,8 @@ void task_sensor(void) {
 // ایجاد با دوره 100 میلی‌ثانیه
 os_task_create(task_sensor, 3, 100);
 ```
+
+<div dir="rtl">
 
 > **💡 نکته:** برای تسک‌های دوره‌ای، از `os_delay_ms()` در انتهای هر تکرار استفاده کنید. زمان‌بند به‌طور خودکار تسک را در مرز دوره بعدی بیدار می‌کند. برای توضیح کامل، بخش [۹](#۹-تسک‌های-دوره‌ای--روش-zenos-بدون-تایمر-نرم‌افزاری) را ببینید.
 
@@ -523,27 +611,41 @@ os_task_create(task_sensor, 3, 100);
 
 > **💡 نکته:** از `os_get_stack_usage(task)` در زمان توسعه استفاده کنید تا مصرف واقعی اوج را اندازه بگیرید، سپس پشته را ≥130% اوج تنظیم کنید.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۳. زمان‌بندی و تأخیرها
 
 ### ۳.۱ تأخیر میلی‌ثانیه‌ای
+
+</div>
 
 ```cpp
 os_delay_ms(100);  // خواب به مدت ~100ms، واگذاری CPU به تسک‌های دیگر
 os_delay_ms(0);    // واگذاری فوری (به تسک‌های دیگر فرصت اجرا می‌دهد)
 ```
 
+<div dir="rtl">
+
 ### ۳.۲ تأخیر میکروثانیه‌ای (انتظار شلوغ)
+
+</div>
 
 ```cpp
 os_delay_us(10);    // انتظار شلوغ ~10µs (CPU را بلاک می‌کند — هیچ تسک دیگری اجرا نمی‌شود!)
 os_delay_us(1000);  // انتظار شلوغ ~1ms
 ```
 
+<div dir="rtl">
+
 > **⚠️ هشدار:** `os_delay_us()` از شمارنده چرخه DWT برای انتظار شلوغ استفاده می‌کند. CPU را واگذار **نمی‌کند**. فقط برای تأخیرهای بسیار کوتاه (< 1ms) استفاده کنید. برای تأخیرهای طولانی‌تر از `os_delay_ms()` استفاده کنید.
 
 ### ۳.۳ دریافت زمان جاری
+
+</div>
 
 ```cpp
 uint32_t ticks = os_get_tick();  // شمارنده خام تیک
@@ -551,16 +653,26 @@ uint32_t ms    = os_get_ms();    // میلی‌ثانیه از زمان بوت
 uint32_t us    = os_get_us();    // میکروثانیه از زمان بوت (شمارنده چرخه DWT)
 ```
 
+<div dir="rtl">
+
 ### ۳.۴ الگوهای زمانی
 
 **اندازه‌گیری زمان سپری‌شده:**
+
+</div>
+
 ```cpp
 uint32_t t0 = os_get_ms();
 // ... انجام کار ...
 uint32_t elapsed = os_get_ms() - t0;  // حتی اگر ms بیش‌تر شود کار می‌کند (~49 روز)
 ```
 
+<div dir="rtl">
+
 **بررسی دوره‌ای بدون بلاک:**
+
+</div>
+
 ```cpp
 static uint32_t last_check = 0;
 if (os_get_ms() - last_check >= 100) {
@@ -569,13 +681,21 @@ if (os_get_ms() - last_check >= 100) {
 }
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** همیشه از الگوی تفریق `os_get_ms() - last >= interval` به‌جای مقایسه مطلق استفاده کنید. این روش درست شمارنده میلی‌ثانیه 32 بیتی را مدیریت می‌کند.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۴. بخش‌های حیاتی (OS_SAFE)
 
 ### ۴.۱ استفاده پایه
+
+</div>
 
 ```cpp
 volatile uint32_t shared_counter = 0;
@@ -587,9 +707,13 @@ OS_SAFE {
 // در اینجا وقفه‌ها دوباره فعال می‌شوند
 ```
 
+<div dir="rtl">
+
 `OS_SAFE` تمام وقفه‌ها را در مدت بلاک غیرفعال و سپس دوباره فعال می‌کند. این **تنها راه امن** برای محافظت از متغیرهای مشترک بین تسک‌ها و ISRهاست.
 
 ### ۴.۲ کاری که OS_SAFE انجام می‌دهد
+
+</div>
 
 ```
 ┌─ OS_SAFE { ─────────────────────────┐
@@ -599,9 +723,13 @@ OS_SAFE {
 └──────────────────────────────────────┘
 ```
 
+<div dir="rtl">
+
 پیاده‌سازی از RAII (کلاس C++ `_OsSafeGuard`) استفاده می‌کند — وقفه‌ها همیشه دوباره فعال می‌شوند، حتی اگر استثنا رخ دهد.
 
 ### ۴.۳ تو در تو
+
+</div>
 
 ```cpp
 OS_SAFE {
@@ -615,11 +743,16 @@ OS_SAFE {
 // در اینجا وقفه‌ها دوباره فعال می‌شوند
 ```
 
+<div dir="rtl">
+
 ### ۴.۴ پایش مدت زمان
 
 اگر `OS_SAFETY_MAX_CRITICAL_US` پیکربندی شده باشد (پیش‌فرض 1000µs)، بخش حیاتی که از حد فراتر رود خطای `SAFE_TOO_LONG` ایجاد می‌کند.
 
 **بخش‌های حیاتی را کوتاه نگه دارید!**
+
+</div>
+
 ```cpp
 // ✅ خوب — بخش حیاتی کوتاه
 OS_SAFE { shared_counter++; }
@@ -629,6 +762,8 @@ OS_SAFE {
     HAL_UART_Transmit(&huart1, data, len, 1000);  // حدود 10ms بلاک می‌کند!
 }
 ```
+
+<div dir="rtl">
 
 ### ۴.۵ OS_SAFE در مقابل OS_LOCK
 
@@ -642,11 +777,17 @@ OS_SAFE {
 
 > **💡 نکته:** فقط زمانی از `OS_SAFE` استفاده کنید که نیاز دارید داده را با توابع وقفه به اشتراک بگذارید. برای همگام‌سازی بین تسک‌ها، ترجیحاً از `OS_LOCK` (قفل) استفاده کنید — وقفه‌ها را بلاک نمی‌کند.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۵. eventها (OS_EVENT)
 
 ### ۵.۱ سیگنال‌دهی پایه
+
+</div>
 
 ```cpp
 OS_EVENT sensor_ready;
@@ -665,7 +806,11 @@ read_sensor();
 sensor_ready.signal();  // منتظر را بیدار کن
 ```
 
+<div dir="rtl">
+
 ### ۵.۲ سیگنال‌دهی ISR به تسک
+
+</div>
 
 ```cpp
 OS_KEY_PRESS;
@@ -686,9 +831,13 @@ void task_handle_input(void) {
 }
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** همیشه در توابع وقفه از `signal_from_isr()` استفاده کنید. فراخوانی `signal()` از ISR رفتار تعریف‌نشده است.
 
 ### ۵.۳ انباشت سیگنال
+
+</div>
 
 ```cpp
 OS_EVENT evt;
@@ -703,7 +852,11 @@ evt.wait();    // شمارنده = 0 (مقدار 1 برمی‌گرداند)
 evt.wait();    // مقدار 0 برمی‌گرداند (تایم‌اوت — شمارنده قبلاً 0 بود)
 ```
 
+<div dir="rtl">
+
 ### ۵.۴ انتظار برای چندین event
+
+</div>
 
 ```cpp
 OS_EVENT evt_a, evt_b;
@@ -723,6 +876,8 @@ while (1) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۵.۵ محدودیت‌های شناسه event
 
 - eventها شناسه‌های خودکار از 0 شروع می‌شوند
@@ -730,11 +885,17 @@ while (1) {
 - شناسه‌های ≥ 32: پشتیبانی می‌شوند اما باید به‌صورت جداگانه سیگنال داده شوند (بدون ماسک)
 - محدودیت عملی: صدها event در هر سیستم
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۶. قفل‌ها (OS_MUTEX)
 
 ### ۶.۱ استفاده پایه
+
+</div>
 
 ```cpp
 OS_MUTEX uart_mtx;  // قفل سراسری
@@ -750,9 +911,13 @@ OS_LOCK(uart_mtx) {
 }
 ```
 
+<div dir="rtl">
+
 `OS_LOCK` یک محافظ قفل RAII است — در ورود قفل را به دست می‌آورد و در خروج (شامل برگشت‌های زودهنگام و استثناها) آن را آزاد می‌کند.
 
 ### ۶.۲ قفل/باز کردن دستی
+
+</div>
 
 ```cpp
 OS_MUTEX mtx;
@@ -766,7 +931,11 @@ if (mtx.lock(1000)) {  // حداکثر 1000ms منتظر بمان
 }
 ```
 
+<div dir="rtl">
+
 ### ۶.۳ قفل بازگشتی
+
+</div>
 
 ```cpp
 OS_MUTEX mtx;
@@ -780,9 +949,13 @@ OS_LOCK(mtx) {
 }  // هر سه سطح باز می‌شوند
 ```
 
+<div dir="rtl">
+
 ### ۶.۴ سقف IPC (ارث‌بری اولویت)
 
 سقف IPC از وارونگی اولویت جلوگیری می‌کند — یک مشکل ایمنی حیاتی در سیستم‌های بلادرنگ.
+
+</div>
 
 ```cpp
 // اولویت‌های تسک: sensor=2, controller=5, safety=8
@@ -795,10 +968,14 @@ OS_MUTEX shared_data_mtx(8);
 // controller (اولویت 5) نمی‌تواند پیشی بگیرد → وارونگی نیست!
 ```
 
+<div dir="rtl">
+
 **نحوه عملکرد:**
 1. وقتی تسکی قفل را به دست می‌آورد، اولویتش به سقف افزایش می‌یابد
 2. سقف باید روی اولویت بالاترین تسکی که قفل را به دست می‌آورد تنظیم شود
 3. در باز کردن، اولویت به مقدار اصلی (پایه) برمی‌گردد
+
+</div>
 
 ```cpp
 // پیکربندی صحیح سقف
@@ -807,6 +984,8 @@ OS_MUTEX sensor_mtx(8);  // سقف = 8 (اولویت تسک safety)
 // وقتی sensor آن را نگه دارد، sensor با اولویت 8 اجرا می‌شود
 // safety هرگز منتظر controller نمی‌ماند — وارونگی جلوگیری شد
 ```
+
+<div dir="rtl">
 
 > **💡 نکته:** سقف را روی اولویت **بالاترین تسکی** که هرگز قفل را به دست می‌آورد تنظیم کنید. سقف نادرست می‌تواند باعث وارونگی اولویت یا تضاد اولویت شود.
 
@@ -822,11 +1001,17 @@ OS_MUTEX sensor_mtx(8);  // سقف = 8 (اولویت تسک safety)
 
 > **💡 نکته:** همیشه `OS_LOCK(mtx) { ... }` را به‌جای `lock()`/`unlock()` دستی ترجیح دهید. محافظ RAII تضمین می‌کند که قفل همیشه آزاد شود، حتی اگر زود برگردید یا استثنا رخ دهد.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۷. صفوف (OS_QUEUE)
 
 ### ۷.۱ استفاده پایه
+
+</div>
 
 ```cpp
 OS_QUEUE<int, 8> sensor_queue;  // ظرفیت: 8 آیتم از نوع int
@@ -842,7 +1027,11 @@ if (sensor_queue.get(value, 1000)) {  // حداکثر 1000ms منتظر بمان
 }
 ```
 
+<div dir="rtl">
+
 ### ۷.۲ عملیات صف امن ISR
+
+</div>
 
 ```cpp
 OS_QUEUE<uint16_t, 32> adc_queue;
@@ -864,9 +1053,13 @@ void task_process_adc(void) {
 }
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** `put_from_isr()` بدون بلاک است — اگر صف پر باشد فوراً `false` برمی‌گرداند. این روش از هر ISR بدون غیرفعال‌سازی وقفه‌ها امن است.
 
 ### ۷.۳ پرس‌وجوی وضعیت صف
+
+</div>
 
 ```cpp
 OS_QUEUE<int, 16> q;
@@ -883,7 +1076,11 @@ q.is_empty();      // true
 q.get_count();     // 0
 ```
 
+<div dir="rtl">
+
 ### ۷.۴ صفوف تایپ‌شده
+
+</div>
 
 ```cpp
 // صف ساختارها
@@ -899,13 +1096,21 @@ OS_QUEUE<SensorData, 16> sensor_data_queue;
 OS_QUEUE<void*, 8> msg_queue;
 ```
 
+<div dir="rtl">
+
 > **💡 نکته:** `OS_QUEUE` یک قالب (template) است — ظرفیت در زمان کامپایل ثابت است. ظرفیت را بر اساس سناریوهای بدترین حالت انفجار انتخاب کنید. خیلی کوچک = تولیدکننده بلاک می‌شود؛ خیلی بزرگ = RAM هدر می‌رود.
 
+</div>
+
 ---
+
+<div dir="rtl">
 
 ## ۸. سیگنال‌ها (OS_SEMAPHORE)
 
 ### ۸.۱ سیگنال دودویی (قفل منبع)
+
+</div>
 
 ```cpp
 OS_SEMAPHORE spi_sem(1);  // مقدار اولیه = 1 (یک منبع)
@@ -921,7 +1126,11 @@ SPI_Transmit(data2);
 spi_sem.signal();
 ```
 
+<div dir="rtl">
+
 ### ۸.۲ سیگنال شمارشی (مجموعه منابع)
+
+</div>
 
 ```cpp
 OS_SEMAPHORE pool_sem(3);  // 3 منبع موجود
@@ -935,7 +1144,11 @@ pool_sem.signal();  // شمارنده = 1
 pool_sem.signal();  // شمارنده = 2
 ```
 
+<div dir="rtl">
+
 ### ۸.۳ سیگنال محدود
+
+</div>
 
 ```cpp
 OS_SEMAPHORE bounded_sem(0, 5);  // اولیه 0، حداکثر 5
@@ -948,7 +1161,11 @@ bounded_sem.signal();  // شمارنده = 5
 bounded_sem.signal();  // false برمی‌گرداند — حد نرسیده!
 ```
 
+<div dir="rtl">
+
 ### ۸.۴ سیگنال‌دهی امن ISR
+
+</div>
 
 ```cpp
 OS_SEMAPHORE data_ready(0);
@@ -970,6 +1187,8 @@ void task_process(void) {
 
 ---
 
+<div dir="rtl">
+
 ## ۹. تسک‌های دوره‌ای — روش ZenOS (بدون تایمر نرم‌افزاری)
 
 ### ۹.۱ چرا تایمر نرم‌افزاری وجود ندارد؟
@@ -988,6 +1207,8 @@ ZenOS یک API تایمر نرم‌افزاری ارائه **نمی‌دهد**. 
 | **لغو** | ✅ `os_task_stop()` | ❌ باید callback را ردیابی و لغو کرد |
 
 ### ۹.۲ ایجاد تسک دوره‌ای
+
+</div>
 
 ```cpp
 // روش 1: ایجاد با دوره (برنامه‌ریزی خودکار)
@@ -1021,9 +1242,14 @@ void task_control_loop(void) {
 os_task_create(task_control_loop, 10);  // غیردوره‌ای — خودمان زمان‌بندی را مدیریت می‌کنیم
 ```
 
+<div dir="rtl">
+
 ### ۹.۳ مقایسه رویکردها
 
 **❌ رویکرد تایمر نرم‌افزاری (در ZenOS موجود نیست):**
+
+</div>
+
 ```cpp
 // فرضی — این در ZenOS وجود ندارد
 void timer_callback(void* arg) {
@@ -1033,7 +1259,12 @@ void timer_callback(void* arg) {
 timer_create(100, timer_callback);  // یک callback برای همه استفاده‌ها
 ```
 
+<div dir="rtl">
+
 **✅ رویکرد تسک دوره‌ای ZenOS:**
+
+</div>
+
 ```cpp
 // هر تسک پشته، اولویت و ایزوله خطای خود را دارد
 void task_read_sensor(void) {
@@ -1048,9 +1279,13 @@ void task_read_sensor(void) {
 os_task_create(task_read_sensor, 3, 100);
 ```
 
+<div dir="rtl">
+
 ### ۹.۴ دقت زمانی
 
 برای اجرای دوره‌ای دقیق، زمان اجرا را جبران کنید:
+
+</div>
 
 ```cpp
 void task_pid_controller(void) {
@@ -1078,9 +1313,14 @@ void task_pid_controller(void) {
 os_task_create(task_pid_controller, 20);  // اولویت بالا، غیردوره‌ای
 ```
 
+<div dir="rtl">
+
 ### ۹.۵ الگوهای ارتباط بین تسک‌ها
 
 **تولیدکننده-مصرف‌کننده با صف:**
+
+</div>
+
 ```cpp
 OS_QUEUE<SensorData, 16> data_queue;
 
@@ -1102,7 +1342,12 @@ void task_logger(void) {
 }
 ```
 
+<div dir="rtl">
+
 **ISR → تسک با سیگنال:**
+
+</div>
+
 ```cpp
 OS_SEMAPHORE data_sem(0);
 
@@ -1123,9 +1368,13 @@ void task_handle_event(void) {
 
 ---
 
+<div dir="rtl">
+
 ## ۱۰. مدیریت خطا و پایش
 
 ### ۱۰.۱ گزارش‌دهی خطا
+
+</div>
 
 ```cpp
 // گزارش خطای سفارشی
@@ -1139,9 +1388,13 @@ uint32_t expected   = os_get_expected_error_count();
 OSError last = os_get_last_error();
 ```
 
+<div dir="rtl">
+
 ### ۱۰.۲ سرکوب خطاهای مورد انتظار
 
 در زمان تست، ممکن است عمداً خطا ایجاد کنید. از `OS_ERROR_EXPECTED` استفاده کنید تا آن‌ها را از شمارنده غیرمنتظره حذف کنید:
+
+</div>
 
 ```cpp
 // در کد تست:
@@ -1151,7 +1404,11 @@ OS_ERROR_EXPECTED {
 // os_get_unexpected_error_count() افزایش نمی‌یابد
 ```
 
+<div dir="rtl">
+
 ### ۱۰.۳ ثبت خطا
+
+</div>
 
 ```cpp
 #if OS_MONITOR_ERROR_LOG
@@ -1170,7 +1427,11 @@ OS_ERROR_EXPECTED {
 #endif
 ```
 
+<div dir="rtl">
+
 ### ۱۰.۴ پایش مصرف پشته
+
+</div>
 
 ```cpp
 #if OS_MONITOR_ENABLED
@@ -1193,7 +1454,11 @@ OS_ERROR_EXPECTED {
 #endif
 ```
 
+<div dir="rtl">
+
 ### ۱۰.۵ پایش ددلاین
+
+</div>
 
 ```cpp
 #if OS_MONITOR_DEADLINE
@@ -1210,9 +1475,13 @@ OS_ERROR_EXPECTED {
 
 ---
 
+<div dir="rtl">
+
 ## ۱۱. ویژگی‌های ایمنی
 
 ### ۱۱.۱ تایمر سخت‌افزاری
+
+</div>
 
 ```cpp
 #if OS_SAFETY_HW_WATCHDOG
@@ -1229,7 +1498,11 @@ OS_ERROR_EXPECTED {
 #endif
 ```
 
+<div dir="rtl">
+
 ### ۱۱.۲ آزمون RAM (پس‌زمینه)
+
+</div>
 
 ```cpp
 #if OS_SAFETY_RAM_TEST
@@ -1252,7 +1525,11 @@ OS_ERROR_EXPECTED {
 #endif
 ```
 
+<div dir="rtl">
+
 ### ۱۱.۳ آزمون CRC (یکپارچگی ROM)
+
+</div>
 
 ```cpp
 #if OS_SAFETY_CRC_CHECK
@@ -1278,7 +1555,11 @@ OS_ERROR_EXPECTED {
 #endif
 ```
 
+<div dir="rtl">
+
 ### ۱۱.۴ محافظت MPU
+
+</div>
 
 ```cpp
 #if OS_SAFETY_MPU
@@ -1298,9 +1579,13 @@ OS_ERROR_EXPECTED {
 
 ---
 
+<div dir="rtl">
+
 ## ۱۲. نکات و ترفندهای پیشرفته
 
 ### ۱۲.۱ مدیریت چرخه حیات تسک
+
+</div>
 
 ```cpp
 // ایجاد تمام تسک‌ها از قبل، شروع/توقف در صورت نیاز
@@ -1319,7 +1604,11 @@ if (temperature > 70) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱۲.۲ تخفیف تدریجی
+
+</div>
 
 ```cpp
 void task_main(void) {
@@ -1337,7 +1626,11 @@ void task_main(void) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱۲.۳ مدیریت توان با بیکاری بدون تیک
+
+</div>
 
 ```cpp
 // OS_TOOL_TICKLESS_IDLE را در پیکربندی فعال کنید
@@ -1351,7 +1644,11 @@ void task_main(void) {
 // 4. تسک‌های دوره‌ای به‌طور خودکار از WFI بیدار می‌شوند
 ```
 
+<div dir="rtl">
+
 ### ۱۲.۴ نکات اشکال‌زدایی
+
+</div>
 
 ```cpp
 // 1. چاپ تعداد تسک در زمان شروع
@@ -1374,7 +1671,11 @@ if (os_get_unexpected_error_count() > 0) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱۲.۵ نکات بهینه‌سازی کامپایلر
+
+</div>
 
 ```cpp
 // داده‌های بحرانی عملکرد را اگر از ISRها دسترسی دارند volatile علامت‌گذاری کنید
@@ -1391,9 +1692,13 @@ OS_QUEUE<uint16_t, 32> isr_data_queue;
 
 ---
 
+<div dir="rtl">
+
 ## ۱۳. کتابخانه الگوهای رایج
 
 ### ۱۳.۱ ماشین حالت در یک تسک
+
+</div>
 
 ```cpp
 enum State { INIT, RUNNING, ERROR, SLEEP };
@@ -1422,7 +1727,11 @@ void task_state_machine(void) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱۳.۲ مدیریت دکمه با حذف نویز
+
+</div>
 
 ```cpp
 OS_KEY_EVT;
@@ -1443,7 +1752,11 @@ void task_button(void) {
 }
 ```
 
+<div dir="rtl">
+
 ### ۱۳.۳ PWM نرم‌افزاری از طریق تسک دوره‌ای
+
+</div>
 
 ```cpp
 void task_pwm(void) {
@@ -1460,7 +1773,11 @@ void task_pwm(void) {
 os_task_create(task_pwm, 15);  // اولویت بالا برای زمان‌بندی
 ```
 
+<div dir="rtl">
+
 ### ۱۳.۴ خط تولید حسگر چندمرحله‌ای
+
+</div>
 
 ```cpp
 OS_QUEUE<RawData, 8> raw_queue;
@@ -1499,7 +1816,11 @@ os_task_create(task_process, 5);
 os_task_create(task_output, 4);
 ```
 
+<div dir="rtl">
+
 ### ۱۳.۵ خاموش‌سازی نرم
+
+</div>
 
 ```cpp
 static volatile bool shutdown_requested = false;
@@ -1524,6 +1845,8 @@ void task_shutdown_handler(void) {
 ```
 
 ---
+
+<div dir="rtl">
 
 ## پیوست: مرجع سریع API
 
@@ -1556,6 +1879,12 @@ void task_shutdown_handler(void) {
 | `OS_QUEUE<T,N>` | — | صف FIFO محدود |
 | `OS_SEMAPHORE` | — | سیگنال شمارشی |
 
+</div>
+
 ---
 
+<div dir="rtl">
+
 *تولید شده برای ZenOS RTOS v1.0.0 — همچنین ببینید: SAFETY_MANUAL.md، ZenOS_Config.hpp*
+
+</div>
