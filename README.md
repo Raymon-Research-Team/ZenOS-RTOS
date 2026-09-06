@@ -198,7 +198,7 @@ Your donation directly funds development, testing, certification, and documentat
 <br>
 
 <table>
-<tr>
+<tr width="100%>
 <td align="center" width="100%" >
 
 🟠 **Bitcoin (BTC)**
@@ -207,7 +207,8 @@ Your donation directly funds development, testing, certification, and documentat
 
 </td>
 </tr>
-<tr>
+
+<tr width="100%>
 <td align="center" width="100%" >
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
