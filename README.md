@@ -75,6 +75,24 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 
 A complete RTOS application in under 20 lines:
 
+**Two steps before the code:**
+
+> **⚠️ 1. Set HAL timebase to TIM1 in CubeMX:**
+> ZenOS uses `SysTick` for its kernel tick. If HAL also uses `SysTick`, they will conflict. In CubeMX, go to **System Core** → **SYS** → **Timebase Source** and set it to `TIM1`. This gives HAL its own 1ms timebase on TIM1 while SysTick stays free for ZenOS.
+>
+> **⚠️ 2. Add `os_tick()` to `SysTick_Handler`:**
+> Open `Src/stm32f1xx_it.c` and call `os_tick()` inside `SysTick_Handler`. This is how ZenOS receives its tick interrupt:
+>
+> ```c
+> #include "ZenOS.hpp"  // Add at top of file
+>
+> void SysTick_Handler(void) {
+>     os_tick();
+> }
+> ```
+>
+> **⚠️ 3. Add the sample task to `Src/main.cpp` as shown below:**
+
 ```cpp
 #include "ZenOS.hpp"
 

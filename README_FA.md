@@ -93,10 +93,37 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 
 ## 🚀 شروع سریع
 
-
 یک برنامه کامل سیستم‌عامل بلادرنگ در کمتر از 20 خط:
 
+**قبل از کد، دو مرحله ضروری:**
+
+> **⚠️ ۱. تایمر HAL را در CubeMX تنظیم کنید:**
+> ZenOS از `SysTick` برای تیک هسته خود استفاده می‌کند. اگر HAL هم از `SysTick` استفاده کند، تداخل ایجاد می‌شود. بنابراین باید در CubeMX یک تایمر جداگانه (مثلاً `TIM1`) به عنوان زمان‌بند (timebase) HAL انتخاب کنید. این کار را در مسیر **System Core** → **SYS** → **Timebase Source** = `TIM1` انجام دهید.
+>
+> **⚠️ ۲. `os_tick()` را به `SysTick_Handler` اضافه کنید:**
+> فایل `Src/stm32f1xx_it.c` را باز کنید و `os_tick()` را داخل تابع `SysTick_Handler` فراخوانی کنید. این تنها راه دریافت وقفه تیک توسط ZenOS است:
 </div>
+
+<div dir="ltr">
+
+>
+> ```c
+> #include "ZenOS.hpp"  // در بالای فایل
+>
+> void SysTick_Handler(void) {
+>     os_tick();
+> }
+> ```
+</div>
+
+<div dir="rtl">
+
+>
+> **⚠️ ۳. تسک نمونه را مطابق کد زیر به فایل `Src/main.cpp` اضافه کنید:**
+
+</div>
+
+<div dir="ltr">
 
 ```cpp
 #include "ZenOS.hpp"
@@ -118,6 +145,7 @@ int main(void) {
     os_start();
 }
 ```
+</div>
 
 <div dir="rtl">
 
