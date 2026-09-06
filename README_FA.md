@@ -92,7 +92,7 @@ int main(void) {
     MX_GPIO_Init();
 
     os_init();
-    os_task_create(task_blink, 1);
+    os_task_create(task_blink); // Create task with priority 1
     os_start();
 }
 ```
