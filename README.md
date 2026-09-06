@@ -199,7 +199,7 @@ Your donation directly funds development, testing, certification, and documentat
 
 <table>
 <tr>
-<td align="center">
+<td align="center" width="100%" >
 
 🟠 **Bitcoin (BTC)**
 
@@ -208,7 +208,7 @@ Your donation directly funds development, testing, certification, and documentat
 </td>
 </tr>
 <tr>
-<td align="center">
+<td align="center" width="100%" >
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
 
@@ -228,10 +228,10 @@ Your donation directly funds development, testing, certification, and documentat
 
 <table>
 <tr>
-<td align="center">⭐<br><b>Star</b><br>the repo</td>
-<td align="center">🐛<br><b>Report</b><br>a bug</td>
-<td align="center">📝<br><b>Write</b><br>a tutorial</td>
-<td align="center">🗣️<br><b>Tell</b><br>someone</td>
+<td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
+<td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
+<td align="center" width="25%" >📝<br><b>Write</b><br>a tutorial</td>
+<td align="center" width="25%" >🗣️<br><b>Tell</b><br>someone</td>
 </tr>
 </table>
 
