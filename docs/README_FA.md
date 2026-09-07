@@ -1,12 +1,12 @@
 <div align="center" dir="rtl">
 
-<img src="ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
+<img src="../ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
 **سیستم‌عامل بلادرنگ برای ARM Cortex-M — نوشته‌شده با C++11.**
 
 ### **سادگی — امنیت — سرعت**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](../LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.0.0-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
@@ -15,7 +15,7 @@
 
 <br>
 
-[**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](README.md)
+[**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](../README.md)
 
 <br>
 
@@ -197,7 +197,7 @@ int main(void) {
 | 📗 [API_TUTORIAL.md](API_TUTORIAL.md) | راهنمای کامل API با مثال‌ها (انگلیسی) |
 | 🤝 [CONTRIBUTING_FA.md](CONTRIBUTING_FA.md) | نحوه مشارکت |
 | ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | مقایسه فنی با FreeRTOS، Zephyr، RT-Thread |
-| ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | هر گزینه پیکربندی با یادداشت‌های ایمنی |
+| ⚙️ [ZenOS_Config.hpp](../ZenOS/ZenOS_Config.hpp) | هر گزینه پیکربندی با یادداشت‌های ایمنی |
 
 </div>
 

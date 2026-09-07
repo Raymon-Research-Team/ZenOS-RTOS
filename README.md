@@ -14,7 +14,7 @@
 
 <br>
 
-[**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](README.md)
+[**🇮🇷 فارسی**](docs/README_FA.md) | [**🇬🇧 English**](README.md)
 
 <br>
 
@@ -57,7 +57,7 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 | **IPC ceiling** | **Immediate Priority Ceiling** | Priority inheritance only | None |
 | **C++ RAII** | **Full support** | None | Partial |
 
-> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md)
+> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md)
 
 ### 🖥️ Supported Families
 
@@ -139,7 +139,7 @@ int main(void) {
 └───────────────────────────────────────────────────┘
 ```
 
-For the full API guide → [API_TUTORIAL.md](API_TUTORIAL.md) | [راهنمای فارسی](API_TUTORIAL_FA.md)
+For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنمای فارسی](docs/API_TUTORIAL_FA.md)
 
 ---
 
@@ -147,11 +147,11 @@ For the full API guide → [API_TUTORIAL.md](API_TUTORIAL.md) | [راهنمای 
 
 | Document | What's in it |
 |:---------|:-------------|
-| 📖 [SAFETY_MANUAL.md](SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
-| 📘 [API_TUTORIAL.md](API_TUTORIAL.md) | Complete API guide with examples (English) |
-| 📗 [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
+| 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
+| 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
+| 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
 | 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | Technical comparison with FreeRTOS, Zephyr, RT-Thread |
+| ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison with FreeRTOS, Zephyr, RT-Thread |
 | ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Every config option with safety annotations |
 
 ---
@@ -218,37 +218,32 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 Your donation directly funds development, testing, certification, and documentation.
 
 
-<td align="center" width="100%">
+<div align="center">
+
+<img src="docs/donate-qr.png" alt="Donate via donatr.ee/rahmanh22" width="200" />
+
+**[donatr.ee/rahmanh22](https://donatr.ee/rahmanh22)**
+
+</div>
 
 <table>
-
 <tr>
-
-<td align="center">
+<td align="center" width="50%">
 
 🟠 **Bitcoin (BTC)**
 
 `bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
 
 </td>
-
-</tr>
-
-<tr>
-
-<td align="center">
+<td align="center" width="50%">
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
 
 `0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`
 
 </td>
-
 </tr>
-
 </table>
-
-</td>
 
 > ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
 
