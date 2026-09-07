@@ -176,7 +176,11 @@ All mechanisms are **enabled by default** and can be individually toggled in `Ze
 
 ## 💰 Support ZenOS
 
-This is a solo project. I build it, test it, write the docs, and maintain it — all in my spare time, without funding. If you find ZenOS useful, whether for learning, prototyping, or shipping a product, consider supporting its continued development.
+This is a solo project. I build it, test it, write the docs, and maintain it — all in my spare time, without funding.
+
+> **📝 Note:** ZenOS is designed and written in accordance with IEC 62304 (medical) and IEC 61508 (industrial) standards, and its safety mechanisms follow these standards. However, due to the very high costs of obtaining official certification and ISO (formal audits, traceability documentation, validation testing, etc.), official certification has not been possible so far.
+
+If you find ZenOS useful, whether for learning, prototyping, or shipping a product, consider supporting its continued development.
 
 ### 🎯 Where the money goes
 
@@ -214,9 +218,12 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 Your donation directly funds development, testing, certification, and documentation.
 
 
+<td align="center" width="100%">
 
 <table>
+
 <tr>
+
 <td align="center">
 
 🟠 **Bitcoin (BTC)**
@@ -224,9 +231,11 @@ Your donation directly funds development, testing, certification, and documentat
 `bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
 
 </td>
+
 </tr>
 
 <tr>
+
 <td align="center">
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
@@ -234,10 +243,12 @@ Your donation directly funds development, testing, certification, and documentat
 `0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`
 
 </td>
+
 </tr>
+
 </table>
 
-
+</td>
 
 > ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
 
@@ -245,14 +256,22 @@ Your donation directly funds development, testing, certification, and documentat
 
 ### 🌟 Other ways to help
 
-<table>
+<td align="center" width="100%">
+
+<table> 
+
 <tr>
-<td align="center" width="100%" >⭐<br><b>Star</b><br>the repo</td>
-<td align="center" width="100%" >🐛<br><b>Report</b><br>a bug</td>
-<td align="center" width="100%" >📝<br><b>Write</b><br>a tutorial</td>
-<td align="center" width="100%" >🗣️<br><b>Tell</b><br>someone</td>
+
+<td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
+<td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
+<td align="center" width="25%" >📝<br><b>Write</b><br>a tutorial</td>
+<td align="center" width="25%" >🗣️<br><b>Tell</b><br>someone</td>
+
 </tr>
+
 </table>
+
+</td>
 
 ---
 
