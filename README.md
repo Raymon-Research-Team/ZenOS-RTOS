@@ -218,14 +218,6 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 Your donation directly funds development, testing, certification, and documentation.
 
 
-<div align="center">
-
-<img src="docs/donate-qr.png" alt="Donate via donatr.ee/rahmanh22" width="200" />
-
-**[donatr.ee/rahmanh22](https://donatr.ee/rahmanh22)**
-
-</div>
-
 <table>
 <tr>
 <td align="center" width="50%">
@@ -235,6 +227,13 @@ Your donation directly funds development, testing, certification, and documentat
 `bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
 
 </td>
+<td rowspan="2" align="center" width="50%">
+
+<img src="docs/donate-qr.png" alt="Donate QR Code" width="180" />
+
+</td>
+</tr>
+<tr>
 <td align="center" width="50%">
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
