@@ -129,12 +129,10 @@
 - روی `PC13` (LED داخلی Blue Pill) کلیک کنید
 - آن را `GPIO_Output` تنظیم کنید
 
-#### مرحله ۵: پیکربندی TIM1 (برای زمان‌بند HAL)
-- روی **TIM1** کلیک کنید
-- Clock Source: `Internal Clock`
-- Prescaler: `71` (برای 72MHz → 1MHz)
-- Counter Period: `999` (برای 1ms)
-- NVIC: فعال‌سازی `TIM1 update interrupt`
+#### مرحله ۵: تنظیم زمان‌بند HAL روی TIM1
+- به **System Core** → **SYS** بروید
+- **Timebase Source** را روی `TIM1` تنظیم کنید
+- این کار زمان‌بند HAL را از SysTick دور می‌کند تا ZenOS بتواند از SysTick برای تیک هسته استفاده کند
 
 #### مرحله ۶: تولید کد
 - روی تب **Project Manager** کلیک کنید
@@ -295,15 +293,13 @@ ZenOS از `SysTick` برای تیک هسته خود (`os_tick()`) استفاد�
 
 **راه‌حل:** زمان‌بند HAL را به یک تایمر سخت‌افزاری (TIM1) منتقل کنید.
 
-#### مرحله ۱: CubeMX → Pinout & Configuration → Timers → TIM1
+#### مرحله ۱: CubeMX → System Core → SYS → Timebase Source = TIM1
 
 | تنظیم | مقدار |
 |--------|--------|
-| Clock Source | Internal Clock |
-| Prescaler | `(PCLK2 / 1000000) - 1` (مثلاً 71 برای 72MHz) |
-| Counter Period | `999` (برای 1ms) یا `99` (برای 100μs) |
-| Counter Mode | Up |
-| NVIC Interrupt | ✅ فعال‌سازی `TIM1 update interrupt` |
+| Timebase Source | `TIM1` |
+
+CubeMX به‌طور خودکار TIM1 را با Prescaler و Period مناسب برای زمان‌بند 1ms پیکربندی می‌کند.
 
 > **💡 نکته:** زمان‌بند پیش‌فرض HAL روی 1ms تنظیم شده. تیک هسته ZenOS به‌طور مستقل از طریق SysTick با 100μs (قابل پیکربندی) اجرا می‌شود.
 

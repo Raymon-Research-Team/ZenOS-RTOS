@@ -116,12 +116,10 @@ Before starting, you should have basic knowledge of:
 - Click on `PC13` (Blue Pill built-in LED)
 - Set as `GPIO_Output`
 
-#### Step 5: Configure TIM1 (for HAL timebase)
-- Click on **TIM1**
-- Clock Source: `Internal Clock`
-- Prescaler: `71` (for 72MHz → 1MHz)
-- Counter Period: `999` (for 1ms)
-- NVIC: Enable `TIM1 update interrupt`
+#### Step 5: Set HAL Timebase to TIM1
+- Go to **System Core** → **SYS**
+- Set **Timebase Source** to `TIM1`
+- This moves HAL's timebase away from SysTick so ZenOS can use SysTick for its kernel tick
 
 #### Step 6: Generate Code
 - Click **Project Manager** tab
@@ -261,15 +259,13 @@ ZenOS uses `SysTick` for its own kernel tick (`os_tick()`). HAL also needs a tim
 
 **Solution:** Move HAL's timebase to a hardware timer (TIM1).
 
-#### Step 1: Open CubeMX → Pinout & Configuration → Timers → TIM1
+#### Step 1: Open CubeMX → System Core → SYS → Timebase Source = TIM1
 
 | Setting | Value |
 |---------|-------|
-| Clock Source | Internal Clock |
-| Prescaler | `(PCLK2 / 1000000) - 1` (e.g., 71 for 72MHz) |
-| Counter Period | `999` (for 1ms) or `99` (for 100μs) |
-| Counter Mode | Up |
-| NVIC Interrupt | ✅ Enable `TIM1 update interrupt` |
+| Timebase Source | `TIM1` |
+
+CubeMX will automatically configure TIM1 with the correct prescaler and period for a 1ms timebase.
 
 > **💡 Tip:** The default HAL timebase period is 1ms. ZenOS kernel tick runs independently via SysTick at 100μs (configurable).
 
