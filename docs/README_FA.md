@@ -284,16 +284,21 @@ int main(void) {
 
 <table>
 <tr>
-<td align="center" width="100%" dir="rtl">
+<td align="center" width="50%" dir="rtl">
 
 🟠 **بیت‌کوین (BTC)**
 
 `bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
 
 </td>
+<td rowspan="2" align="center" width="50%">
+
+<img src="donate-qr.png" alt="Donate QR Code" width="180" />
+
+</td>
 </tr>
 <tr>
-<td align="center" width="100%" dir="rtl">
+<td align="center" width="50%" dir="rtl">
 
 🔵 **اتریوم (ETH) / تتر (USDT - ERC-20)**
 
