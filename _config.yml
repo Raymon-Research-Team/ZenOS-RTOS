@@ -1,0 +1,13 @@
+# Disable Jekyll processing
+exclude:
+  - docs/
+  - ZenOS/
+  - Inc/
+  - Src/
+  - Startup/
+  - .git/
+  - .github/
+  - README.md
+  - LICENSE
+  - ZenOS_logo.svg
+  - .gitignore
