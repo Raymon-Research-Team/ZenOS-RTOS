@@ -53,8 +53,7 @@
         .main-content { margin-left: var(--sidebar-width); padding: 30px; min-height: 100vh; }
 
         /* Cover */
-        .cover { background: linear-gradient(135deg, #e1f5fe 0%, #e0f7fa 50%, #f3e5f5 100%); background-size: 200% 200%; animation: gradientShift 8s ease infinite; color: var(--text); padding: 50px 40px; border-radius: 12px; text-align: center; margin-bottom: 30px; border: 1px solid var(--border); }
-        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .cover { background: white; color: var(--text); padding: 50px 40px; border-radius: 12px; text-align: center; margin-bottom: 30px; border: 1px solid var(--border); }
         .cover img { width: 320px; border-radius: 16px; margin-bottom: 20px; }
         .cover h1 { font-size: 2.5em; font-weight: 300; margin-bottom: 10px; color: var(--accent); }
         .cover .badges { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
@@ -78,7 +77,11 @@
         tr:hover { background: #e1f5fe; }
 
         /* Code */
-        pre[class*="language-"] { border-radius: 8px; margin: 12px 0; font-size: 0.85em; border-left: 4px solid var(--secondary); }
+        pre[class*="language-"] { position: relative; border-radius: 8px; margin: 12px 0; font-size: 0.85em; border-left: 4px solid var(--secondary); }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); border: none; color: #80cbc4; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75em; opacity: 0; transition: opacity 0.2s; }
+        pre:hover .copy-btn { opacity: 1; }
+        .copy-btn:hover { background: rgba(255,255,255,0.2); }
+        .copy-btn.copied { color: #4caf50; }
         code { background: #e1f5fe; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: var(--primary); }
 
         /* Callouts */
@@ -155,7 +158,7 @@
 
 <!-- Loading Animation -->
 <div id="loader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity 0.5s ease;">
-    <img src="ZenOS_logo.svg" alt="ZenOS" style="width:120px;animation:pulse 1.5s ease-in-out infinite;">
+    <img src="ZenOS_logo.svg" alt="ZenOS" style="width:240px;animation:pulse 1.5s ease-in-out infinite;">
     <p style="margin-top:20px;font-size:1.2em;color:#01579b;font-weight:500;">Loading ZenOS Guide...</p>
     <div style="width:200px;height:4px;background:#e0e0e0;border-radius:2px;margin-top:15px;overflow:hidden;">
         <div style="width:100%;height:100%;background:linear-gradient(90deg,#0277bd,#00838f);animation:loading 1.5s ease-in-out infinite;"></div>
@@ -203,6 +206,12 @@
         <a href="#queues">Queues</a>
         <a href="#semaphores">Semaphores</a>
         <a href="#periodic">Periodic Tasks</a>
+        <a href="#monitoring">Monitoring</a>
+        <a href="#serial-output">Serial Output</a>
+        <a href="#error-handling">Error Handling</a>
+        <a href="#advanced-tips">Advanced Tips</a>
+        <a href="#patterns">Patterns</a>
+        <a href="#api-reference-table">API Table</a>
 
         <div class="nav-divider"></div>
         <div class="nav-section">🛡️ <span data-lang="en">Safety</span><span data-lang="fa">ایمنی</span></div>
@@ -345,6 +354,11 @@ void SysTick_Handler(void) {
     os_tick();  // ZenOS receives its tick interrupt here
 }</code></pre>
 
+        <div class="warning">
+            <span data-lang="en"><strong>Critical Step 4:</strong> CubeMX generates <code>main.c</code>, but ZenOS requires C++11. You must rename <code>Src/main.c</code> to <code>Src/main.cpp</code>. Right-click the file in your IDE → Rename → change <code>.c</code> to <code>.cpp</code>. Also ensure all <code>.cpp</code> files are compiled as C++ (not C) in your project settings.</span>
+            <span data-lang="fa"><strong>مرحله حیاتی ۴:</strong> CubeMX فایل <code>main.c</code> را تولید می‌کند، اما ZenOS به C++11 نیاز دارد. باید فایل <code>Src/main.c</code> را به <code>Src/main.cpp</code> تغییر نام دهید. روی فایل در IDE راست کلیک کنید → Rename → <code>.c</code> را به <code>.cpp</code> تغییر دهید. همچنین مطمئن شوید تمام فایل‌های <code>.cpp</code> به عنوان C++ (نه C) کامپایل می‌شوند.</span>
+        </div>
+
         <h3>3.1 <span data-lang="en">Complete main.cpp</span><span data-lang="fa">فایل کامل main.cpp</span></h3>
         <pre><code class="language-cpp">#include "ZenOS.hpp"
 
@@ -406,6 +420,8 @@ int main(void) {
 
         <!-- Tasks -->
         <h2 id="tasks">1. <span data-lang="en">Task Management</span><span data-lang="fa">مدیریت تسک‌ها</span></h2>
+        <p><span data-lang="en"><strong>What is a Task?</strong> A task is an independent function that runs forever in its own context. Think of it as a separate program that runs simultaneously with other tasks. Each task has its own stack (memory for local variables), its own priority (determines execution order), and can be periodic (runs at fixed intervals) or aperiodic (runs whenever scheduled).</span><span data-lang="fa"><strong>تسک چیست؟</strong> تسک یک تابع مستقل است که برای همیشه در بافت خودش اجرا می‌شود. آن را به عنوان یک برنامه مستقل در نظر بگیرید که همزمان با تسک‌های دیگر اجرا می‌شود. هر تسک پشته خودش (حافظه برای متغیرهای محلی)، اولویت خودش (ترتیب اجرا) را دارد و می‌تواند دوره‌ای (در فواصل ثابت اجرا می‌شود) یا غیردوره‌ای (هر وقت زمان‌بندی شود اجرا می‌شود) باشد.</span></p>
+        <p><span data-lang="en"><strong>How it works:</strong> When you call <code>os_task_create()</code>, ZenOS allocates a Task Control Block (TCB) and a stack for the task. The TCB stores the task's state, priority, and context. When <code>os_start()</code> is called, the scheduler begins running the highest-priority ready task. Tasks can block (sleep) using delays or IPC, allowing lower-priority tasks to run.</span><span data-lang="fa"><strong>نحوه کار:</strong> وقتی <code>os_task_create()</code> را فراخوانی می‌کنید، ZenOS یک بلوک کنترل تسک (TCB) و یک پشته برای تسک تخصیص می‌دهد. TCB وضعیت تسک، اولویت و زمینه را ذخیره می‌کند. وقتی <code>os_start()</code> فراخوانی می‌شود، زمان‌بند شروع به اجرای تسک آماده با بالاترین اولویت می‌کند. تسک‌ها می‌توانند با استفاده از تاخیرها یا IPC بلاک (بخوابند) که به تسک‌های با اولویت پایین‌تر اجازه اجرا می‌دهد.</span></p>
         <pre><code class="language-cpp">// Create tasks (call BEFORE os_start())
 os_task_create(task_function, priority);              // Default stack (512 bytes)
 os_task_create(task_function, priority, period_ms);   // + Periodic
@@ -415,6 +431,7 @@ os_task_create_st(task_function, priority, period_ms, stack_bytes); // Custom st
 os_task_start(task_function);    // Activate a stopped task
 os_task_stop(task_function);     // Deactivate a task
 bool running = os_task_isActive(task_function);       // Check state</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_task_create(task_blink, 5)</code> creates a task named "task_blink" with priority 5. The task will be scheduled to run when <code>os_start()</code> is called. <code>os_task_create(task_sensor, 3, 100)</code> creates a periodic task that runs every 100ms. <code>os_task_create_st(task_ui, 8, 0, 1024)</code> creates a task with a custom 1KB stack (useful for tasks that use printf or deep function calls).</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_task_create(task_blink, 5)</code> یک تسک به نام "task_blink" با اولویت ۵ ایجاد می‌کند. این تسک وقتی <code>os_start()</code> فراخوانی شود زمان‌بندی می‌شود. <code>os_task_create(task_sensor, 3, 100)</code> یک تسک دوره‌ای ایجاد می‌کند که هر ۱۰۰ میلی‌ثانیه اجرا می‌شود. <code>os_task_create_st(task_ui, 8, 0, 1024)</code> یک تسک با پشته سفارشی ۱ کیلوبایت ایجاد می‌کند (برای تسک‌هایی که از printf یا فراخوانی‌های عمیق تابع استفاده می‌کنند مفید است).</span></p>
 
         <h3><span data-lang="en">Priority Guidelines</span><span data-lang="fa">راهنمای اولویت</span></h3>
         <table>
@@ -438,6 +455,7 @@ bool running = os_task_isActive(task_function);       // Check state</code></pre
 
         <!-- Timing -->
         <h2 id="timing">2. <span data-lang="en">Timing & Delays</span><span data-lang="fa">زمان‌بندی و تاخیرها</span></h2>
+        <p><span data-lang="en"><strong>What is Timing?</strong> Timing is how ZenOS keeps track of time and manages task execution intervals. The kernel tick (default 100μs) is the heartbeat of the system — every tick, the scheduler checks which tasks should run. Delays allow tasks to sleep for a specified time, giving other tasks a chance to execute.</span><span data-lang="fa"><strong>زمان‌بندی چیست؟</strong> زمان‌بندی نحوه ردیابی زمان و مدیریت فواصل اجرای تسک توسط ZenOS است. تیک هسته (پیش‌فرض ۱۰۰ میکروثانیه) ضربان قلب سیستم است — در هر تیک، زمان‌بند بررسی می‌کند کدام تسک‌ها باید اجرا شوند. تاخیرها به تسک‌ها اجازه می‌دهند برای مدت زمان مشخصی بخوابند و به تسک‌های دیگر فرصت اجرا بدهند.</span></p>
         <pre><code class="language-cpp">os_delay_ms(100);  // Sleep ~100ms, yield CPU to other tasks
 os_delay_ms(0);    // Immediate yield (gives other tasks a chance)
 
@@ -446,6 +464,7 @@ os_delay_us(10);   // Busy-wait ~10µs (blocks CPU — no other task runs!)
 uint32_t ms = os_get_ms();    // Milliseconds since boot
 uint32_t us = os_get_us();    // Microseconds since boot (DWT counter)
 uint32_t tick = os_get_tick(); // Raw tick count</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_delay_ms(100)</code> puts the current task to sleep for 100ms. During this time, the scheduler runs other ready tasks. When 100ms passes, the task wakes up and continues. <code>os_delay_ms(0)</code> immediately yields — useful when you want to give other tasks a chance to run without actually sleeping. <code>os_delay_us(10)</code> busy-waits for 10μs — the CPU does nothing else during this time (use only for sub-millisecond delays).</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_delay_ms(100)</code> تسک فعلی را به مدت ۱۰۰ میلی‌ثانیه می‌خواباند. در این مدت، زمان‌بند تسک‌های آماده دیگر را اجرا می‌کند. وقتی ۱۰۰ میلی‌ثانیه بگذرد، تسک بیدار شده و ادامه می‌دهد. <code>os_delay_ms(0)</code> فوراً واگذاری می‌کند — مفید وقتی می‌خواهید به تسک‌های دیگر فرصت اجرا بدهید بدون اینکه واقعاً بخوابید. <code>os_delay_us(10)</code> به مدت ۱۰ میکروثانیه انتظار مشغول می‌کشد — CPU در این مدت کار دیگری انجام نمی‌دهد (فقط برای تاخیرهای زیر میلی‌ثانیه استفاده کنید).</span></p>
 
         <div class="warning"><span data-lang="en"><code>os_delay_us()</code> uses DWT cycle counter for busy-waiting. It does NOT yield the CPU. Use only for very short delays (&lt;1ms).</span><span data-lang="fa"><code>os_delay_us()</code> از شمارنده DWT برای انتظار مشغول استفاده می‌کند و CPU را واگذار نمی‌کند. فقط برای تاخیرهای بسیار کوتاه استفاده کنید.</span></div>
 
@@ -456,12 +475,14 @@ uint32_t elapsed = os_get_ms() - t0;  // Works even if ms wraps (~49 days)</code
 
         <!-- Critical Sections -->
         <h2 id="critical">3. <span data-lang="en">Critical Sections (OS_SAFE)</span><span data-lang="fa">بخش‌های بحرانی (OS_SAFE)</span></h2>
+        <p><span data-lang="en"><strong>What is a Critical Section?</strong> A critical section is a piece of code that accesses shared data that might also be accessed by an interrupt service routine (ISR). Without protection, an interrupt could happen in the middle of updating a variable, leaving it in an inconsistent state. <code>OS_SAFE</code> disables all interrupts for the duration of the block, ensuring atomic access to shared data.</span><span data-lang="fa"><strong>بخش بحرانی چیست؟</strong> بخش بحرانی قطعه‌ای از کد است که به داده مشترکی دسترسی دارد که ممکن است توسط یک روتین سرویس وقفه (ISR) نیز دسترسی داشته باشد. بدون محافظت، یک وقفه می‌تواند در وسط به‌روزرسانی یک متغیر رخ دهد و آن را در وضعیت ناسازگار باقی بگذارد. <code>OS_SAFE</code> تمام وقفه‌ها را برای مدت بلوک غیرفعال می‌کند و دسترسی اتمی به داده مشترک را تضمین می‌کند.</span></p>
         <pre><code class="language-cpp">volatile uint32_t shared_counter = 0;
 
 OS_SAFE {
     shared_counter++;  // Interrupts disabled here
 }
 // Interrupts re-enabled here</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> When the task enters <code>OS_SAFE { ... }</code>, all interrupts are immediately disabled (CPSID I instruction). The code inside the block executes without any interrupt interference. When the block ends, interrupts are re-enabled (CPSIE I). This is implemented using C++ RAII — even if an exception occurs, interrupts are always re-enabled. <strong>Keep critical sections short!</strong> Long critical sections increase interrupt latency.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> وقتی تسک وارد <code>OS_SAFE { ... }</code> می‌شود، تمام وقفه‌ها فوراً غیرفعال می‌شوند (دستورالعمل CPSID I). کد داخل بلوک بدون هیچ تداخل وقفه‌ای اجرا می‌شود. وقتی بلوک تمام می‌شود، وقفه‌ها دوباره فعال می‌شوند (دستورالعمل CPSIE I). این با استفاده از RAII C++ پیاده‌سازی می‌شود — حتی اگر خطایی رخ دهد، وقفه‌ها همیشه دوباره فعال می‌شوند. <strong>بخش‌های بحرانی را کوتاه نگه دارید!</strong> بخش‌های بحرانی طولانی تاخیر وقفه را افزایش می‌دهند.</span></p>
 
         <table>
             <tr><th><span data-lang="en">Feature</span><span data-lang="fa">ویژگی</span></th><th><code>OS_SAFE</code></th><th><code>OS_LOCK</code></th></tr>
@@ -474,29 +495,45 @@ OS_SAFE {
 
         <!-- Events -->
         <h2 id="events">4. <span data-lang="en">Events (OS_EVENT)</span><span data-lang="fa">رویدادها (OS_EVENT)</span></h2>
-        <pre><code class="language-cpp">OS_EVENT sensor_ready;
+        <p><span data-lang="en"><strong>What is an Event?</strong> An event is a synchronization primitive used for inter-task signaling. Think of it as a "flag" that one task can raise (signal) and another task can wait for. Events use an internal counter — each <code>signal()</code> increments the counter, and each <code>wait()</code> decrements it (if > 0) or blocks until signaled or timeout. This makes events perfect for ISR-to-task communication and simple synchronization.</span><span data-lang="fa"><strong>رویداد چیست؟</strong> رویداد یک اولیه همگام‌سازی برای سیگنال‌دهی بین تسک‌ها است. آن را به عنوان یک "پرچم" در نظر بگیرید که یک تسک می‌تواند آن را بالا ببرد (سیگنال) و تسک دیگری منتظر آن باشد. رویدادها از یک شمارنده داخلی استفاده می‌کنند — هر <code>signal()</code> شمارنده را افزایش می‌دهد و هر <code>wait()</code> آن را کاهش می‌دهد (اگر > ۰ باشد) یا تا سیگنال یا تایم‌اوت بلاک می‌شود. این رویدادها را برای ارتباط ISR-to-task و همگام‌سازی ساده عالی می‌کند.</span></p>
+        <pre><code class="language-cpp">OS_EVENT sensor_ready;  // Create an event
 
-// Waiter task:
+// Waiter task (waits for the event):
 if (sensor_ready.wait(1000)) {  // Wait up to 1000ms
-    process_sensor_data();
+    process_sensor_data();      // Event was signaled!
 } else {
-    handle_timeout();
+    handle_timeout();           // Timeout — no signal received
 }
 
-// Signaler task:
-sensor_ready.signal();
+// Signaler task (signals the event):
+read_sensor();
+sensor_ready.signal();  // Wake up the waiter
 
-// ISR-safe signaling:
+// ISR-safe signaling (use in interrupt handlers):
 sensor_ready.signal_from_isr();</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Task A calls <code>sensor_ready.wait(1000)</code> and blocks (sleeps). Task B reads a sensor, then calls <code>sensor_ready.signal()</code>. This wakes up Task A, which then processes the data. If Task B doesn't signal within 1000ms, Task A wakes up with <code>false</code> (timeout). <strong>Important:</strong> Always use <code>signal_from_isr()</code> in interrupt handlers — calling <code>signal()</code> from an ISR is undefined behavior.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تسک A فراخوانی <code>sensor_ready.wait(1000)</code> می‌کند و بلاک (می‌خوابد). تسک B یک حسگر می‌خواند، سپس <code>sensor_ready.signal()</code> را فراخوانی می‌کند. این تسک A را بیدار می‌کند که سپس داده را پردازش می‌کند. اگر تسک B ظرف ۱۰۰۰ میلی‌ثانیه سیگنال ندهد، تسک A با <code>false</code> (تایم‌اوت) بیدار می‌شود. <strong>مهم:</strong> همیشه از <code>signal_from_isr()</code> در روتین‌های وقفه استفاده کنید — فراخوانی <code>signal()</code> از ISR رفتار تعریف نشده است.</span></p>
+        <h3><span data-lang="en">Signal Accumulation</span><span data-lang="fa">تجمع سیگنال</span></h3>
+        <pre><code class="language-cpp">OS_EVENT evt;
+
+evt.signal();  // count = 1
+evt.signal();  // count = 2
+evt.signal();  // count = 3
+
+evt.wait();    // count = 2 (returns 1)
+evt.wait();    // count = 1 (returns 1)
+evt.wait();    // count = 0 (returns 1)
+evt.wait();    // returns 0 (timeout — count was already 0)</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Multiple signals accumulate in the counter. Each <code>wait()</code> consumes one signal. If 3 signals are sent before any wait, the first 3 waits return immediately (count > 0). The 4th wait blocks until a new signal arrives or timeout. <strong>Use case:</strong> Multiple ISRs can signal the same event, and the task processes all pending signals one by one.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> سیگنال‌های متعدد در شمارنده تجمع می‌یابند. هر <code>wait()</code> یک سیگنال مصرف می‌کند. اگر ۳ سیگنال قبل از هر wait ارسال شود، ۳ wait اول فوراً برمی‌گردند (count > ۰). wait چهارم تا رسیدن سیگنال جدید یا تایم‌اوت بلاک می‌شود. <strong>مورد استفاده:</strong> ISR‌های متعدد می‌توانند به یک رویداد سیگنال بدهند و تسک تمام سیگنال‌های معلق را یکی یکی پردازش می‌کند.</span></p>
 
         <!-- Mutexes -->
         <h2 id="mutexes">5. <span data-lang="en">Mutexes (OS_MUTEX)</span><span data-lang="fa">قفل‌ها (OS_MUTEX)</span></h2>
-        <pre><code class="language-cpp">OS_MUTEX uart_mtx;
+        <p><span data-lang="en"><strong>What is a Mutex?</strong> A mutex (mutual exclusion) is a lock that ensures only one task can access a shared resource at a time. Think of it as a key to a room — only the task holding the key (locked mutex) can enter the room (use the resource). When the task leaves, it returns the key (unlocks), allowing another task to enter. ZenOS mutexes support recursive locking (same task can lock multiple times) and IPC ceiling (prevents priority inversion).</span><span data-lang="fa"><strong>Mutex چیست؟</strong> mutex (حذف متقابل) یک قفل است که تضمین می‌کند فقط یک تسک در هر زمان بتواند به یک منبع مشترک دسترسی داشته باشد. آن را به عنوان کلید یک اتاق در نظر بگیرید — فقط تسکی که کلید (قفل mutex) را در اختیار دارد می‌تواند وارد اتاق (منبع را استفاده کند) شود. وقتی تسک خارج می‌شود، کلید را برمی‌گرداند (قفل را باز می‌کند) و به تسک دیگری اجازه ورود می‌دهد. mutex‌های ZenOS از قفل بازگشتی (همین تسک می‌تواند چندین بار قفل کند) و سقف IPC (جلوگیری از وارونگی اولویت) پشتیبانی می‌کنند.</span></p>
+        <pre><code class="language-cpp">OS_MUTEX uart_mtx;  // Create a mutex for UART
 
 // RAII lock guard (auto-unlocked when block ends)
-OS_LOCK(uart_mtx) {
-    HAL_UART_Transmit(&huart1, data, len, 100);
-}
+OS_LOCK(uart_mtx) {  // Acquire mutex
+    HAL_UART_Transmit(&huart1, data, len, 100);  // Use resource
+}  // Auto-released when block ends
 
 // Manual lock/unlock
 if (mtx.lock(1000)) {  // Wait up to 1000ms
@@ -506,80 +543,225 @@ if (mtx.lock(1000)) {  // Wait up to 1000ms
 
 // With IPC ceiling (priority inheritance)
 OS_MUTEX shared_data_mtx(8);  // Ceiling priority = 8</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> When Task A enters <code>OS_LOCK(uart_mtx)</code>, it acquires the mutex. If Task B tries to enter while Task A holds it, Task B blocks until Task A exits. <code>OS_LOCK</code> is an RAII guard — it automatically releases the mutex when the block ends. <strong>IPC Ceiling:</strong> When you pass a ceiling priority (e.g., <code>OS_MUTEX mtx(8)</code>), the task's priority is temporarily boosted to that level while holding the mutex, preventing priority inversion.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> وقتی تسک A وارد <code>OS_LOCK(uart_mtx)</code> می‌شود، mutex را به دست می‌آورد. اگر تسک B سعی کند وارد شود در حالی که تسک A آن را نگه داشته، تسک B بلاک می‌شود تا تسک A خارج شود. <code>OS_LOCK</code> یک محافظ RAII است — به طور خودکار mutex را آزاد می‌کند. <strong>سقف IPC:</strong> اولویت تسک به طور موقت به سطح سقف افزایش می‌یابد و از وارونگی اولویت جلوگیری می‌کند.</span></p>
 
         <!-- Queues -->
         <h2 id="queues">6. <span data-lang="en">Queues (OS_QUEUE)</span><span data-lang="fa">صفوف (OS_QUEUE)</span></h2>
+        <p><span data-lang="en"><strong>What is a Queue?</strong> A queue is a FIFO (First-In-First-Out) data structure for passing data between tasks or from ISRs to tasks. Think of it as a pipe — one task puts data in one end, and another task takes it out the other end. Queues are type-safe (using C++ templates), thread-safe, and can hold a fixed number of items. If the queue is full, the producer can wait or drop the data. If empty, the consumer can wait or timeout.</span><span data-lang="fa"><strong>صف چیست؟</strong> صف یک ساختمان داده FIFO (اول وارد شده، اول خارج شده) برای انتقال داده بین تسک‌ها یا از ISRs به تسک‌هاست. آن را به عنوان یک لوله در نظر بگیرید — یک تسک داده را در یک انتها می‌گذارد و تسک دیگر آن را از انتهای دیگر بیرون می‌آورد. صف‌ها ایمن از نظر نوع (با الگوهای C++), ایمن از نظر رشته‌ای هستند و تعداد ثابتی آیتم نگه می‌دارند. اگر صف پر باشد، تولیدکننده می‌تواند منتظر بماند یا داده را رها کند.</span></p>
+        <p><span data-lang="en"><strong>How it works:</strong> When you declare <code>OS_QUEUE&lt;int, 8&gt; sensor_queue;</code>, ZenOS reserves space for 8 integers in a circular buffer. <code>put()</code> adds an item to the tail, <code>get()</code> removes from the head. If the queue is full and you call <code>put()</code> with a timeout, the task blocks until space is available. If the queue is empty and you call <code>get()</code>, the task blocks until data arrives.</span><span data-lang="fa"><strong>نحوه کار:</strong> وقتی <code>OS_QUEUE&lt;int, 8&gt; sensor_queue;</code> را اعلام می‌کنید، ZenOS فضایی برای ۸ عدد در بافر دایره‌ای رزرو می‌کند. <code>put()</code> آیتمی به انتها اضافه می‌کند، <code>get()</code> از سر حذف می‌کند. اگر صف پر باشد و <code>put()</code> را با تایم‌اوت فراخوانی کنید، تسک تا فراهم شدن فضا بلاک می‌شود.</span></p>
         <pre><code class="language-cpp">OS_QUEUE&lt;int, 8&gt; sensor_queue;  // Capacity: 8 items of type int
 
-// Producer:
-sensor_queue.put(42);
-sensor_queue.put(100, 100);  // Max 100ms wait
+// Producer — puts data into the queue:
+sensor_queue.put(42);              // Non-blocking: add 42 to queue
+sensor_queue.put(100, 100);        // Blocking: wait up to 100ms if full
 
-// Consumer:
+// Consumer — gets data from the queue:
 int value;
-if (sensor_queue.get(value, 1000)) {
-    process(value);
+if (sensor_queue.get(value, 1000)) {  // Wait up to 1000ms
+    process(value);                    // Got data!
+} else {
+    handle_timeout();                  // No data within 1000ms
 }
 
-// ISR-safe:
-sensor_queue.put_from_isr(val);</code></pre>
+// ISR-safe (use in interrupt handlers):
+sensor_queue.put_from_isr(val);    // Signal from ISR to task
 
-        <!-- Semaphores -->
-        <h2 id="semaphores">7. <span data-lang="en">Semaphores (OS_SEMAPHORE)</span><span data-lang="fa">سمافورها (OS_SEMAPHORE)</span></h2>
-        <pre><code class="language-cpp">OS_SEMAPHORE(5) resource_sem;  // Max count = 5
+// Check queue status:
+bool empty = sensor_queue.is_empty();
+bool full  = sensor_queue.is_full();
+uint8_t count = sensor_queue.count();  // Items waiting</code></pre>
+        <p><span data-lang="en"><strong>Example output:</strong> If the sensor task puts values 10, 20, 30 into the queue, and the consumer calls <code>get()</code> three times, it receives 10, then 20, then 30 (FIFO order). If the consumer calls <code>get()</code> when the queue is empty, it blocks until data arrives or timeout.</span><span data-lang="fa"><strong>مثال:</strong> اگر تسک حسگر مقادیر ۱۰، ۲۰، ۳۰ را در صف بگذارد و مصرف‌کننده سه بار <code>get()</code> فراخوانی کند، به ترتیب ۱۰، سپس ۲۰، سپس ۳۰ دریافت می‌کند (ترتیب FIFO). اگر مصرف‌کننده وقتی صف خالی است <code>get()</code> فراخوانی کند، تا رسیدن داده یا تایم‌اوت بلاک می‌شود.</span></p>
 
-if (resource_sem.wait(1000)) {
-    use_resource();
-    resource_sem.signal();
-}</code></pre>
+        <h3><span data-lang="en">Queue for Sensor Data Pipeline</span><span data-lang="fa">صف برای خط لوله داده حسگر</span></h3>
+        <pre><code class="language-cpp">struct SensorData {
+    uint16_t temperature;
+    uint16_t humidity;
+    uint32_t timestamp;
+};
 
-        <!-- Periodic Tasks -->
-        <h2 id="periodic">8. <span data-lang="en">Periodic Tasks</span><span data-lang="fa">تسک‌های دوره‌ای</span></h2>
-        <pre><code class="language-cpp">void task_sensor(void) {
+OS_QUEUE&lt;SensorData, 16&gt; data_queue;  // Queue of 16 SensorData structs
+
+// Task 1: Read sensor every 100ms
+void task_reader(void) {
     while (1) {
-        uint16_t val = ADC_Read();
-        sensor_queue.put(val, 100);
-        os_delay_ms(10);  // Yield — next run scheduled at next period
+        SensorData d;
+        d.temperature = ADC_ReadTemp();
+        d.humidity = ADC_ReadHumidity();
+        d.timestamp = os_get_ms();
+        data_queue.put(d, 50);  // Wait max 50ms if full
+        os_delay_ms(100);
     }
 }
 
-os_task_create(task_sensor, 3, 100);  // priority 3, 100ms period</code></pre>
+// Task 2: Send data to UART
+void task_sender(void) {
+    while (1) {
+        SensorData d;
+        if (data_queue.get(d, 1000)) {
+            printf("T=%u H=%u\n", d.temperature, d.humidity);
+        }
+    }
+}</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Task 1 reads sensor data every 100ms and puts it into the queue. Task 2 waits for data and sends it over UART. If Task 2 is slower than Task 1, the queue fills up and Task 1 waits. If Task 2 is faster, it waits for new data. The queue acts as a buffer between the two tasks, decoupling their speeds.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تسک ۱ هر ۱۰۰ میلی‌ثانیه داده حسگر را می‌خواند و در صف می‌گذارد. تسک ۲ منتظر داده می‌ماند و آن را از UART ارسال می‌کند. اگر تسک ۲ کندتر از تسک ۱ باشد، صف پر شده و تسک ۱ منتظر می‌ماند. صف به عنوان بافر بین دو تسک عمل می‌کند و سرعت آن‌ها را از هم جدا می‌کند.</span></p>
 
-        <div class="tip"><span data-lang="en">For periodic tasks, use <code>os_delay_ms()</code> at the end of each iteration. The scheduler will automatically wake the task at the next period boundary.</span><span data-lang="fa">برای تسک‌های دوره‌ای، از <code>os_delay_ms()</code> در انتهای هر تکرار استفاده کنید. زمان‌بند به طور خودکار تسک را در مرز دوره بعدی بیدار می‌کند.</span></div>
+        <!-- Semaphores -->
+        <h2 id="semaphores">7. <span data-lang="en">Semaphores (OS_SEMAPHORE)</span><span data-lang="fa">سمافورها (OS_SEMAPHORE)</span></h2>
+        <p><span data-lang="en"><strong>What is a Semaphore?</strong> A semaphore is a counter-based synchronization primitive. Think of it as a pool of resources — the counter represents the number of available resources. <code>wait()</code> decrements the counter (takes a resource), and <code>signal()</code> increments it (returns a resource). If the counter is 0, <code>wait()</code> blocks until someone signals. Semaphores are perfect for limiting concurrent access to a resource pool (e.g., 5 available buffers, 3 UART ports).</span><span data-lang="fa"><strong>سمافور چیست؟</strong> سمافور یک اولیه همگام‌سازی مبتنی بر شمارنده است. آن را به عنوان مجموعه‌ای از منابع در نظر بگیرید — شمارنده تعداد منابع موجود را نشان می‌دهد. <code>wait()</code> شمارنده را کاهش می‌دهد (منبعی برمی‌دارد) و <code>signal()</code> آن را افزایش می‌دهد (منبعی برمی‌گرداند). اگر شمارنده ۰ باشد، <code>wait()</code> تا سیگنال کسی بلاک می‌شود. سمافورها برای محدود کردن دسترسی همزمان به مجموعه منابع عالی هستند.</span></p>
+        <pre><code class="language-cpp">OS_SEMAPHORE(5) resource_sem;  // Max 5 concurrent users
+
+// Task that uses a shared resource:
+if (resource_sem.wait(1000)) {  // Wait for available resource
+    use_resource();              // Use the resource
+    resource_sem.signal();       // Return the resource
+}</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Imagine you have 5 buffer slots. Each task calls <code>resource_sem.wait()</code> before using a buffer (counter decrements: 5→4→3→...). When all 5 are in use, the next task blocks. When a task calls <code>resource_sem.signal()</code>, the counter increments and the next waiting task wakes up.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> فرض کنید ۵ اسلات بافر دارید. هر تسک قبل از استفاده از بافر <code>resource_sem.wait()</code> فراخوانی می‌کند (شمارنده کاهش: ۵→۴→۳→...). وقتی همه ۵ در حال استفاده باشند، تسک بعدی بلاک می‌شود. وقتی تسکی <code>resource_sem.signal()</code> فراخوانی می‌کند، شمارنده افزایش یافته و تسک منتظر بیدار می‌شود.</span></p>
+        <pre><code class="language-cpp">// Example: Limit UART access to 1 task at a time
+OS_SEMAPHORE(1) uart_sem;  // Binary semaphore (max=1)
+
+void task_send(const char* msg) {
+    if (uart_sem.wait(500)) {
+        HAL_UART_Transmit(&huart1, msg, strlen(msg), 100);
+        uart_sem.signal();
+    }
+}</code></pre>
+
+        <!-- Periodic Tasks -->
+        <h2 id="periodic">8. <span data-lang="en">Periodic Tasks (Timer Replacement)</span><span data-lang="fa">تسک‌های دوره‌ای (جایگزین تایمر)</span></h2>
+        <p><span data-lang="en"><strong>Why Periodic Tasks Instead of Software Timers?</strong> In many RTOSes, you create software timers with callbacks. ZenOS takes a simpler approach: just create a task with a period. The task itself IS the timer callback — it runs at fixed intervals automatically. No need for separate timer objects, callback function pointers, or timer service tasks. The scheduler handles everything.</span><span data-lang="fa"><strong>چرا تسک‌های دوره‌ای به جای تایمرهای نرم‌افزاری؟</strong> در بسیاری از RTOSها، تایمرهای نرم‌افزاری با callback می‌سازید. ZenOS رویکرد ساده‌تری دارد: فقط یک تسک با دوره بسازید. خود تسک همان callback تایمر است — به طور خودکار در فواصل ثابت اجرا می‌شود. نیازی به اشیاء تایمر جداگانه، اشاره‌گرهای تابع callback یا تسک سرویس تایمر نیست.</span></p>
+        <pre><code class="language-cpp">void task_sensor(void) {
+    while (1) {
+        uint16_t val = ADC_Read();       // Read sensor
+        sensor_queue.put(val, 100);      // Send to processing task
+        os_delay_ms(10);                 // Yield — next run at period boundary
+    }
+}
+
+// Create periodic task: priority 3, runs every 100ms
+os_task_create(task_sensor, 3, 100);</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> The scheduler wakes up <code>task_sensor</code> every 100ms. The task reads the ADC, puts the value in a queue, then calls <code>os_delay_ms(10)</code>. The delay is NOT 100ms — it's just a yield. The scheduler knows this task has a 100ms period, so it will wake the task at the next 100ms boundary, regardless of how long the task body took to execute.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> زمان‌بند هر ۱۰۰ میلی‌ثانیه <code>task_sensor</code> را بیدار می‌کند. تسک ADC را می‌خواند، مقدار را در صف می‌گذارد، سپس <code>os_delay_ms(10)</code> فراخوانی می‌کند. تاخیر ۱۰۰ میلی‌ثانیه نیست — فقط یک واگذاری است. زمان‌بند می‌داند این تسک دوره ۱۰۰ میلی‌ثانیه دارد، پس تسک را در مرز ۱۰۰ میلی‌ثانیه بعدی بیدار می‌کند.</span></p>
+
+        <div class="tip"><span data-lang="en"><strong>Key insight:</strong> The <code>os_delay_ms()</code> value doesn't need to match the period. Use a small value (like 1-10ms) to yield. The scheduler automatically schedules the task at the correct period boundary based on the period you specified in <code>os_task_create()</code>.</span><span data-lang="fa"><strong>نکته کلیدی:</strong> مقدار <code>os_delay_ms()</code> نیازی نیست با دوره مطابقت داشته باشد. از مقدار کوچکی (مثل ۱-۱۰ میلی‌ثانیه) برای واگذاری استفاده کنید. زمان‌بند به طور خودکار تسک را در مرز دوره صحیح بر اساس دوره‌ای که در <code>os_task_create()</code> مشخص کرده‌اید زمان‌بندی می‌کند.</span></div>
+
+        <h3><span data-lang="en">Periodic vs One-Shot Tasks</span><span data-lang="fa">دوره‌ای در مقابل یکبار اجرا</span></h3>
+        <pre><code class="language-cpp">// Periodic: runs every 50ms automatically
+os_task_create(task_blink, 5, 50);  // 3rd param = period
+
+// One-shot: runs once when triggered (period = 0)
+os_task_create(task_handler, 5, 0);  // Created but waiting
+// Later, from another task or ISR:
+os_task_start(task_handler);  // Trigger execution</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> A periodic task with period 50 will be woken by the scheduler every 50ms automatically. A one-shot task (period=0) stays dormant until <code>os_task_start()</code> is called — useful for event-driven tasks that only run when triggered.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تسک دوره‌ای با دوره ۵۰ هر ۵۰ میلی‌ثانیه توسط زمان‌بند به طور خودکار بیدار می‌شود. تسک یکبار اجرا (دوره=۰) تا فراخوانی <code>os_task_start()</code> غیرفعال می‌ماند — برای تسک‌های رویدادمحور مفید است که فقط وقتی فعال می‌شوند اجرا می‌شوند.</span></p>
+
+        <h3><span data-lang="en">Complete Example: Sensor + LED System</span><span data-lang="fa">مثال کامل: سیستم حسگر + LED</span></h3>
+        <pre><code class="language-cpp">OS_QUEUE&lt;uint16_t, 8&gt; temp_queue;
+OS_EVENT temp_ready;
+
+// Periodic sensor task (runs every 200ms)
+void task_sensor(void) {
+    while (1) {
+        uint16_t temp = read_temperature();
+        temp_queue.put(temp, 50);
+        temp_ready.signal();           // Notify processing task
+        os_delay_ms(10);               // Yield for period
+    }
+}
+
+// Processing task (waits for sensor data)
+void task_process(void) {
+    while (1) {
+        if (temp_ready.wait(500)) {
+            uint16_t temp;
+            if (temp_queue.get(temp, 100)) {
+                if (temp > 3000) {     // > 30°C
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);  // LED ON
+                } else {
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);  // LED OFF
+                }
+            }
+        }
+    }
+}
+
+int main(void) {
+    // ... HAL init ...
+    os_init();
+    os_task_create(task_sensor, 3, 200);   // 200ms period
+    os_task_create(task_process, 5, 0);    // Event-driven
+    os_start();
+}</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Every 200ms, <code>task_sensor</code> reads the temperature and signals <code>task_process</code>. <code>task_process</code> waits for the signal, reads the temperature from the queue, and turns the LED on/off based on the value. This demonstrates periodic tasks, queues, and events working together.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> هر ۲۰۰ میلی‌ثانیه، <code>task_sensor</code> دما را می‌خواند و <code>task_process</code> را سیگنال می‌دهد. <code>task_process</code> منتظر سیگنال می‌ماند، دما را از صف می‌خواند و LED را بر اساس مقدار روشن/خاموش می‌کند. این نشان می‌دهد تسک‌های دوره‌ای، صف‌ها و رویدادها چگونه با هم کار می‌کنند.</span></p>
 
         <h2 id="monitoring">9. <span data-lang="en">Monitoring & Debugging</span><span data-lang="fa">پایش و دیباگ</span></h2>
+        <p><span data-lang="en"><strong>Why Monitor?</strong> In embedded systems, debugging is hard — you often can't attach a debugger to production devices. ZenOS provides built-in monitoring tools that help you track stack usage, CPU load, deadline compliance, and errors. These tools run in the background with minimal overhead, giving you visibility into your system's health without affecting real-time performance.</span><span data-lang="fa"><strong>چرا پایش؟</strong> در سیستم‌های توکار، دیباگ سخت است — اغلب نمی‌توانید به دستگاه‌های تولیدی دیباگر وصل کنید. ZenOS ابزارهای پایش داخلی ارائه می‌دهد که به ردیابی مصرف پشته، بار CPU، رعایت ددلاین و خطاها کمک می‌کنند. این ابزارها در پس‌زمینه با حداقل سربار اجرا می‌شوند.</span></p>
         <pre><code class="language-cpp">#if OS_MONITOR_ENABLED
-    // Per-task stack usage
+    // Per-task stack usage — how many bytes the task has used
     uint32_t bytes = os_get_stack_usage(task_function);
+    printf("Task stack usage: %u bytes\n", bytes);
 
-    // Full stack report
+    // Full stack report — shows all tasks at once
     uint8_t count = os_get_stack_report_count();
     for (uint8_t i = 0; i < count; i++) {
         os_stack_report_entry_t rep;
         os_get_stack_report(i, &rep);
-        // rep.name, rep.size_bytes, rep.peak_bytes
+        printf("%s: %u/%u bytes used\n", rep.name, rep.peak_bytes, rep.size_bytes);
     }
 
-    // CPU usage
-    uint8_t total_cpu = os_get_cpu_usage_total();
-    uint8_t task_cpu  = os_get_task_cpu_usage(task_function);
+    // CPU usage — percentage of time each task runs
+    uint8_t total_cpu = os_get_cpu_usage_total();   // Total CPU usage %
+    uint8_t task_cpu  = os_get_task_cpu_usage(task_function);  // Per-task %
+    printf("Total CPU: %u%%, Task: %u%%\n", total_cpu, task_cpu);
 #endif
 
-// Deadline monitoring
+// Deadline monitoring — detect if tasks miss their deadlines
 #if OS_MONITOR_DEADLINE
-    os_task_set_deadline(task_safety, 50);  // 50ms deadline
+    os_task_set_deadline(task_safety, 50);  // Set 50ms deadline
     uint32_t misses = os_get_deadline_miss_count(task_safety);
+    if (misses > 0) {
+        printf("WARNING: Task missed deadline %u times!\n", misses);
+    }
 #endif
 
-// Error reporting
+// Error reporting — log errors with severity levels
 os_log_error(OSError::SENSOR_TIMEOUT, (uint8_t)ErrorSeverity::WARNING);
 uint32_t total_errors = os_get_error_count();
 OSError last = os_get_last_error();
+printf("Total errors: %u, Last: %d\n", total_errors, (int)last);
 
-// Suppress expected errors during testing
+// Suppress expected errors during testing (won't trigger watchdog)
 OS_ERROR_EXPECTED {
     os_event_signal(-1);  // Deliberately invalid — expected error
 }</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_get_stack_usage()</code> returns how many bytes of stack a task has used (peak watermark). If a task has a 512-byte stack and uses 480 bytes, you're close to overflow — increase the stack size. <code>os_get_cpu_usage_total()</code> returns total CPU utilization (0-100%). If it's above 80%, your system is overloaded. <code>os_get_task_cpu_usage()</code> shows which task is consuming the most CPU.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_get_stack_usage()</code> تعداد بایت‌های استفاده شده از پشته تسک را برمی‌گرداند. اگر تسکی پشته ۵۱۲ بایتی دارد و ۴۸۰ بایت استفاده کرده، نزدیک به سرریز هستید — پشته را بزرگ‌تر کنید. <code>os_get_cpu_usage_total()</code> کل استفاده CPU را برمی‌گرداند (۰-۱۰۰٪). اگر بالای ۸۰٪ باشد، سیستم بیش از حد بارگذاری شده است.</span></p>
+
+        <h3><span data-lang="en">Monitoring Dashboard Example</span><span data-lang="fa">مثال داشبورد پایش</span></h3>
+        <pre><code class="language-cpp">void task_monitor(void) {
+    while (1) {
+        printf("\n=== System Status ===\n");
+        printf("Uptime: %u ms\n", os_get_ms());
+        printf("CPU Usage: %u%%\n", os_get_cpu_usage_total());
+        
+        // Stack report
+        uint8_t count = os_get_stack_report_count();
+        for (uint8_t i = 0; i < count; i++) {
+            os_stack_report_entry_t rep;
+            os_get_stack_report(i, &rep);
+            printf("  %s: %u/%u bytes (%u%% used)\n",
+                   rep.name, rep.peak_bytes, rep.size_bytes,
+                   (rep.peak_bytes * 100) / rep.size_bytes);
+        }
+        
+        os_delay_ms(5000);  // Print status every 5 seconds
+    }
+}
+
+os_task_create(task_monitor, 1, 0);  // Low priority, one-shot</code></pre>
+        <p><span data-lang="en"><strong>Example output:</strong></span><span data-lang="fa"><strong>خروجی مثال:</strong></span></p>
+        <pre><code class="language-text">=== System Status ===
+Uptime: 15230 ms
+CPU Usage: 45%
+  task_blink: 48/256 bytes (18% used)
+  task_sensor: 128/512 bytes (25% used)
+  task_uart: 256/1024 bytes (25% used)</code></pre>
     </div>
 
     <!-- ==================== SAFETY ==================== -->
@@ -667,6 +849,312 @@ OS_ERROR_EXPECTED {
             <tr><td><strong>1</strong></td><td><span data-lang="en">Low</span><span data-lang="fa">پایین</span></td><td>SOFT_WATCHDOG, ERROR_LOG</td></tr>
             <tr><td><strong>2</strong></td><td><span data-lang="en">Medium</span><span data-lang="fa">متوسط</span></td><td>+ DEADLINE, MUTEX, HW_WATCHDOG, DEADLINE_ACTION ≥ 1</td></tr>
             <tr><td><strong>3</strong></td><td><span data-lang="en">High</span><span data-lang="fa">بالا</span></td><td><span data-lang="en">+ MPU, RAM_TEST, CRC_CHECK, TCB_INTEGRITY</span><span data-lang="fa">+ MPU، RAM_TEST، CRC_CHECK، TCB_INTEGRITY</span></td></tr>
+        </table>
+    </div>
+
+    <!-- ==================== SERIAL OUTPUT ==================== -->
+    <div class="card" id="serial-output">
+        <h1>🔌 <span data-lang="en">Serial Output (printf)</span><span data-lang="fa">خروجی سریال (printf)</span></h1>
+        <p><span data-lang="en"><strong>Why Serial Output?</strong> In embedded development, you can't use a graphical debugger in production. Serial output (via UART) is your window into the system — it lets you print debug messages, sensor values, and system status. ZenOS provides a simple way to redirect <code>printf()</code> to UART so you can see what's happening in real-time.</span><span data-lang="fa"><strong>چرا خروجی سریال؟</strong> در توسعه توکار، نمی‌توانید از دیباگر گرافیکی در تولید استفاده کنید. خروجی سریال (از طریق UART) پنجره شما به سیستم است — به شما اجازه می‌دهد پیام‌های دیباگ، مقادیر حسگر و وضعیت سیستم را چاپ کنید.</span></p>
+        <h3><span data-lang="en">Step-by-Step Setup</span><span data-lang="fa">تنظیم گام به گام</span></h3>
+        <ol>
+            <li><span data-lang="en">Enable USART1 in CubeMX (Pinout & Configuration → Connectivity → USART1)</span><span data-lang="fa">USART1 را در CubeMX فعال کنید (Pinout & Configuration → Connectivity → USART1)</span></li>
+            <li><span data-lang="en">Set pins: PA9 = USART1_TX, PA10 = USART1_RX</span><span data-lang="fa">پین‌ها را تنظیم کنید: PA9 = USART1_TX, PA10 = USART1_RX</span></li>
+            <li><span data-lang="en">Set Baud rate: 115200, Data Bits: 8, Stop Bits: 1, Parity: None</span><span data-lang="fa">نرخ بیت: ۱۱۵۲۰۰, بیت‌های داده: ۸, بیت‌های توقف: ۱, بیت زوجیت: بدون</span></li>
+            <li><span data-lang="en">Connect a USB-to-Serial adapter (e.g., CH340, CP2102) to PA9/PA10</span><span data-lang="fa">آداپتور USB به سریال (مثلاً CH340, CP2102) را به PA9/PA10 وصل کنید</span></li>
+            <li><span data-lang="en">Add the printf redirect in main.cpp:</span><span data-lang="fa">redirect printf را به main.cpp اضافه کنید:</span></li>
+        </ol>
+        <pre><code class="language-cpp">#include &lt;cstdio&gt;
+
+// Redirect printf() to UART1
+extern "C" int _write(int fd, char* ptr, int len) {
+    HAL_UART_Transmit(&huart1, (uint8_t*)ptr, len, HAL_MAX_DELAY);
+    return len;
+}
+
+// Now you can use printf() anywhere!
+printf("ZenOS %s\n", os_get_version_string());
+printf("Tasks: %d\n", os_get_task_count());
+printf("Uptime: %u ms\n", os_get_ms());</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> The <code>_write()</code> function is called by <code>printf()</code> internally. By overriding it, we redirect all output to UART1. The <code>extern "C"</code> is needed because <code>printf</code> is a C function. <code>HAL_MAX_DELAY</code> means wait forever for the UART to be ready. Now anywhere in your code you call <code>printf()</code>, the output appears on the serial terminal.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تابع <code>_write()</code> توسط <code>printf()</code> به طور داخلی فراخوانی می‌شود. با بازنویسی آن، تمام خروجی را به UART1 هدایت می‌کنیم. <code>extern "C"</code> لازم است زیرا <code>printf</code> یک تابع C است. حالا هر جای کد <code>printf()</code> فراخوانی کنید، خروجی در ترمینال سریال ظاهر می‌شود.</span></p>
+
+        <h3><span data-lang="en">Using a Terminal Program</span><span data-lang="fa">استفاده از برنامه ترمینال</span></h3>
+        <table>
+            <tr><th><span data-lang="en">Software</span><span data-lang="fa">نرم‌افزار</span></th><th><span data-lang="en">Platform</span><span data-lang="fa">پلتفرم</span></th><th><span data-lang="en">Link</span><span data-lang="fa">لینک</span></th></tr>
+            <tr><td>PuTTY</td><td>Windows</td><td><a href="https://www.putty.org/">putty.org</a></td></tr>
+            <tr><td>Tera Term</td><td>Windows</td><td><a href="https://ttssh2.osdn.jp/">ttssh2.osdn.jp</a></td></tr>
+            <tr><td>minicom</td><td>Linux</td><td><span data-lang="en">Built-in</span><span data-lang="fa">داخلی</span></td></tr>
+            <tr><td>screen</td><td>macOS/Linux</td><td><span data-lang="en">Built-in</span><span data-lang="fa">داخلی</span></td></tr>
+        </table>
+        <pre><code class="language-bash"># Linux/macOS:
+screen /dev/ttyUSB0 115200
+
+# Windows (PuTTY):
+# Serial line: COM3 (check Device Manager)
+# Speed: 115200</code></pre>
+    </div>
+
+    <!-- ==================== ERROR HANDLING ==================== -->
+    <div class="card" id="error-handling">
+        <h1>🚨 <span data-lang="en">Error Handling & Monitoring</span><span data-lang="fa">مدیریت خطاها و پایش</span></h1>
+        <p><span data-lang="en"><strong>Why Error Handling?</strong> In safety-critical systems, you need to know when something goes wrong. ZenOS provides a built-in error reporting system with severity levels, timestamps, and error logs. You can report errors from any task, and the system tracks them for you. This is essential for meeting IEC 62304/61508 compliance requirements.</span><span data-lang="fa"><strong>چرا مدیریت خطا؟</strong> در سیستم‌های حیاتی ایمنی، باید بدانید کی چیزی اشتباه می‌شود. ZenOS یک سیستم گزارش‌دهی خطا داخلی با سطوح شدت، زمان و لاگ خطا ارائه می‌دهد.</span></p>
+        <pre><code class="language-cpp">// Report a custom error with severity level
+os_log_error(OSError::SENSOR_TIMEOUT, (uint8_t)ErrorSeverity::WARNING);
+os_log_error(OSError::STACK_OVERFLOW, (uint8_t)ErrorSeverity::CRITICAL);
+
+// Check error counts
+uint32_t total       = os_get_error_count();          // Total errors logged
+uint32_t unexpected  = os_get_unexpected_error_count(); // Unexpected errors
+uint32_t expected    = os_get_expected_error_count();   // Expected errors (suppressed)
+OSError last         = os_get_last_error();             // Last error code
+printf("Errors: %u total, %u unexpected\n", total, unexpected);
+
+// Suppress expected errors during testing
+// Use this when you intentionally trigger errors for testing
+OS_ERROR_EXPECTED {
+    os_event_signal(-1);  // Deliberately invalid — expected error
+}
+// os_get_unexpected_error_count() does NOT increase
+// os_get_expected_error_count() DOES increase
+
+// Read error log (if OS_MONITOR_ERROR_LOG is enabled)
+#if OS_MONITOR_ERROR_LOG
+    uint32_t count = os_get_error_log_count();
+    for (uint32_t i = 0; i &lt; count; i++) {
+        OSErrorEntry entry = os_get_error_log_entry(i);
+        printf("[%u] Error %d in task %d (severity %d)\n",
+               entry.timestamp_tick, entry.code, entry.task_id, entry.severity);
+    }
+#endif</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_log_error()</code> records an error with a code and severity level. The error is stored in a ring buffer (circular log) with a timestamp. <code>OS_ERROR_EXPECTED { ... }</code> marks a block where errors are expected — they won't trigger the watchdog or count as unexpected errors. This is useful during testing when you intentionally test error paths.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_log_error()</code> خطایی را با کد و سطح شدت ثبت می‌کند. خطا در بافر حلقه‌ای (لاگ دایره‌ای) با زمان ذخیره می‌شود. <code>OS_ERROR_EXPECTED { ... }</code> بلوکی را علامت‌گذاری می‌کند که در آن خطاها مورد انتظار هستند.</span></p>
+
+        <h3><span data-lang="en">Error Severity Levels</span><span data-lang="fa">سطوح شدت خطا</span></h3>
+        <table>
+            <tr><th><span data-lang="en">Level</span><span data-lang="fa">سطح</span></th><th><span data-lang="en">Meaning</span><span data-lang="fa">معنی</span></th><th><span data-lang="en">Action</span><span data-lang="fa">اقدام</span></th></tr>
+            <tr><td>INFO</td><td><span data-lang="en">Informational message</span><span data-lang="fa">پیام اطلاعاتی</span></td><td><span data-lang="en">Log only</span><span data-lang="fa">فقط ثبت</span></td></tr>
+            <tr><td>WARNING</td><td><span data-lang="en">Something unusual happened</span><span data-lang="fa">چیز غیرعادی رخ داده</span></td><td><span data-lang="en">Log + alert</span><span data-lang="fa">ثبت + هشدار</span></td></tr>
+            <tr><td>ERROR</td><td><span data-lang="en">Function failed but system OK</span><span data-lang="fa">تابع ناموفق اما سیستم OK</span></td><td><span data-lang="en">Log + recover</span><span data-lang="fa">ثبت + بازیابی</span></td></tr>
+            <tr><td>CRITICAL</td><td><span data-lang="en">System integrity at risk</span><span data-lang="fa">یکپارچگی سیستم در خطر</span></td><td><span data-lang="en">Reset / safe state</span><span data-lang="fa">ریست / حالت ایمن</span></td></tr>
+        </table>
+
+        <div class="warning"><span data-lang="en"><strong>Important:</strong> Always check <code>os_get_error_count()</code> in your monitoring task. If unexpected errors are increasing, investigate immediately — it indicates a bug or hardware fault.</span><span data-lang="fa"><strong>مهم:</strong> همیشه <code>os_get_error_count()</code> را در تسک پایش خود بررسی کنید. اگر خطاهای غیرمنتظره در حال افزایش هستند، فوراً بررسی کنید.</span></div>
+    </div>
+
+    <!-- ==================== ADVANCED TIPS ==================== -->
+    <div class="card" id="advanced-tips">
+        <h1>🎓 <span data-lang="en">Advanced Tips & Tricks</span><span data-lang="fa">نکات پیشرفته</span></h1>
+        <h2><span data-lang="en">Task Lifecycle Management</span><span data-lang="fa">مدیریت چرخه حیات تسک</span></h2>
+        <p><span data-lang="en"><strong>Why Control Task Lifecycle?</strong> In many systems, you don't want all tasks running all the time. For example, a heater task should only run when temperature is low. ZenOS lets you start and stop tasks dynamically at runtime, saving CPU and power.</span><span data-lang="fa"><strong>چرا کنترل چرخه حیات تسک؟</strong> در بسیاری از سیستم‌ها، نمی‌خواهید تمام تسک‌ها همیشه اجرا شوند. مثلاً تسک هیتر فقط وقتی دما پایین است باید اجرا شود.</span></p>
+        <pre><code class="language-cpp">// Pre-create all tasks, start/stop as needed
+os_task_create(task_heater, 5);
+os_task_create(task_cooler, 5);
+os_task_stop(task_heater);   // Start inactive
+os_task_stop(task_cooler);   // Start inactive
+
+// Runtime control
+if (temperature > 70) {
+    os_task_start(task_cooler);    // Activate cooler
+    os_task_stop(task_heater);     // Deactivate heater
+} else if (temperature < 20) {
+    os_task_start(task_heater);    // Activate heater
+    os_task_stop(task_cooler);     // Deactivate cooler
+}</code></pre>
+        <p><span data-lang="en"><strong>What happens:</strong> Tasks are created but immediately stopped (dormant). They don't use CPU until <code>os_task_start()</code> is called. This is more efficient than creating/destroying tasks repeatedly. The task's stack and TCB remain allocated but the scheduler ignores stopped tasks.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تسک‌ها ایجاد اما فوراً متوقف می‌شوند (غیرفعال). تا فراخوانی <code>os_task_start()</code> از CPU استفاده نمی‌کنند.</span></p>
+
+        <h2><span data-lang="en">Power Management with Tickless Idle</span><span data-lang="fa">مدیریت مصرف با حالت idle بدون تیک</span></h2>
+        <p><span data-lang="en"><strong>What is Tickless Idle?</strong> In normal mode, the SysTick interrupt fires every 100μs even when nothing is happening — wasting power. Tickless idle disables SysTick during long delays and uses a hardware timer to wake up exactly when the next task is due. This dramatically reduces power consumption in battery-powered devices.</span><span data-lang="fa"><strong>idle بدون تیک چیست؟</strong> در حالت عادی، وقفه SysTick هر ۱۰۰ میکروثانیه حتی وقتی هیچ اتفاقی نمی‌افتد فعال می‌شود — مصرف بیهوده انرژی. idle بدون تیک SysTick را در تاخیرهای طولانی غیرفعال کرده و از تایمر سخت‌افزاری برای بیدار کردن دقیقاً وقتی تسک بعدی لازم است استفاده می‌کند.</span></p>
+        <pre><code class="language-cpp">// Enable OS_TOOL_TICKLESS_IDLE in config
+// The OS will use WFI (Wait For Interrupt) when no tasks are ready
+// This puts the CPU into low-power mode automatically
+
+// Design tips for low power:
+// 1. Use os_delay_ms() instead of busy-wait loops
+// 2. Long delays → deep sleep (CPU stops)
+// 3. Short delays → partial sleep (CPU slows)
+// 4. Periodic tasks wake up automatically from WFI</code></pre>
+
+        <h2><span data-lang="en">Debugging Tips</span><span data-lang="fa">نکات دیباگ</span></h2>
+        <pre><code class="language-cpp">// 1. Print task count at startup
+printf("Tasks: %d\n", os_get_task_count());
+
+// 2. Monitor stack usage periodically
+uint32_t peak = os_get_stack_usage(task_function);
+printf("Stack peak: %d bytes\n", peak);
+
+// 3. Check CPU usage
+uint8_t cpu = os_get_task_cpu_usage(task_function);
+printf("Task CPU: %d%%\n", cpu);
+
+// 4. Print version
+printf("ZenOS %s\n", os_get_version_string());
+
+// 5. Check for unexpected errors
+if (os_get_unexpected_error_count() > 0) {
+    printf("UNEXPECTED ERRORS: %d\n", os_get_unexpected_error_count());
+}</code></pre>
+
+        <h2><span data-lang="en">Memory Map</span><span data-lang="fa">نقشه حافظه</span></h2>
+        <p><span data-lang="en"><strong>Understanding Memory Usage:</strong> ZenOS uses zero heap allocation — all memory is statically allocated at compile time. This means you know exactly how much RAM your system uses before running it. No malloc() calls, no fragmentation, no surprises.</span><span data-lang="fa"><strong>درک مصرف حافظه:</strong> ZenOS از تخصیص حافظه پویا صفر استفاده می‌کند — تمام حافظه به طور ایستا در زمان کامپایل تخصیص می‌یابد. یعنی دقیقاً می‌دانید چقدر RAM سیستم شما استفاده می‌کند.</span></p>
+        <div class="arch-box">Flash (code + constants):
+├── Application code
+├── ZenOS kernel code
+├── STM32 HAL library
+└── Interrupt vector table
+
+SRAM (data + stacks):
+├── BSS segment (zero-initialized globals)
+├── Data segment (initialized globals)
+├── Task stacks (per-task, static)
+├── Event pool (OS_EVENT_POOL_SIZE * ~32 bytes)
+├── Error log (OS_MONITOR_ERROR_LOG_SIZE * ~8 bytes)
+├── Idle task stack (256 bytes)
+└── Fault task stack (192 bytes)</div>
+    </div>
+
+    <!-- ==================== COMMON PATTERNS ==================== -->
+    <div class="card" id="patterns">
+        <h1>📚 <span data-lang="en">Common Patterns Cookbook</span><span data-lang="fa">کتابخانه الگوهای رایج</span></h1>
+        <h2><span data-lang="en">State Machine in a Task</span><span data-lang="fa">ماشین حالت در یک تسک</span></h2>
+        <pre><code class="language-cpp">enum State { INIT, RUNNING, ERROR, SLEEP };
+static State state = INIT;
+
+void task_state_machine(void) {
+    while (1) {
+        switch (state) {
+            case INIT:
+                if (hardware_ready()) state = RUNNING;
+                break;
+            case RUNNING:
+                if (error_detected()) state = ERROR;
+                else do_work();
+                break;
+            case ERROR:
+                if (error_cleared()) state = RUNNING;
+                else enter_safe_state();
+                break;
+            case SLEEP:
+                os_delay_ms(1000);
+                break;
+        }
+        os_delay_ms(10);  // Always yield
+    }
+}</code></pre>
+
+        <h2><span data-lang="en">Debounced Button Handling</span><span data-lang="fa">مدیریت دکمه با دبیونس</span></h2>
+        <pre><code class="language-cpp">OS_KEY_EVT;
+
+void EXTI0_IRQHandler(void) {
+    OS_KEY_EVT.signal_from_isr();
+}
+
+void task_button(void) {
+    while (1) {
+        if (OS_KEY_EVT.wait(5000)) {
+            os_delay_ms(50);  // Debounce delay
+            if (read_button()) {
+                handle_button_press();
+            }
+        }
+    }
+}</code></pre>
+
+        <h2><span data-lang="en">Software PWM via Periodic Task</span><span data-lang="fa">PWM نرم‌افزاری با تسک دوره‌ای</span></h2>
+        <pre><code class="language-cpp">void task_pwm(void) {
+    uint8_t duty = 128;  // 50% duty
+    while (1) {
+        HAL_GPIO_WritePin(PWM_PORT, PWM_PIN, GPIO_PIN_SET);
+        os_delay_us(duty * 10);  // ON time
+        HAL_GPIO_WritePin(PWM_PORT, PWM_PIN, GPIO_PIN_RESET);
+        os_delay_us((255 - duty) * 10);  // OFF time
+    }
+}
+os_task_create(task_pwm, 15);  // High priority for timing</code></pre>
+
+        <h2><span data-lang="en">Multi-Stage Sensor Pipeline</span><span data-lang="fa">خط لوله حسگر چند مرحله‌ای</span></h2>
+        <pre><code class="language-cpp">OS_QUEUE&lt;RawData, 8&gt; raw_queue;
+OS_QUEUE&lt;ProcessedData, 8&gt; processed_queue;
+
+void task_acquire(void) {
+    while (1) {
+        RawData raw = read_sensor();
+        raw_queue.put(raw);
+        os_delay_ms(10);
+    }
+}
+
+void task_process(void) {
+    while (1) {
+        RawData raw;
+        if (raw_queue.get(raw, 100)) {
+            ProcessedData proc = filter_and_calibrate(raw);
+            processed_queue.put(proc);
+        }
+    }
+}
+
+void task_output(void) {
+    while (1) {
+        ProcessedData proc;
+        if (processed_queue.get(proc, 100)) {
+            display(proc);
+        }
+    }
+}
+
+// Pipeline: acquire(3) → process(5) → output(4)
+os_task_create(task_acquire, 3, 10);
+os_task_create(task_process, 5);
+os_task_create(task_output, 4);</code></pre>
+
+        <h2><span data-lang="en">Graceful Shutdown</span><span data-lang="fa">خاموش کردن صحیح</span></h2>
+        <pre><code class="language-cpp">static volatile bool shutdown_requested = false;
+
+void task_shutdown_handler(void) {
+    while (1) {
+        if (shutdown_button.wait(1000)) {
+            shutdown_requested = true;
+            os_task_stop(task_ui);
+            os_task_stop(task_led);
+            save_critical_data();
+            enter_safe_mode();
+        }
+    }
+}</code></pre>
+    </div>
+
+    <!-- ==================== API REFERENCE TABLE ==================== -->
+    <div class="card" id="api-reference-table">
+        <h1>📋 <span data-lang="en">Complete API Reference</span><span data-lang="fa">مرجع کامل API</span></h1>
+        <h2><span data-lang="en">Core Functions (C)</span><span data-lang="fa">توابع هسته (C)</span></h2>
+        <table>
+            <tr><th><span data-lang="en">Function</span><span data-lang="fa">تابع</span></th><th><span data-lang="en">Description</span><span data-lang="fa">توضیحات</span></th></tr>
+            <tr><td><code>os_init()</code></td><td><span data-lang="en">Initialize RTOS (call before task creation)</span><span data-lang="fa">مقداردهی اولیه RTOS</span></td></tr>
+            <tr><td><code>os_start()</code></td><td><span data-lang="en">Start scheduler (never returns)</span><span data-lang="fa">شروع زمان‌بند (هرگز برنمی‌گردد)</span></td></tr>
+            <tr><td><code>os_tick()</code></td><td><span data-lang="en">Tick handler (call from SysTick_Handler)</span><span data-lang="fa">هندلر تیک</span></td></tr>
+            <tr><td><code>os_delay_ms(ms)</code></td><td><span data-lang="en">Sleep for ms milliseconds</span><span data-lang="fa">خواب به مدت ms میلی‌ثانیه</span></td></tr>
+            <tr><td><code>os_delay_us(us)</code></td><td><span data-lang="en">Busy-wait for us microseconds</span><span data-lang="fa">انتظار مشغول به مدت us میکروثانیه</span></td></tr>
+            <tr><td><code>os_yield()</code></td><td><span data-lang="en">Yield to next ready task</span><span data-lang="fa">واگذاری به تسک بعدی</span></td></tr>
+            <tr><td><code>os_get_tick()</code></td><td><span data-lang="en">Get raw tick count</span><span data-lang="fa">دریافت شمارنده تیک خام</span></td></tr>
+            <tr><td><code>os_get_ms()</code></td><td><span data-lang="en">Get milliseconds since boot</span><span data-lang="fa">دریافت میلی‌ثانیه از شروع</span></td></tr>
+            <tr><td><code>os_get_us()</code></td><td><span data-lang="en">Get microseconds since boot</span><span data-lang="fa">دریافت میکروثانیه از شروع</span></td></tr>
+            <tr><td><code>os_task_start(entry)</code></td><td><span data-lang="en">Start a stopped task</span><span data-lang="fa">شروع تسک متوقف شده</span></td></tr>
+            <tr><td><code>os_task_stop(entry)</code></td><td><span data-lang="en">Stop a running task</span><span data-lang="fa">توقف تسک در حال اجرا</span></td></tr>
+            <tr><td><code>os_task_isActive(entry)</code></td><td><span data-lang="en">Check if task is active</span><span data-lang="fa">بررسی فعال بودن تسک</span></td></tr>
+            <tr><td><code>os_get_task_count()</code></td><td><span data-lang="en">Get number of registered tasks</span><span data-lang="fa">دریافت تعداد تسک‌های ثبت شده</span></td></tr>
+            <tr><td><code>os_get_task_priority(entry)</code></td><td><span data-lang="en">Get task's active priority</span><span data-lang="fa">دریافت اولویت فعال تسک</span></td></tr>
+            <tr><td><code>os_get_stack_usage(entry)</code></td><td><span data-lang="en">Get peak stack usage (bytes)</span><span data-lang="fa">دریافت حداکثر مصرف پشته</span></td></tr>
+            <tr><td><code>os_get_task_cpu_usage(entry)</code></td><td><span data-lang="en">Get task CPU usage (%)</span><span data-lang="fa">دریافت مصرف CPU تسک</span></td></tr>
+            <tr><td><code>os_get_version_string()</code></td><td><span data-lang="en">Get version string</span><span data-lang="fa">دریافت رشته نسخه</span></td></tr>
+        </table>
+        <h2><span data-lang="en">RAII Classes (C++)</span><span data-lang="fa">کلاس‌های RAII (C++)</span></h2>
+        <table>
+            <tr><th><span data-lang="en">Class</span><span data-lang="fa">کلاس</span></th><th><span data-lang="en">Macro</span><span data-lang="fa">ماکرو</span></th><th><span data-lang="en">Description</span><span data-lang="fa">توضیحات</span></th></tr>
+            <tr><td><code>_OsSafeGuard</code></td><td><code>OS_SAFE { ... }</code></td><td><span data-lang="en">Interrupt-disable guard</span><span data-lang="fa">محافظ غیرفعال کردن وقفه</span></td></tr>
+            <tr><td><code>_OsLockGuard</code></td><td><code>OS_LOCK(mtx) { ... }</code></td><td><span data-lang="en">Mutex lock guard</span><span data-lang="fa">محافظ قفل mutex</span></td></tr>
+            <tr><td><code>OS_EVENT</code></td><td>—</td><td><span data-lang="en">Inter-task event signaling</span><span data-lang="fa">سیگنال‌دهی رویداد بین تسک‌ها</span></td></tr>
+            <tr><td><code>OS_MUTEX</code></td><td>—</td><td><span data-lang="en">Mutex with priority inheritance</span><span data-lang="fa">Mutex با ارث بری اولویت</span></td></tr>
+            <tr><td><code>OS_QUEUE&lt;T,N&gt;</code></td><td>—</td><td><span data-lang="en">Bounded FIFO queue</span><span data-lang="fa">صف FIFO محدود</span></td></tr>
+            <tr><td><code>OS_SEMAPHORE</code></td><td>—</td><td><span data-lang="en">Counting semaphore</span><span data-lang="fa">سمافور شمارشی</span></td></tr>
         </table>
     </div>
 
@@ -915,11 +1403,32 @@ OS_ERROR_EXPECTED {
 <script>
 // Hide loader when page loads
 window.addEventListener('load', function() {
+    // Add copy buttons to all code blocks
+    document.querySelectorAll('pre[class*="language-"]').forEach(function(pre) {
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.textContent = 'Copy';
+        btn.onclick = function() {
+            var code = pre.querySelector('code');
+            var text = code.textContent || code.innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        };
+        pre.appendChild(btn);
+    });
+
+    // Hide loader
     setTimeout(function() {
         var loader = document.getElementById('loader');
         loader.style.opacity = '0';
         setTimeout(function() { loader.style.display = 'none'; }, 500);
-    }, 1500);
+    }, 3000);
 });
 
 function setLang(lang) {
