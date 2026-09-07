@@ -26,11 +26,25 @@
             --sidebar-width: 280px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.7; color: var(--text); background: var(--bg); }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.7; color: var(--text); background: var(--bg); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Cdefs%3E%3Cstyle%3E.bg-trace%7Bstroke:%230277bd;stroke-width:0.2;fill:none;opacity:0.03%7D.bg-via%7Bfill:%230288d1;opacity:0.04%7D.bg-pad%7Bfill:%2301579b;opacity:0.02%7D%3C/style%3E%3C/defs%3E%3Cpath class='bg-trace' d='M50,100 H150 V200 H280'/%3E%3Cpath class='bg-trace' d='M80,50 V150 H250 V320'/%3E%3Cpath class='bg-trace' d='M320,80 V180 H220'/%3E%3Cpath class='bg-trace' d='M60,300 H180 V250 H350'/%3E%3Cpath class='bg-trace' d='M300,40 V120 H380'/%3E%3Cpath class='bg-trace' d='M30,350 H100 V280 H200'/%3E%3Ccircle class='bg-via' cx='150' cy='200' r='2'/%3E%3Ccircle class='bg-via' cx='250' cy='150' r='1.5'/%3E%3Ccircle class='bg-via' cx='180' cy='250' r='1.5'/%3E%3Crect class='bg-pad' x='270' y='190' width='12' height='8' rx='1'/%3E%3Crect class='bg-pad' x='50' y='290' width='12' height='8' rx='1'/%3E%3C/svg%3E"); background-repeat: repeat; background-size: 400px 400px; }
 
         /* Sidebar */
         .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: linear-gradient(180deg, var(--sidebar-bg) 0%, #002f6c 100%); color: var(--sidebar-text); overflow-y: auto; z-index: 1000; transition: transform 0.3s ease; }
-        .sidebar-header { padding: 25px 20px; text-align: center; background: white; border-bottom: 1px solid var(--border); }
+        .sidebar-header { padding: 25px 20px; text-align: center; background: white; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+        .sidebar-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cdefs%3E%3Cstyle%3E.sb-trace%7Bstroke:%230277bd;stroke-width:0.3;fill:none;opacity:0.06%7D.sb-via%7Bfill:%230288d1;opacity:0.08%7D%3C/style%3E%3C/defs%3E%3Cpath class='sb-trace' d='M10,20 H40 V50 H70'/%3E%3Cpath class='sb-trace' d='M20,10 V40 H60 V70'/%3E%3Ccircle class='sb-via' cx='40' cy='50' r='2'/%3E%3Ccircle class='sb-via' cx='60' cy='40' r='1.5'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 80px 80px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sidebar-header > * { position: relative; z-index: 1; }
         .sidebar-header img { width: 130px; height: 130px; border-radius: 14px; margin-bottom: 12px; }
         .sidebar-header h3 { font-size: 1em; color: var(--accent); margin-bottom: 5px; }
         .sidebar-header p { font-size: 0.75em; color: var(--text-secondary); }
@@ -52,13 +66,33 @@
         /* Main Content */
         .main-content { margin-left: var(--sidebar-width); padding: 30px; min-height: 100vh; }
 
+        /* PCB Background Pattern */
+        .pcb-bg {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cdefs%3E%3Cstyle%3E.trace%7Bstroke:%23e0e0e0;stroke-width:0.5;fill:none%7D.pad%7Bfill:%23f5f5f5;stroke:%23d0d0d0;stroke-width:0.3%7D.via%7Bfill:%23e8e8e8;stroke:%23d0d0d0;stroke-width:0.3%7D%3C/style%3E%3C/defs%3E%3Cpath class='trace' d='M20,50 H80 V100 H150'/%3E%3Cpath class='trace' d='M50,20 V80 H120 V150'/%3E%3Cpath class='trace' d='M150,30 V70 H100'/%3E%3Cpath class='trace' d='M30,150 H90 V110 H170'/%3E%3Cpath class='trace' d='M170,50 V120 H130'/%3E%3Ccircle class='via' cx='80' cy='50' r='2'/%3E%3Ccircle class='via' cx='150' cy='100' r='2'/%3E%3Ccircle class='via' cx='120' cy='80' r='2'/%3E%3Ccircle class='via' cx='90' cy='150' r='2'/%3E%3Crect class='pad' x='10' y='45' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='155' y='95' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='115' y='75' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='85' y='145' width='8' height='10' rx='1'/%3E%3Cpath class='trace' d='M180,20 V60 H140'/%3E%3Cpath class='trace' d='M20,180 H60 V140'/%3E%3Ccircle class='via' cx='140' cy='60' r='1.5'/%3E%3Ccircle class='via' cx='60' cy='140' r='1.5'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+        }
+
         /* Cover */
-        .cover { background: white; color: var(--text); padding: 50px 40px; border-radius: 12px; text-align: center; margin-bottom: 30px; border: 1px solid var(--border); }
+        .cover { background: white; color: var(--text); padding: 50px 40px; border-radius: 12px; text-align: center; margin-bottom: 30px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .cover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cdefs%3E%3Cstyle%3E.pcb-trace%7Bstroke:%230277bd;stroke-width:0.4;fill:none;opacity:0.08%7D.pcb-via%7Bfill:%230288d1;opacity:0.1%7D.pcb-pad%7Bfill:%2301579b;opacity:0.06%7D.chip%7Bfill:none;stroke:%230277bd;stroke-width:0.5;opacity:0.07%7D%3C/style%3E%3C/defs%3E%3C!-- PCB Traces --%3E%3Cpath class='pcb-trace' d='M30,80 H120 V150 H200'/%3E%3Cpath class='pcb-trace' d='M60,30 V100 H180 V200'/%3E%3Cpath class='pcb-trace' d='M250,50 V120 H180'/%3E%3Cpath class='pcb-trace' d='M40,220 H130 V170 H260'/%3E%3Cpath class='pcb-trace' d='M200,30 V90 H270'/%3E%3Cpath class='pcb-trace' d='M20,260 H80 V200 H150'/%3E%3Cpath class='pcb-trace' d='M280,180 V240 H200'/%3E%3C!-- Microcontroller Chip --%3E%3Crect class='chip' x='120' y='100' width='60' height='40' rx='2'/%3E%3Crect class='chip' x='125' y='105' width='50' height='30' rx='1' fill='%230277bd' fill-opacity='0.04'/%3E%3C!-- IC Pins --%3E%3Cline class='pcb-trace' x1='120' y1='110' x2='105' y2='110'/%3E%3Cline class='pcb-trace' x1='120' y1='120' x2='105' y2='120'/%3E%3Cline class='pcb-trace' x1='120' y1='130' x2='105' y2='130'/%3E%3Cline class='pcb-trace' x1='180' y1='110' x2='195' y2='110'/%3E%3Cline class='pcb-trace' x1='180' y1='120' x2='195' y2='120'/%3E%3Cline class='pcb-trace' x1='180' y1='130' x2='195' y2='130'/%3E%3C!-- Vias --%3E%3Ccircle class='pcb-via' cx='120' cy='150' r='3'/%3E%3Ccircle class='pcb-via' cx='180' cy='150' r='3'/%3E%3Ccircle class='pcb-via' cx='200' cy='200' r='2.5'/%3E%3Ccircle class='pcb-via' cx='60' cy='100' r='2'/%3E%3Ccircle class='pcb-via' cx='130' cy='170' r='2'/%3E%3C!-- SMD Pads --%3E%3Crect class='pcb-pad' x='95' y='107' width='8' height='6' rx='1'/%3E%3Crect class='pcb-pad' x='95' y='117' width='8' height='6' rx='1'/%3E%3Crect class='pcb-pad' x='197' y='107' width='8' height='6' rx='1'/%3E%3Crect class='pcb-pad' x='197' y='117' width='8' height='6' rx='1'/%3E%3Crect class='pcb-pad' x='250' y='195' width='10' height='8' rx='1'/%3E%3Crect class='pcb-pad' x='70' y='195' width='10' height='8' rx='1'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .cover > * { position: relative; z-index: 1; }
         .cover img { width: 320px; border-radius: 16px; margin-bottom: 20px; }
         .cover h1 { font-size: 2.5em; font-weight: 300; margin-bottom: 10px; color: var(--accent); }
         .cover .badges { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
-        .cover .badge { background: #e1f5fe; color: var(--primary); padding: 6px 14px; border-radius: 15px; font-size: 0.8em; transition: transform 0.2s ease, background 0.2s ease; cursor: default; }
-        .cover .badge:hover { transform: scale(1.05); background: #b3e5fc; }
+        .cover .badge { background: rgba(225, 245, 254, 0.9); color: var(--primary); padding: 6px 14px; border-radius: 15px; font-size: 0.8em; transition: transform 0.2s ease, background 0.2s ease; cursor: default; backdrop-filter: blur(2px); }
+        .cover .badge:hover { transform: scale(1.05); background: rgba(179, 229, 252, 0.95); }
 
         /* Cards */
         .card { background: var(--card-bg); border-radius: 12px; padding: 30px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto; transition: transform 0.3s ease, box-shadow 0.3s ease; }
@@ -95,10 +129,38 @@
         li { margin: 6px 0; color: var(--text-secondary); }
 
         /* Architecture Box */
-        .arch-box { background: linear-gradient(135deg, #01579b, #0277bd); color: white; padding: 25px; border-radius: 12px; margin: 15px 0; font-family: monospace; font-size: 0.78em; line-height: 1.5; white-space: pre; overflow-x: auto; }
+        .arch-box { background: linear-gradient(135deg, #01579b, #0277bd); color: white; padding: 25px; border-radius: 12px; margin: 15px 0; font-family: monospace; font-size: 0.78em; line-height: 1.5; white-space: pre; overflow-x: auto; position: relative; overflow: hidden; }
+        .arch-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cstyle%3E.a-trace%7Bstroke:%23ffffff;stroke-width:0.3;fill:none;opacity:0.1%7D.a-via%7Bfill:%23ffffff;opacity:0.15%7D%3C/style%3E%3C/defs%3E%3Cpath class='a-trace' d='M10,20 H40 V50 H70'/%3E%3Cpath class='a-trace' d='M20,10 V40 H60 V80'/%3E%3Ccircle class='a-via' cx='40' cy='50' r='2'/%3E%3Ccircle class='a-via' cx='60' cy='40' r='1.5'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 100px 100px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .arch-box > * { position: relative; z-index: 1; }
 
         /* Donate Section */
-        .donate-section { background: linear-gradient(135deg, #e1f5fe, #e0f7fa); border-radius: 12px; padding: 30px; margin-top: 30px; border: 2px solid var(--primary); transition: border-color 0.3s ease; }
+        .donate-section { background: linear-gradient(135deg, #e1f5fe, #e0f7fa); border-radius: 12px; padding: 30px; margin-top: 30px; border: 2px solid var(--primary); transition: border-color 0.3s ease; position: relative; overflow: hidden; }
+        .donate-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Cdefs%3E%3Cstyle%3E.d-trace%7Bstroke:%230277bd;stroke-width:0.3;fill:none;opacity:0.08%7D.d-via%7Bfill:%230288d1;opacity:0.1%7D%3C/style%3E%3C/defs%3E%3Cpath class='d-trace' d='M20,30 H60 V70 H100'/%3E%3Cpath class='d-trace' d='M40,20 V60 H90 V120'/%3E%3Ccircle class='d-via' cx='60' cy='70' r='2'/%3E%3Ccircle class='d-via' cx='90' cy='60' r='1.5'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 150px 150px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .donate-section > * { position: relative; z-index: 1; }
         .donate-section:hover { border-color: var(--secondary); }
         .donate-section h2 { color: var(--accent); border-bottom: 2px solid var(--accent); }
         .donate-table { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: stretch; margin-top: 20px; }
@@ -109,7 +171,21 @@
         .donate-item .address { font-family: monospace; font-size: 0.82em; word-break: break-all; background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 8px; }
 
         /* Footer */
-        .footer { text-align: center; padding: 30px 20px; background: var(--code-bg); color: white; margin-top: 30px; border-radius: 12px; }
+        .footer { text-align: center; padding: 30px 20px; background: var(--code-bg); color: white; margin-top: 30px; border-radius: 12px; position: relative; overflow: hidden; }
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cdefs%3E%3Cstyle%3E.f-trace%7Bstroke:%2380cbc4;stroke-width:0.3;fill:none;opacity:0.15%7D.f-via%7Bfill:%234fc3f7;opacity:0.2%7D%3C/style%3E%3C/defs%3E%3Cpath class='f-trace' d='M30,50 H80 V100 H140'/%3E%3Cpath class='f-trace' d='M50,30 V80 H120 V160'/%3E%3Ccircle class='f-via' cx='80' cy='100' r='2'/%3E%3Ccircle class='f-via' cx='120' cy='80' r='1.5'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .footer > * { position: relative; z-index: 1; }
         .footer a { color: var(--code-text); }
 
         /* Bilingual */
