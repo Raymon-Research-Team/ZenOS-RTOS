@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://rahmanh22.github.io/ZenOS-RTOS/sitemap.xml
