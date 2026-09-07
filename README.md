@@ -73,7 +73,7 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 
 ## 🚀 Quick Start
 
-A complete RTOS application in under 20 lines:
+A complete RTOS application in under 10 lines:
 
 **Two steps before the code:**
 
