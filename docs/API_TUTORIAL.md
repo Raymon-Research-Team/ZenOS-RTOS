@@ -131,7 +131,7 @@ Before starting, you should have basic knowledge of:
 
 #### Step 1: Download ZenOS
 ```bash
-git clone https://github.com/rahmanh22/ZenOS.git
+git clone https://github.com/Raymon-Research-Team/ZenOS-RTOS.git
 ```
 
 #### Step 2: Copy Files

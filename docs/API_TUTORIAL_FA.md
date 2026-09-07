@@ -147,7 +147,7 @@
 </div>
 
 ```bash
-git clone https://github.com/rahmanh22/ZenOS.git
+git clone https://github.com/Raymon-Research-Team/ZenOS-RTOS.git
 ```
 
 <div dir="rtl">

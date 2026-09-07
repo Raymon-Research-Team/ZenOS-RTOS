@@ -355,7 +355,7 @@ int main(void) {
 
 **با ❤️ برای جامعه تعبیه‌شده ساخته شده**
 
-[![GitHub stars](https://img.shields.io/github/stars/rahmanh22/ZenOS?style=social)]()
+[![GitHub stars](https://img.shields.io/github/stars/Raymon-Research-Team/ZenOS-RTOS?style=social)]()
 
 <br>
 
