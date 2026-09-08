@@ -1,7 +1,7 @@
 <meta name="google-site-verification" content="WDbhN_r-HKmS5ue_mJL8otHIkSioPnhX6Pml04KWFi4" />
 <div align="center">
 
-<img src="ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
+<img src="docs/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
 **RT operating system for ARM Cortex-M — written in C++11.**
 
