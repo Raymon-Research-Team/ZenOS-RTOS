@@ -254,20 +254,14 @@ Your donation directly funds development, testing, certification, and documentat
 ### 🌟 Other ways to help
 
 <td align="center" width="100%">
-
 <table> 
-
 <tr>
-
 <td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
 <td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
 <td align="center" width="25%" >📝<br><b>Write</b><br>a tutorial</td>
 <td align="center" width="25%" >🗣️<br><b>Tell</b><br>someone</td>
-
 </tr>
-
 </table>
-
 </td>
 
 ---
