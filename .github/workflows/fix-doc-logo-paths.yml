@@ -1,0 +1,69 @@
+name: Fix documentation logo paths
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-doc-logo-paths.yml'
+      - '**/*.md'
+      - 'docs/guide.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix logo references
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Markdown files inside docs/ must resolve the logo from the same directory.
+          for path in Path('docs').glob('*.md'):
+              text = path.read_text(encoding='utf-8')
+              fixed = text.replace('../ZenOS_logo.svg', './ZenOS_logo.svg')
+              if fixed != text:
+                  path.write_text(fixed, encoding='utf-8')
+
+          # Root README must resolve the documentation logo through docs/.
+          readme = Path('README.md')
+          if readme.exists():
+              text = readme.read_text(encoding='utf-8')
+              fixed = text.replace('src="ZenOS_logo.svg"', 'src="docs/ZenOS_logo.svg"')
+              if fixed != text:
+                  readme.write_text(fixed, encoding='utf-8')
+
+          # guide.html lives in docs/, so keep the documentation logo explicitly local.
+          guide = Path('docs/guide.html')
+          if guide.exists():
+              text = guide.read_text(encoding='utf-8')
+              fixed = text.replace('src="ZenOS_logo.svg"', 'src="./ZenOS_logo.svg"')
+              if fixed != text:
+                  guide.write_text(fixed, encoding='utf-8')
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/*.md docs/guide.html
+          if git diff --cached --quiet; then
+            echo "No logo path changes needed."
+            exit 0
+          fi
+          git commit -m "Fix documentation logo paths [skip ci]"
+          git push
+
+      - name: Remove one-time fixer
+        if: success()
+        shell: bash
+        run: |
+          git rm -f .github/workflows/fix-doc-logo-paths.yml
+          git commit -m "Remove one-time documentation fixer [skip ci]"
+          git push
