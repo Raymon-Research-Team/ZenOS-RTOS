@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZenOS RTOS — ARM Cortex-M Real-Time Operating System</title>
+  <meta name="description" content="ZenOS RTOS is a compact C++11 real-time operating system for ARM Cortex-M and STM32 microcontrollers, with priority-based scheduling, static task resources, IPC, monitoring, and configurable safety mechanisms.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="googlebot" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://raymon-research-team.github.io/ZenOS-RTOS/about.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ZenOS RTOS — ARM Cortex-M Real-Time Operating System">
+  <meta property="og:description" content="Learn what ZenOS RTOS provides for ARM Cortex-M and STM32 embedded systems: deterministic scheduling, static task resources, IPC, diagnostics, and configurable safety features.">
+  <meta property="og:url" content="https://raymon-research-team.github.io/ZenOS-RTOS/about.html">
+  <meta property="og:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZenOS RTOS — ARM Cortex-M Real-Time Operating System">
+  <meta name="twitter:description" content="Compact C++11 RTOS for ARM Cortex-M and STM32 microcontrollers.">
+  <meta name="twitter:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"SoftwareSourceCode",
+    "name":"ZenOS RTOS",
+    "description":"A compact C++11 real-time operating system for ARM Cortex-M microcontrollers, including STM32 targets.",
+    "codeRepository":"https://github.com/Raymon-Research-Team/ZenOS-RTOS",
+    "programmingLanguage":["C++11","C"],
+    "runtimePlatform":"ARM Cortex-M",
+    "license":"https://opensource.org/licenses/MIT",
+    "url":"https://raymon-research-team.github.io/ZenOS-RTOS/"
+  }
+  </script>
+  <style>
+    :root{--bg:#f7f9fc;--card:#fff;--ink:#172033;--muted:#5f6d82;--primary:#0067b8;--line:#dfe5ee}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.7}header{background:#fff;border-bottom:1px solid var(--line);padding:16px 22px}nav{max-width:1050px;margin:auto;display:flex;gap:22px;align-items:center}nav a{color:var(--primary);font-weight:700;text-decoration:none}nav a:first-child{margin-right:auto}main{max-width:1050px;margin:auto;padding:56px 22px}article{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:38px;box-shadow:0 8px 28px rgba(23,32,51,.06)}h1{font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.1;margin:0 0 18px;color:#01579b}h2{margin-top:38px;color:#01579b}p{color:var(--muted)}li{margin:8px 0}strong{color:var(--ink)}footer{max-width:1050px;margin:0 auto;padding:0 22px 40px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<header><nav><a href="./">ZenOS RTOS</a><a href="guide.html">Documentation</a><a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">GitHub</a></nav></header>
+<main><article>
+  <h1>ZenOS RTOS for ARM Cortex-M and STM32</h1>
+  <p>ZenOS is a compact real-time operating system designed for embedded applications running on ARM Cortex-M microcontrollers. The project is written in C++11/C and focuses on predictable scheduling, static task resources, lightweight inter-task communication, runtime diagnostics, and configurable safety mechanisms.</p>
+
+  <h2>What is ZenOS RTOS?</h2>
+  <p>ZenOS RTOS is an embedded operating system for developers building firmware on ARM Cortex-M devices such as STM32 microcontrollers. It provides the core services expected from a small RTOS while keeping the implementation close to the microcontroller and avoiding a general-purpose desktop-style runtime.</p>
+
+  <h2>Scheduling and real-time behavior</h2>
+  <p>The current kernel uses a 32-level ready bitmap with per-priority task queues and periodic release checks. Task creation uses static task resources, including task stacks, rather than a general-purpose heap. This architecture is intended for embedded systems where predictable resource use and explicit configuration are important.</p>
+
+  <h2>Tasks, timing and IPC</h2>
+  <p>ZenOS provides task management, timing services and common inter-process communication primitives. Applications can use events, mutexes, queues and semaphores to coordinate concurrent tasks. Periodic tasks are supported through the kernel's release mechanism.</p>
+
+  <h2>Monitoring and safety mechanisms</h2>
+  <p>The project includes configurable runtime diagnostics and safety-related mechanisms such as watchdog support, MPU integration where supported, CRC checks, RAM tests, task integrity checks, stack monitoring, CPU monitoring and deadline monitoring. These are configuration features, not a claim of functional-safety or medical-device certification.</p>
+
+  <h2>Who is ZenOS for?</h2>
+  <ul>
+    <li>Embedded developers working with ARM Cortex-M microcontrollers.</li>
+    <li>STM32 firmware projects that need a small real-time kernel.</li>
+    <li>Engineers evaluating lightweight C++11 RTOS architectures.</li>
+    <li>Developers who need explicit task, IPC, timing and diagnostic facilities.</li>
+    <li>Researchers and students studying real-time scheduling and embedded operating systems.</li>
+  </ul>
+
+  <h2>Documentation and source code</h2>
+  <p>Use the <a href="guide.html">complete ZenOS guide</a> for installation, API usage, task management, timing, IPC, configuration, monitoring and troubleshooting. The <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">GitHub repository</a> contains the kernel source, configuration and examples.</p>
+</article></main>
+<footer>ZenOS RTOS · ARM Cortex-M · STM32 · C++11 · MIT License</footer>
+</body>
+</html>
