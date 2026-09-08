@@ -44,7 +44,7 @@ Before starting, you should have basic knowledge of:
 | **What is an RTOS?** | Basic | Tasks, scheduling, priorities |
 | **ARM Cortex-M** | Optional | Helpful but not required — ZenOS abstracts the hardware |
 
-> **💡 Don't worry if you don't know embedded programming.** ZenOS handles the hard parts (scheduling, interrupts, memory protection). You just write tasks.
+> **💡 Don't worry if you don't know embedded programming.** ZenOS handles the hard parts (scheduling, interrupts, and configurable safety mechanisms). Hardware memory protection is target-dependent and optional.
 
 ### 0.2 Hardware You Need
 
@@ -135,7 +135,7 @@ git clone https://github.com/Raymon-Research-Team/ZenOS-RTOS.git
 ```
 
 #### Step 2: Copy Files
-Copy these files from `ZenOS/ZenOS/` to your project:
+Copy these files from `ZenOS/` to your project:
 
 | From | To |
 |------|----|

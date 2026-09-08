@@ -8,11 +8,14 @@
 
 ---
 
+
+> **Benchmark note:** Timing figures are representative measurements only. Actual results depend on MCU, compiler, optimization level, configuration, clock rate, and measurement methodology. They should not be treated as universal comparisons without a reproducible benchmark.
+
 ## Overview
 
 ZenOS is not another "me too" RTOS. It was built from scratch with a specific goal: eliminate the pain points that developers deal with every day in FreeRTOS, Zephyr, and RT-Thread — without sacrificing safety or performance.
 
-This document explains, in concrete technical terms, where ZenOS outperforms the competition and why.
+This document explains, in concrete technical terms, where ZenOS is designed for deterministic, low-overhead real-time operation and why.
 
 ---
 

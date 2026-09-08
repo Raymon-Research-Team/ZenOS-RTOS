@@ -153,7 +153,7 @@ git clone https://github.com/Raymon-Research-Team/ZenOS-RTOS.git
 <div dir="rtl">
 
 #### مرحله ۲: کپی فایل‌ها
-این فایل‌ها را از `ZenOS/ZenOS/` به پروژه خود کپی کنید:
+این فایل‌ها را از `ZenOS/` به پروژه خود کپی کنید:
 
 | از | به |
 |----|----|
