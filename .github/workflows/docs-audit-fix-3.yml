@@ -1,0 +1,62 @@
+name: Docs audit fix 3
+
+on:
+  push:
+    paths:
+      - '.github/workflows/docs-audit-fix-3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Finalize safety wording
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          docs = Path('docs')
+          changed = []
+
+          p = docs / 'SAFETY_MANUAL.md'
+          s = p.read_text(encoding='utf-8')
+          old = s
+          s = re.sub(
+              r'^- \*\*Default values already satisfy all levels\.\*\*.*$',
+              '- **Target macros are configuration checks, not certification.** When a medical or industrial target is selected, required safety options are enforced at compile time according to the configured target class or SIL.',
+              s, flags=re.M)
+          if s != old:
+              p.write_text(s, encoding='utf-8'); changed.append(str(p))
+
+          p = docs / 'SAFETY_MANUAL_FA.md'
+          s = p.read_text(encoding='utf-8')
+          old = s
+          # Replace any sentence/line that claims all safety mechanisms are enabled by default.
+          s = re.sub(
+              r'(?m)^.*(?:همه|تمام).*?(?:ایمنی|مکانیزم).*?(?:پیش‌فرض|پیش فرض).*?(?:فعال).*$',
+              '- **قابلیت‌های ایمنی قابل تنظیم هستند و گواهی انطباق محسوب نمی‌شوند.** با انتخاب هدف پزشکی یا صنعتی، گزینه‌های ایمنی موردنیاز بر اساس کلاس هدف یا SIL در زمان کامپایل بررسی و اعمال می‌شوند.',
+              s)
+          s = re.sub(
+              r'(?m)^.*(?:مکانیزم‌های ایمنی ZenOS قابل تنظیم هستند).*$',
+              '- **قابلیت‌های ایمنی قابل تنظیم هستند و گواهی انطباق محسوب نمی‌شوند.** فعال بودن هر قابلیت توسط `ZenOS_Config.hpp` تعیین می‌شود.',
+              s)
+          if s != old:
+              p.write_text(s, encoding='utf-8'); changed.append(str(p))
+
+          print('Changed:', changed)
+          if not changed:
+              raise SystemExit('No final safety wording changes detected.')
+
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/docs-audit-fix-3.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs .github/workflows/docs-audit-fix-3.yml
+          git commit -m 'Polish final safety documentation wording'
+          git push origin HEAD:main
