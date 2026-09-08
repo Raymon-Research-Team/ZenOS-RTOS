@@ -72,6 +72,21 @@
             background-repeat: repeat;
         }
 
+
+        /* Guide action buttons */
+        .guide-actions { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; }
+        .guide-actions a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; line-height:1.2; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; }
+        .guide-actions a:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.18); }
+        .guide-actions a:focus-visible { outline:3px solid #4fc3f7; outline-offset:3px; }
+        .guide-actions .github-btn { background:#24292e; color:#fff !important; }
+        .guide-actions .github-btn:hover { background:#171a1d; }
+        .guide-actions .home-btn { background:linear-gradient(135deg,#0277bd,#0288d1); color:#fff !important; }
+        .guide-actions .home-btn:hover { background:linear-gradient(135deg,#01579b,#0277bd); }
+        @media (max-width:600px) {
+            .guide-actions { gap:8px; }
+            .guide-actions a { flex:1 1 220px; max-width:100%; }
+        }
+
         /* Cover */
         .cover { background: white; color: var(--text); padding: 50px 40px; border-radius: 12px; text-align: center; margin-bottom: 30px; border: 1px solid var(--border); position: relative; overflow: hidden; }
         .cover::before {
@@ -348,7 +363,7 @@
         </div>
         <div class="guide-actions">
 <a class="github-btn" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">🔗 View on GitHub</a>
-<a class="home-btn" href="index.html">← Back to ZenOS Home</a>
+<a class="home-btn" href="./index.html" aria-label="Back to ZenOS Home">← Back to ZenOS Home</a>
 </div>
     </section>
 
