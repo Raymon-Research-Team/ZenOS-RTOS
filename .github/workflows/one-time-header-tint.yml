@@ -1,0 +1,33 @@
+name: One-time header tint
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tint logo headers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for p in Path('docs').glob('*.html'):
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('background:rgba(248,249,246,.96)', 'background:rgba(238,243,247,.96)')
+              s = s.replace('.sidebar-header { padding: 25px 20px; text-align: center; background: white;', '.sidebar-header { padding: 25px 20px; text-align: center; background: #eef3f7;')
+              p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/*.html .github/workflows/one-time-header-tint.yml
+          git commit -m 'Refine logo header tint across site'
+          git rm .github/workflows/one-time-header-tint.yml
+          git commit -m 'Remove one-time header tint workflow'
+          git push
