@@ -1,0 +1,39 @@
+name: Fix Guide loading theme
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-guide-loading-theme.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Style loading screen
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('docs/guide.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* ZenOS modern loading screen theme */'
+          if marker not in s:
+              css = r'''\n        /* ZenOS modern loading screen theme */\n        #zenos-loading-theme,\n        #loading,\n        .loading,\n        .loading-screen,\n        .loading-overlay,\n        .loader-overlay {\n            background: rgba(7,17,31,.96) !important;\n            color: #eef8ff !important;\n            border-color: rgba(82,216,255,.22) !important;\n            box-shadow: 0 24px 70px rgba(0,0,0,.38), 0 0 36px rgba(82,216,255,.08) !important;\n        }\n        #zenos-loading-theme,\n        #loading *,\n        .loading *,\n        .loading-screen *,\n        .loading-overlay *,\n        .loader-overlay * {\n            color: #eef8ff !important;\n        }\n        #zenos-loading-theme strong,\n        #loading strong,\n        .loading strong,\n        .loading-screen strong,\n        .loading-overlay strong,\n        .loader-overlay strong {\n            color: #52d8ff !important;\n        }\n'''
+              s = s.replace('</style>', css + '\n    </style>', 1)
+          js_marker = '/* ZenOS loading message contrast fallback */'
+          if js_marker not in s:
+              js = r'''\n<script>\n/* ZenOS loading message contrast fallback */\n(function () {\n  function themeLoadingMessage() {\n    document.querySelectorAll('*').forEach(function (el) {\n      if (el.children.length === 0 && el.textContent && el.textContent.indexOf('Loading ZenOS Guide') !== -1) {\n        el.style.setProperty('color', '#eef8ff', 'important');\n        el.style.setProperty('font-weight', '700', 'important');\n        el.style.setProperty('text-shadow', '0 1px 14px rgba(82,216,255,.16)', 'important');\n        var box = el.parentElement;\n        for (var i = 0; i < 4 && box; i++, box = box.parentElement) {\n          var pos = getComputedStyle(box).position;\n          if (pos === 'fixed' || pos === 'absolute') {\n            box.style.setProperty('background', 'rgba(7,17,31,.96)', 'important');\n            box.style.setProperty('color', '#eef8ff', 'important');\n            box.style.setProperty('border-color', 'rgba(82,216,255,.22)', 'important');\n            box.style.setProperty('box-shadow', '0 24px 70px rgba(0,0,0,.38), 0 0 36px rgba(82,216,255,.08)', 'important');\n            break;\n          }\n        }\n      }\n    });\n  }\n  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', themeLoadingMessage);\n  else themeLoadingMessage();\n  setTimeout(themeLoadingMessage, 100);\n})();\n</script>\n'''
+              s = s.replace('</body>', js + '</body>', 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/guide.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Polish Guide loading screen theme'
+          git push
