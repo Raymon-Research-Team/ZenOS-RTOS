@@ -196,7 +196,6 @@ int main(void) {
 | 📖 [SAFETY_MANUAL_FA.md](SAFETY_MANUAL_FA.md) | معماری ایمنی، محدودیت‌ها، جزئیات انطباق با استانداردها |
 | 📘 [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | راهنمای کامل API با مثال‌ها (فارسی) |
 | 📗 [API_TUTORIAL.md](API_TUTORIAL.md) | راهنمای کامل API با مثال‌ها (انگلیسی) |
-| 🤝 [Contributing](../CONTRIBUTING.md) | نحوه مشارکت |
 | ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | مقایسه فنی با FreeRTOS، Zephyr، RT-Thread |
 | ⚙️ [ZenOS_Config.hpp](../ZenOS/ZenOS_Config.hpp) | هر گزینه پیکربندی با یادداشت‌های ایمنی |
 
