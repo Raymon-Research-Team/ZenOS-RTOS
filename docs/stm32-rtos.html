@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>STM32 RTOS — ZenOS for ARM Cortex-M Embedded Systems</title>
+  <meta name="description" content="Use ZenOS as a compact RTOS for STM32 and ARM Cortex-M firmware. Learn about scheduling, tasks, timing, IPC, static resources, diagnostics and configurable safety mechanisms.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="googlebot" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://raymon-research-team.github.io/ZenOS-RTOS/stm32-rtos.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="STM32 RTOS — ZenOS for ARM Cortex-M">
+  <meta property="og:description" content="A practical overview of using ZenOS as a compact C++11 RTOS for STM32 and ARM Cortex-M embedded firmware.">
+  <meta property="og:url" content="https://raymon-research-team.github.io/ZenOS-RTOS/stm32-rtos.html">
+  <meta property="og:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"TechArticle","headline":"STM32 RTOS — ZenOS for ARM Cortex-M Embedded Systems","description":"A practical overview of using ZenOS as a compact C++11 RTOS for STM32 and ARM Cortex-M embedded firmware.","author":{"@type":"Organization","name":"Raymon Research Team"},"publisher":{"@type":"Organization","name":"Raymon Research Team"},"mainEntityOfPage":"https://raymon-research-team.github.io/ZenOS-RTOS/stm32-rtos.html","about":["STM32","ARM Cortex-M","Real-time operating system","Embedded systems"]}
+  </script>
+  <style>
+    :root{--bg:#f7f9fc;--card:#fff;--ink:#172033;--muted:#5f6d82;--primary:#0067b8;--line:#dfe5ee}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.75}header{background:#fff;border-bottom:1px solid var(--line);padding:16px 22px}nav{max-width:1050px;margin:auto;display:flex;gap:22px;align-items:center}nav a{color:var(--primary);font-weight:700;text-decoration:none}nav a:first-child{margin-right:auto}main{max-width:1050px;margin:auto;padding:52px 22px}article{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:38px;box-shadow:0 8px 28px rgba(23,32,51,.06)}h1{font-size:clamp(2.2rem,5vw,3.7rem);line-height:1.1;margin-top:0;color:#01579b}h2{margin-top:38px;color:#01579b}p,li{color:var(--muted)}code{background:#eef3f8;padding:2px 5px;border-radius:4px}footer{max-width:1050px;margin:auto;padding:0 22px 40px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<header><nav><a href="./">ZenOS RTOS</a><a href="about.html">About</a><a href="guide.html">Documentation</a><a href="faq.html">FAQ</a><a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">GitHub</a></nav></header>
+<main><article>
+<h1>STM32 RTOS with ZenOS</h1>
+<p>ZenOS is a compact C++11 real-time operating system for ARM Cortex-M microcontrollers, including STM32-based embedded firmware. This page explains the parts of the kernel that matter when evaluating an RTOS for an STM32 application: scheduling, task resources, timing, inter-task communication, diagnostics and safety configuration.</p>
+
+<h2>Why use an RTOS on STM32?</h2>
+<p>An RTOS can separate firmware into independently scheduled tasks instead of placing every activity in one large main loop. This is useful when an STM32 application has several concurrent responsibilities such as communications, sensor acquisition, control, telemetry, user interfaces or background diagnostics. The RTOS does not remove the need for careful timing analysis; it provides the scheduling and synchronization primitives used to structure that analysis.</p>
+
+<h2>ZenOS scheduling on ARM Cortex-M</h2>
+<p>The current ZenOS scheduler maintains a 32-level ready bitmap and per-priority task queues. The highest eligible priority can therefore be selected without scanning an arbitrary list of all tasks. Periodic tasks also use the kernel's release mechanism. This design is aimed at small microcontrollers where scheduler overhead and predictable behavior matter.</p>
+
+<h2>Task resources and memory</h2>
+<p>ZenOS uses statically allocated task resources rather than a general-purpose heap for task stacks. The application creates the tasks it needs, while available RAM and the target configuration remain the practical resource limits. This makes memory use easier to account for in embedded firmware and avoids requiring a general-purpose dynamic allocator for ordinary task creation.</p>
+
+<h2>IPC and synchronization</h2>
+<p>STM32 firmware commonly has concurrent producers and consumers: an interrupt or DMA path may deliver data while a processing task consumes it, while another task handles communication or telemetry. ZenOS provides events, mutexes, queues and semaphores to coordinate these activities. The appropriate primitive depends on whether the application needs notification, mutual exclusion, buffered data transfer or counting/resource synchronization.</p>
+
+<h2>Timing and diagnostics</h2>
+<p>ZenOS provides kernel timing facilities and runtime diagnostics for embedded development. Monitoring can include CPU usage, stack usage, errors, deadlines, watchdog-related behavior and task integrity depending on the configured features and target. These facilities should be combined with hardware measurements and application-specific timing tests when validating an STM32 product.</p>
+
+<h2>Safety configuration</h2>
+<p>Safety-related mechanisms are configurable rather than a certification claim. Depending on the target and configuration, the project includes mechanisms such as watchdog support, MPU integration where supported, CRC checks, RAM tests and integrity monitoring. Developers remain responsible for system-level hazard analysis, verification, validation and any applicable regulatory or functional-safety requirements.</p>
+
+<h2>Getting started with STM32</h2>
+<ol>
+<li>Review the <a href="guide.html">ZenOS documentation guide</a> and the target configuration.</li>
+<li>Integrate the kernel with the STM32 project and its Cortex-M startup/interrupt environment.</li>
+<li>Create the application tasks with explicit priorities, stack sizes and timing requirements.</li>
+<li>Use the IPC primitives appropriate for the application's communication patterns.</li>
+<li>Measure CPU, stack, latency and deadline behavior on the target hardware.</li>
+</ol>
+
+<h2>Source and API documentation</h2>
+<p>The <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">ZenOS GitHub repository</a> contains the kernel implementation and configuration. The <a href="guide.html">complete guide</a>, <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/docs/API_TUTORIAL.md">API tutorial</a> and <a href="faq.html">FAQ</a> provide additional technical context.</p>
+</article></main>
+<footer>ZenOS RTOS · STM32 · ARM Cortex-M · C++11 · Embedded real-time operating system</footer>
+</body>
+</html>
