@@ -247,41 +247,6 @@
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
     
 
-/* Modern site theme */
-body.modern-theme { --primary:#52d8ff; --primary-light:#2188ff; --secondary:#9b6cff; --accent:#52d8ff; --warning:#ffb454; --bg:#07111f; --sidebar-bg:#0d1c2e; --sidebar-text:#9bb0c5; --sidebar-active:#52d8ff; --card-bg:#0d1c2e; --text:#eef8ff; --text-secondary:#9bb0c5; --border:rgba(151,190,220,.16); --code-bg:#07111f; --code-text:#7bdcff; background-color:var(--bg); background-image:none; color:var(--text); }
-body.modern-theme .sidebar { background:linear-gradient(180deg,#0d1c2e 0%,#07111f 100%); }
-body.modern-theme .sidebar-header { background:rgba(238,243,247,.96); border-color:#d7e0e8; }
-body.modern-theme .sidebar-header h3 { color:#334155; }
-body.modern-theme .sidebar-header p { color:#64748b; }
-body.modern-theme .note, body.modern-theme .warning, body.modern-theme .tip { color:#eef8ff; }
-body.modern-theme .note { background:rgba(82,216,255,.10); border-color:#52d8ff; }
-body.modern-theme .warning { background:rgba(255,180,84,.14); border-color:#ffb454; }
-body.modern-theme .tip { background:rgba(0,131,143,.16); border-color:#52d8ff; }
-body.modern-theme .note strong, body.modern-theme .warning strong, body.modern-theme .tip strong { color:#ffffff; }
-body.modern-theme .note code, body.modern-theme .warning code, body.modern-theme .tip code { background:rgba(7,17,31,.72); color:#7bdcff; }
-
-body.modern-theme .main-content { background:radial-gradient(circle at 85% 0%,rgba(33,136,255,.12),transparent 32%),radial-gradient(circle at 10% 25%,rgba(155,108,255,.08),transparent 30%),#07111f; }
-body.modern-theme .cover, body.modern-theme .card, body.modern-theme .donate-section { background:linear-gradient(145deg,rgba(16,36,58,.96),rgba(13,28,46,.96)); color:#eef8ff; border-color:rgba(151,190,220,.16); }
-body.modern-theme .cover h1, body.modern-theme .card h1, body.modern-theme .card h2, body.modern-theme .card h3 { color:#eef8ff; }
-body.modern-theme .cover p, body.modern-theme .card p, body.modern-theme li, body.modern-theme td { color:#c4d4e3; }
-body.modern-theme a { color:#52d8ff; }
-body.modern-theme table { background:#0d1c2e; color:#eef8ff; }
-body.modern-theme th { background:#10243a; color:#eef8ff; }
-body.modern-theme tr:nth-child(even) { background:rgba(255,255,255,.025); }
-body.modern-theme pre { background:#07111f !important; border-color:rgba(151,190,220,.16); }
-body.modern-theme code:not(pre code) { background:rgba(82,216,255,.08); color:#7bdcff; }
-body.modern-theme .lang-btn { background:#eef3f7; color:#334155; }
-body.modern-theme .lang-btn.active { background:#2188ff; color:#fff; }
-body.modern-theme .theme-btn { background:linear-gradient(135deg,#2188ff,#9b6cff); color:#fff; }
-.theme-btn { padding:8px 14px; border:0; border-radius:20px; cursor:pointer; font-size:.82em; font-weight:700; background:#24292e; color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.15); }
-.guide-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:20px; }
-.guide-actions a { display:inline-flex !important; align-items:center; justify-content:center; padding:10px 20px !important; border-radius:8px; text-decoration:none; font-weight:700; }
-.guide-actions .github-btn { background:#24292e; color:#fff !important; }
-.guide-actions .home-btn { background:linear-gradient(135deg,#2188ff,#9b6cff); color:#fff !important; }
-body.modern-theme .guide-actions .github-btn { background:#182331; border:1px solid rgba(151,190,220,.16); }
-@media (max-width:900px) { .theme-btn { padding:8px 11px; } .guide-actions a { width:auto; } }
-
-body.modern-theme .warning{background:rgba(255,180,84,.10)!important;border-color:#ffb454!important;color:#eef8ff!important;box-shadow:inset 0 0 0 1px rgba(255,180,84,.05)}body.modern-theme .warning span,body.modern-theme .warning strong{color:#eef8ff!important}body.modern-theme .warning code{background:rgba(255,180,84,.14)!important;color:#ffd38a!important;border:1px solid rgba(255,180,84,.16)}\n        /* ZenOS modern loading screen theme */\n        #zenos-loading-theme,\n        #loading,\n        .loading,\n        .loading-screen,\n        .loading-overlay,\n        .loader-overlay {\n            background: rgba(7,17,31,.96) !important;\n            color: #eef8ff !important;\n            border-color: rgba(82,216,255,.22) !important;\n            box-shadow: 0 24px 70px rgba(0,0,0,.38), 0 0 36px rgba(82,216,255,.08) !important;\n        }\n        #zenos-loading-theme,\n        #loading *,\n        .loading *,\n        .loading-screen *,\n        .loading-overlay *,\n        .loader-overlay * {\n            color: #eef8ff !important;\n        }\n        #zenos-loading-theme strong,\n        #loading strong,\n        .loading strong,\n        .loading-screen strong,\n        .loading-overlay strong,\n        .loader-overlay strong {\n            color: #52d8ff !important;\n        }\n
     </style>
 </head><body>
 
@@ -303,7 +268,6 @@ body.modern-theme .warning{background:rgba(255,180,84,.10)!important;border-colo
 <div class="lang-toggle">
     <button class="lang-btn active" id="btn-en" onclick="setLang('en')">🇬🇧 EN</button>
     <button class="lang-btn" id="btn-fa" onclick="setLang('fa')">🇮🇷 فارسی</button>
-    <button class="theme-btn" id="theme-toggle" type="button" onclick="toggleTheme()">🌙 Modern</button>
 </div>
 
 <!-- SIDEBAR -->
@@ -1588,24 +1552,6 @@ window.addEventListener('scroll', () => {
     sections.forEach(section => { if (pageYOffset >= section.offsetTop - 100) current = section.getAttribute('id'); });
     navLinks.forEach(link => { link.classList.remove('active'); if (link.getAttribute('href') === '#' + current) link.classList.add('active'); });
 });
-</script>
-
-
-<script>
-(function(){
-    var saved = localStorage.getItem('zenos-guide-theme');
-    if (saved === 'modern') document.body.classList.add('modern-theme');
-    function updateThemeButton(){
-        var b=document.getElementById('theme-toggle');
-        if(b) b.textContent=document.body.classList.contains('modern-theme')?'☀️ Classic':'🌙 Modern';
-    }
-    window.toggleTheme=function(){
-        document.body.classList.toggle('modern-theme');
-        localStorage.setItem('zenos-guide-theme', document.body.classList.contains('modern-theme')?'modern':'classic');
-        updateThemeButton();
-    };
-    document.addEventListener('DOMContentLoaded', updateThemeButton);
-})();
 </script>
 
 \n<script>\n/* ZenOS loading message contrast fallback */\n(function () {\n  function themeLoadingMessage() {\n    document.querySelectorAll('*').forEach(function (el) {\n      if (el.children.length === 0 && el.textContent && el.textContent.indexOf('Loading ZenOS Guide') !== -1) {\n        el.style.setProperty('color', '#eef8ff', 'important');\n        el.style.setProperty('font-weight', '700', 'important');\n        el.style.setProperty('text-shadow', '0 1px 14px rgba(82,216,255,.16)', 'important');\n        var box = el.parentElement;\n        for (var i = 0; i < 4 && box; i++, box = box.parentElement) {\n          var pos = getComputedStyle(box).position;\n          if (pos === 'fixed' || pos === 'absolute') {\n            box.style.setProperty('background', 'rgba(7,17,31,.96)', 'important');\n            box.style.setProperty('color', '#eef8ff', 'important');\n            box.style.setProperty('border-color', 'rgba(82,216,255,.22)', 'important');\n            box.style.setProperty('box-shadow', '0 24px 70px rgba(0,0,0,.38), 0 0 36px rgba(82,216,255,.08)', 'important');\n            break;\n          }\n        }\n      }\n    });\n  }\n  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', themeLoadingMessage);\n  else themeLoadingMessage();\n  setTimeout(themeLoadingMessage, 100);\n})();\n</script>\n</body>
