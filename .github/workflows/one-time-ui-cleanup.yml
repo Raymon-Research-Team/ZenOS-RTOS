@@ -1,0 +1,48 @@
+name: One-time UI cleanup
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-ui-cleanup.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clean navigation
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          for name in ['about.html','faq.html','stm32-rtos.html','index.html','stm32-rtos.html']:
+              p=Path('docs')/name
+              s=p.read_text(encoding='utf-8')
+              m=re.search(r'(<nav[^>]*>)(.*?)(</nav>)',s,re.S)
+              if not m:
+                  continue
+              nav=m.group(2)
+              nav=re.sub(r'<a class="site-home-link" href="index\.html">Home</a>','',nav)
+              brand_end=nav.find('</a>')
+              if brand_end >= 0:
+                  brand_end += 4
+                  nav=nav[:brand_end]+'<a class="site-home-link" href="index.html">Home</a>'+nav[brand_end:]
+              s=s[:m.start(2)]+nav+s[m.end(2):]
+              s=s.replace('nav a.hide,nav a.site-home-link{display:none}','nav a.hide{display:none}')
+              p.write_text(s,encoding='utf-8')
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/*.html
+          if git diff --cached --quiet; then echo 'No cleanup needed.'; else git commit -m 'Clean up site navigation links'; git push; fi
+      - name: Remove workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/one-time-ui-cleanup.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/one-time-ui-cleanup.yml
+          if git diff --cached --quiet; then echo 'Workflow already absent.'; else git commit -m 'Remove one-time UI cleanup workflow'; git push; fi
