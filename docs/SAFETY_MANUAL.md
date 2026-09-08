@@ -417,7 +417,7 @@ CFLAGS += -DOS_TARGET_MEDICAL=3 -DOS_TARGET_INDUSTRIAL=3
 #### 6.5.6 Important Notes
 
 - **This is not certification.** The macros enforce *configuration completeness*, not compliance. The integrator must still perform the full safety lifecycle (risk analysis, V&V, documentation) per the applicable standard.
-- **Default values already satisfy all levels.** Since ZenOS safety features are configurable; the active set is controlled by `ZenOS_Config.hpp`., the macros will only trigger `#error` if you *disable* a feature that the standard requires.
+- **Target macros are configuration checks, not certification.** When a medical or industrial target is selected, required safety options are enforced at compile time according to the configured target class or SIL.
 - **The macros validate only configuration.** They do not verify runtime behavior, task timing analysis, or stack sizing — these must be validated separately.
 - **IEC 62304 §5.5** requires that safety-related software changes be subject to configuration management. Changing these macros constitutes a configuration change that must be documented.
 
