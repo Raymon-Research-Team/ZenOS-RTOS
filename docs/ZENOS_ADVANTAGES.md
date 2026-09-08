@@ -159,14 +159,14 @@ void task_handler(void) {
 | NULL pointer dereference | Possible after exhaustion | Impossible |
 | ISR calling malloc | Undefined behavior | N/A — no malloc exists |
 | Stack overflow detection | Optional (watermark) | Built-in (canary + SP bounds) |
-| Deterministic timing | No — malloc can block | Yes — always O(1) |
+| Dynamic allocation | Can introduce blocking/fragmentation | No heap allocation in the kernel task model |
 | Worst-case memory usage | Unknown at compile time | Known exactly at compile time |
 
-**IEC 62304/61508 compliance**: Both standards require *deterministic* resource usage. Heap allocation makes this nearly impossible to prove. ZenOS eliminates the problem entirely.
+**IEC 62304/61508 target support**: Both standards require *deterministic* resource usage. Heap allocation makes this nearly impossible to prove. ZenOS eliminates the problem entirely.
 
 ---
 
-## 4. O(1) Scheduler with Hardware-Assisted Context Switch
+## 4. Priority-Bitmap Scheduler with Hardware-Assisted Context Switch
 
 ### FreeRTOS Scheduler
 
@@ -184,17 +184,13 @@ Zephyr uses a bitmap + linked list. The bitmap gives O(1) priority selection, bu
 
 ### ZenOS Scheduler
 
-ZenOS uses a **bitmap + array-based ready queue**:
+ZenOS uses a **32-level priority bitmap plus per-priority task queues**. The bitmap narrows selection to the highest active priority, while the queue is checked for a task whose periodic release time has arrived.
 
-```
-O(1) — always. No exceptions.
-```
+1. **Priority bitmap**: one bit per priority level. `__builtin_clz()` identifies the highest active level quickly.
+2. **Per-priority queue**: tasks are grouped by priority; periodic eligibility is checked inside the selected levels.
+3. **Hardware context switch**: PendSV + PSP handles the context-switch path on ARM Cortex-M.
 
-1. **Bitmap**: 32-bit word, one bit per priority level. `__builtin_clz()` (count leading zeros) finds the highest priority in 1 cycle.
-2. **Ready array**: Fixed-size array indexed by priority. No linked-list traversal.
-3. **Hardware context switch**: PendSV + PSP — the ARM Cortex-M does the heavy lifting in hardware.
-
-**Result**: Context switch time is constant regardless of the number of tasks. On STM32F103 at 72MHz: **~1.2μs** for any number of tasks.
+**Result**: priority lookup is constant over the 32 priority levels, while periodic eligibility may require scanning tasks in an active priority queue. The scheduler does not use a fixed maximum task-count macro.
 
 ---
 
@@ -230,9 +226,9 @@ To get safety features in FreeRTOS, you need:
 | Error log | Not available | **Circular buffer** with timestamp + task ID |
 | CPU usage monitoring | Not available | **Per-task CPU usage** |
 | Stack watermark | `uxTaskGetStackHighWaterMark()` | **Built-in** with percentage reporting |
-| Compile-time safety enforcement | Not available | **IEC 62304/61508 enforcement macros** |
+| Compile-time safety checks | Not available | **IEC 62304/61508 target-profile checks** |
 
-### IEC 62304/61508 Compliance
+### IEC 62304/61508 Target Profiles
 
 ZenOS provides **compile-time enforcement** of safety requirements:
 
@@ -244,11 +240,11 @@ ZenOS provides **compile-time enforcement** of safety requirements:
 // [IEC 62304 Class C] OS_SAFETY_HW_WATCHDOG must be enabled — HW watchdog is required for fault tolerance
 ```
 
-This is something **no other open-source RTOS offers**. FreeRTOS, Zephyr, and RT-Thread have no compile-time safety enforcement whatsoever.
+ZenOS includes compile-time target-profile checks for its own safety configuration. These checks should be treated as configuration guards, not as proof of standards compliance or certification.
 
 ---
 
-## 6. Periodic Tasks — The Right Abstraction
+## 6. Periodic Tasks — The Task Release Model
 
 ### The Problem with Software Timers
 
@@ -273,7 +269,7 @@ void task_sensor(void) {
     while (1) {
         uint16_t val = ADC_Read();
         sensor_queue.put(val, 100);
-        os_delay_ms(10);  // precise 10ms period
+        os_yield();          // release CPU; 10ms period is enforced by the scheduler
     }
 }
 os_task_create(task_sensor, 3, 10);  // priority 3, 10ms period
@@ -423,11 +419,11 @@ ZenOS SMP is:
 | Feature | FreeRTOS | Zephyr | RT-Thread | **ZenOS** |
 |---------|----------|--------|-----------|-----------|
 | Tick resolution (default) | 1 ms | 10 ms | 10 ms | **100 μs** |
-| Scheduler complexity | O(n) | O(1) bitmap + O(n) list | O(n) | **O(1) always** |
+| Scheduler complexity | O(n) | O(1) bitmap + O(n) list | O(n) | **Priority bitmap + eligibility scan** |
 | Heap allocation | Available | Available | Available | **Never** |
 | C++ templates | No | No | Partial | **Yes (full)** |
 | RAII guards | No | No | No | **Yes** |
-| Periodic tasks | No (use timers) | No (use timers) | No | **Yes (first-class)** |
+| Periodic tasks | No (use timers) | No (use timers) | No | **Yes (task release gate)** |
 | Stack canary | Optional | Optional | Optional | **Built-in** |
 | MPU per-task | Optional package | Optional | Optional | **Built-in** |
 | HW watchdog | Manual | Manual | Manual | **Integrated** |
@@ -436,8 +432,8 @@ ZenOS SMP is:
 | CRC ROM check | No | No | No | **Built-in** |
 | Deadline monitoring | No | No | No | **Built-in** |
 | Error log | No | No | No | **Built-in** |
-| IEC 62304 enforcement | No | No | No | **Compile-time** |
-| IEC 61508 enforcement | No | No | No | **Compile-time** |
+| IEC 62304 target checks | No | No | No | **Compile-time** |
+| IEC 61508 target checks | No | No | No | **Compile-time** |
 | IPC ceiling | No (PI only) | No | No | **IPCP built-in** |
 | Tickless idle | Complex | Complex | Complex | **One-line enable** |
 | Dual-core SMP | Yes (complex) | Experimental | Commercial | **Simple + free** |

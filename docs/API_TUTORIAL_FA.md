@@ -236,7 +236,7 @@ int main(void) {
 
 برای دیدن پیام‌های ZenOS، UART را در CubeMX پیکربندی کنید:
 
-1. **USART1** را فعال کنید (PA9=TX, PA10=RX)
+1. **USART1** را فعال کنید (PA9=TX، PA10=RX)
 2. نرخ بیت: `115200`
 3. این تابع کمکی را در `main.cpp` اضافه کنید:
 
@@ -577,12 +577,12 @@ uint8_t prio = os_get_task_priority(task_function);
 </div>
 
 ```cpp
-// تسک هر 100 میلی‌ثانیه به‌صورت خودکار اجرا می‌شود
+// تسک دوره‌ای — در نسخه فعلی، period_ms هنوز شرط اجرای اجباری ایجاد نمی‌کند
 void task_sensor(void) {
     while (1) {
         uint16_t adc_val = read_adc();
         // ... پردازش داده ...
-        os_delay_ms(10); // واگذاری — اجرای بعدی در مرز دوره بعدی برنامه‌ریزی می‌شود
+        os_yield(); // واگذاری CPU به زمان‌بند
     }
 }
 
@@ -1185,186 +1185,76 @@ void task_process(void) {
 
 <div dir="rtl">
 
-## ۹. تسک‌های دوره‌ای — روش ZenOS (بدون تایمر نرم‌افزاری)
+## ۹. تسک‌های دوره‌ای — روش ZenOS
 
-### ۹.۱ چرا تایمر نرم‌افزاری وجود ندارد؟
+### ۹.۱ تایمر نرم‌افزاری در برابر تسک دوره‌ای
 
-ZenOS یک API تایمر نرم‌افزاری ارائه **نمی‌دهد**. در عوض، از **تسک‌های دوره‌ای** استفاده می‌کند — رویکردی برتر که مزایای زیر را ارائه می‌دهد:
+ZenOS یک API جداگانه برای تایمر نرم‌افزاری ارائه نمی‌کند. در API ساخت تسک، آرگومان اختیاری `period_ms` وجود دارد و هسته مقدار متناظر آن را در فیلدهای `period_ticks` و `next_run_time` در TCB نگهداری می‌کند.
 
-| ویژگی | تسک دوره‌ای | تایمر نرم‌افزاری |
-|--------|------------|-----------------|
-| **حافظه** | پشته اختصاصی (مستقل) | پشته callback مشترک |
-| **زمینه** | زمینه کامل تسک | زمینه callback (محدود) |
-| ** بلاک** | ✅ می‌تواند روی IPC، قفل بلاک کند | ❌ باید سریع برگردد |
-| **ایمنی** | ✅ سرریز پشته برای هر تسک ردیابی می‌شود | ❌ پشته مشترک — سرریز سخت‌تر ردیابی می‌شود |
-| **اولویت** | ✅ مستقل برای هر تسک | ❌ معمولاً با اولویت تسک تایمر اجرا می‌شود |
-| **محافظت MPU** | ✅ هر تسک منطقه MPU خود را دارد | ❌ callbackها یک منطقه را به اشتراک می‌گذارند |
-| **ایزوله خطا** | ✅ خرابی یک تسک دیگران را تحت تأثیر قرار نمی‌دهد | ❌ خرابی callback تایمر می‌تواند سیستم را خراب کند |
-| **لغو** | ✅ `os_task_stop()` | ❌ باید callback را ردیابی و لغو کرد |
+**نکته مهم درباره نسخه فعلی هسته:** در مسیر PendSV این فیلدها به‌روزرسانی می‌شوند، اما تابع `os_pq_next()` هنوز از `next_run_time` برای فیلترکردن صف آماده استفاده نمی‌کند. بنابراین، در وضعیت فعلی نباید `period_ms` را به‌عنوان تضمین اجرای خودکار با نرخ ثابت مستند کرد.
 
-### ۹.۲ ایجاد تسک دوره‌ای
-
-</div>
+وقتی هدف مثال، نشان‌دادن نقطه زمان‌بندی است، از `os_yield()` استفاده کنید:
 
 ```cpp
-// روش 1: ایجاد با دوره (برنامه‌ریزی خودکار)
 void task_read_sensor(void) {
     while (1) {
         uint16_t val = read_adc();
         send_to_queue(val);
-        os_delay_ms(10);  // واگذاری — اجرای بعدی در مرز دوره بعدی
+
+        // به یک تسک آماده دیگر فرصت اجرا می‌دهد.
+        os_yield();
     }
 }
 
-os_task_create(task_read_sensor, 3, 100);  // هر 100 میلی‌ثانیه
-
-// روش 2: دوره‌ای دستی (کنترل بیشتر)
-void task_control_loop(void) {
-    while (1) {
-        uint32_t t0 = os_get_ms();
-        
-        read_sensors();
-        compute_output();
-        apply_actuator();
-        
-        // دوره دقیق 10ms با جبران کشش
-        uint32_t elapsed = os_get_ms() - t0;
-        if (elapsed < 10) {
-            os_delay_ms(10 - elapsed);
-        }
-    }
-}
-
-os_task_create(task_control_loop, 10);  // غیردوره‌ای — خودمان زمان‌بندی را مدیریت می‌کنیم
-```
-
-<div dir="rtl">
-
-### ۹.۳ مقایسه رویکردها
-
-**❌ رویکرد تایمر نرم‌افزاری (در ZenOS موجود نیست):**
-
-</div>
-
-```cpp
-// فرضی — این در ZenOS وجود ندارد
-void timer_callback(void* arg) {
-    uint16_t val = read_adc();  // باید سریع برگردد!
-    send_to_queue(val);         // نمی‌تواند روی قفل بلاک کند!
-}
-timer_create(100, timer_callback);  // یک callback برای همه استفاده‌ها
-```
-
-<div dir="rtl">
-
-**✅ رویکرد تسک دوره‌ای ZenOS:**
-
-</div>
-
-```cpp
-// هر تسک پشته، اولویت و ایزوله خطای خود را دارد
-void task_read_sensor(void) {
-    while (1) {
-        OS_LOCK(spi_mtx) {                    // می‌تواند از قفل استفاده کند!
-            uint16_t val = SPI_Read();         // می‌تواند آزادانه از HAL استفاده کند
-            sensor_queue.put(val);
-        }
-        os_delay_ms(10);
-    }
-}
 os_task_create(task_read_sensor, 3, 100);
 ```
 
-<div dir="rtl">
+در این مثال، `os_yield()` یعنی **واگذاری CPU**، نه «خوابیدن به مدت ۱۰۰ میلی‌ثانیه». مقدار `100` به‌عنوان دوره در TCB ذخیره می‌شود، اما اجرای واقعاً دوره‌ای و ثابت، به تکمیل شرط دوره در زمان‌بند هسته نیاز دارد.
 
-### ۹.۴ دقت زمانی
+### ۹.۲ تفاوت `os_yield()` و تأخیر
 
-برای اجرای دوره‌ای دقیق، زمان اجرا را جبران کنید:
-
-</div>
+هر primitive را مطابق معنای واقعی خودش استفاده کنید:
 
 ```cpp
-void task_pid_controller(void) {
-    while (1) {
-        uint32_t t0 = os_get_us();
-        
-        // === کار کنترل ===
-        float error = setpoint - read_encoder();
-        integral += error * dt;
-        float output = Kp * error + Ki * integral + Kd * (error - prev_error);
-        set_actuator(output);
-        prev_error = error;
-        // ===================
-        
-        // جبران زمان اجرا
-        uint32_t elapsed_us = os_get_us() - t0;
-        uint32_t period_us = 1000;  // دوره 1ms
-        if (elapsed_us < period_us) {
-            os_delay_us(period_us - elapsed_us);  // دقت زیر-تیک
-        }
-        // اگر elapsed_us >= period_us باشد، دیر شده — فوراً تکرار بعدی اجرا شود
-    }
-}
-
-os_task_create(task_pid_controller, 20);  // اولویت بالا، غیردوره‌ای
+os_yield();        // زمان‌بندی مجدد، بدون خواباندن عمدی تسک.
+os_delay_ms(100);  // مسدودکردن تسک فعلی برای حدود ۱۰۰ میلی‌ثانیه.
+os_delay_us(10);   // انتظار مشغول برای مدت کوتاه؛ CPU واگذار نمی‌شود.
 ```
 
-<div dir="rtl">
+برای شبیه‌سازی یک تسک دوره‌ای، از `os_delay_ms(1..10)` به‌عنوان جایگزین مصنوعی زمان‌بندی دوره‌ای استفاده نکنید. چنین الگویی مفهوم مثال را مبهم می‌کند و رفتار تسک را به یک مقدار تأخیر نامرتبط وابسته می‌سازد.
 
-### ۹.۵ الگوهای ارتباط بین تسک‌ها
+### ۹.۳ داده‌هایی که هسته فعلی برای دوره نگهداری می‌کند
 
-**تولیدکننده-مصرف‌کننده با صف:**
+ساختار TCB شامل این موارد است:
 
-</div>
+- `period_ticks` — دوره تنظیم‌شده، تبدیل‌شده به تیک هسته.
+- `next_run_time` — زمان اجرای بعدی که در مسیر PendSV ثبت می‌شود.
+- `last_yield_tick` — برای پایش و منطق watchdog استفاده می‌شود.
+
+بنابراین، پیاده‌سازی فعلی زیرساخت ثبت زمان دوره‌ای را دارد، اما انتخاب صف آماده هنوز باید `next_run_time` را اعمال کند. تا قبل از آن، نباید این قابلیت را به‌عنوان «تسک دوره‌ای کاملاً خودکار» معرفی کرد.
+
+### ۹.۴ الگوی مورد نظر پس از تکمیل شرط دوره در زمان‌بند
+
+پس از تکمیل شرط دوره در scheduler، الگوی پیشنهادی برای مثال‌ها این است:
 
 ```cpp
-OS_QUEUE<SensorData, 16> data_queue;
-
 void task_sensor(void) {
     while (1) {
-        SensorData s = read_all_sensors();
-        data_queue.put(s);  // اگر صف پر باشد بلاک می‌کند (فشار معکوس)
-        os_delay_ms(50);
+        uint16_t val = read_adc();
+        sensor_queue.put(val, 100);
+
+        // تسک دوره‌ای: واگذاری CPU، نه شبیه‌سازی دوره با os_delay_ms().
+        os_yield();
     }
 }
 
-void task_logger(void) {
-    while (1) {
-        SensorData s;
-        if (data_queue.get(s, 1000)) {
-            log_to_flash(s);
-        }
-    }
-}
+os_task_create(task_sensor, 3, 100);
 ```
 
-<div dir="rtl">
+این قرارداد در تمام مستندات ZenOS یکسان خواهد بود:
 
-**ISR → تسک با سیگنال:**
+**تسک دوره‌ای → `os_yield()`، خواب یا تأخیر واقعی → `os_delay_ms()`**
 
-</div>
-
-```cpp
-OS_SEMAPHORE data_sem(0);
-
-void EXTI1_IRQHandler(void) {
-    data_sem.signal_from_isr();
-}
-
-void task_handle_event(void) {
-    while (1) {
-        if (data_sem.wait(5000)) {
-            handle_exti_event();
-        } else {
-            log_timeout();
-        }
-    }
-}
-```
-
----
-
-<div dir="rtl">
 
 ## ۱۰. مدیریت خطا و پایش
 
@@ -1718,7 +1608,7 @@ void task_state_machine(void) {
                 os_delay_ms(1000);
                 break;
         }
-        os_delay_ms(10);  // همیشه واگذاری کنید
+        os_yield();        // همیشه CPU را واگذار کنید
     }
 }
 ```
@@ -1783,7 +1673,7 @@ void task_acquire(void) {
     while (1) {
         RawData raw = read_sensor();
         raw_queue.put(raw);
-        os_delay_ms(10);
+        os_yield();
     }
 }
 
@@ -1872,7 +1762,7 @@ void task_shutdown_handler(void) {
 | `_OsLockGuard` | `OS_LOCK(mtx) { ... }` | محافظ قفل mutex |
 | `OS_EVENT` | — | سیگنال‌دهی event بین تسک‌ها |
 | `OS_MUTEX` | — | قفل با ارث‌بری اولویت |
-| `OS_QUEUE<T,N>` | — | صف FIFO محدود |
+| `OS_QUEUE<T،N>` | — | صف FIFO محدود |
 | `OS_SEMAPHORE` | — | سیگنال شمارشی |
 
 </div>

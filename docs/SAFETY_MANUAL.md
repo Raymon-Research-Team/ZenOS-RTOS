@@ -42,7 +42,7 @@ ZenOS is a preemptive, priority-based real-time operating system for ARM Cortex-
 
 ### 2.2 Architecture Summary
 
-- **Scheduler:** O(1) preemptive priority-based with hardware-assisted context switch (PendSV + PSP)
+- **Scheduler:** priority-bitmap based with periodic eligibility checks and hardware-assisted context switch (PendSV + PSP)
 - **Tasks:** Static allocation, template-based creation, priority 0–255
 - **IPC:** Events, recursive mutexes with Immediate Priority Ceiling (IPC), counting semaphores, bounded FIFO queues
 - **Tickless Idle:** WFI-based sleep for power savings (optional)
@@ -189,7 +189,7 @@ Tasks run unprivileged (`CONTROL.nPRIV = 1`). The kernel, idle task, and ISRs ru
 
 - **All tasks must be created before `os_start()` is called.** Tasks cannot be created dynamically after the scheduler starts. Calling `_os_task_create_internal()` after `os_start()` will return -1.
 - Tasks are statically allocated (template-based). Each task's TCB and stack are allocated at compile time.
-- Task priorities must be unique for tasks that need preemption ordering. Equal-priority tasks are not round-robin scheduled (the scheduler is priority-based, not time-sliced).
+- Higher numeric priorities preempt lower ones. Equal-priority ready tasks are rotated by the scheduler; cooperative `os_yield()` is still recommended for explicit hand-off points.
 
 ### 4.2 Stack Sizing
 
@@ -239,7 +239,7 @@ Tasks run unprivileged (`CONTROL.nPRIV = 1`). The kernel, idle task, and ISRs ru
 | Limitation | Impact | Mitigation |
 |---|---|---|
 | No dynamic task creation after `os_start()` | Cannot spawn tasks at runtime | Pre-create all tasks with `os_task_create_st()` and start/stop as needed |
-| No round-robin scheduling | Equal-priority tasks must yield manually | Use `os_yield()` in cooperative tasks at the same priority |
+| Bounded round-robin behavior | Equal-priority ready tasks are rotated by the scheduler | Use `os_yield()` when an explicit hand-off point is desired |
 | No mutex priority inheritance across IPC boundaries | A chain of mutex acquisitions does not propagate the ceiling transitively | Keep critical sections short; avoid holding multiple mutexes |
 | Single-core only (except STM32H7) | No true parallelism on single-core MCUs | Leverage ISRs for high-priority concurrent work |
 | No dynamic memory allocation | Cannot resize queues, stacks, or task lists at runtime | Over-provision at compile time; use the stack report to calibrate |
@@ -326,11 +326,11 @@ Set these macros via compiler `-D` flags. **Do not define them in `ZenOS_Config.
 ```bash
 # IEC 62304 — Medical device software lifecycle
 # Values: 0 (disabled), 1 (Class A), 2 (Class B), 3 (Class C)
--DMEDICAL=2
+-DOS_TARGET_MEDICAL=2
 
 # IEC 61508 — Industrial functional safety
 # Values: 0 (disabled), 1 (SIL 1), 2 (SIL 2), 3 (SIL 3), 4 (SIL 4)
--DINDUSTRIAL=3
+-DOS_TARGET_INDUSTRIAL=3
 ```
 
 Both macros can be combined — the **stricter** requirement applies.
@@ -389,21 +389,21 @@ The tables below show which configuration options **must** be enabled for each s
 
 **Medical Class C (life-critical device):**
 ```makefile
-CFLAGS += -DMEDICAL=3
+CFLAGS += -DOS_TARGET_MEDICAL=3
 # All safety features must be enabled (default).
 # If any is disabled, the build will fail.
 ```
 
 **Industrial SIL 2 (process control):**
 ```makefile
-CFLAGS += -DINDUSTRIAL=2
+CFLAGS += -DOS_TARGET_INDUSTRIAL=2
 # Requires: DEADLINE, MUTEX, HW_WATCHDOG, ERROR_LOG,
 #           SOFT_WATCHDOG, DEADLINE_ACTION ≥ 1
 ```
 
 **Medical Class C + Industrial SIL 3 combined:**
 ```makefile
-CFLAGS += -DMEDICAL=3 -DINDUSTRIAL=3
+CFLAGS += -DOS_TARGET_MEDICAL=3 -DOS_TARGET_INDUSTRIAL=3
 # The union of both requirements applies.
 # All safety features must be enabled.
 ```
@@ -411,7 +411,7 @@ CFLAGS += -DMEDICAL=3 -DINDUSTRIAL=3
 **Non-safety application (no enforcement):**
 ```makefile
 # Neither macro defined — all features optional.
-# CFLAGS += (no -DMEDICAL= or -DINDUSTRIAL= needed)
+# CFLAGS += (no -DOS_TARGET_MEDICAL= or -DOS_TARGET_INDUSTRIAL= needed)
 ```
 
 #### 6.5.6 Important Notes

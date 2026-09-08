@@ -64,45 +64,107 @@ static uint32_t os_rr_skip = 0;
 static uint32_t os_rr_skip_quota = 0;
 
 extern "C" TCB* os_pq_next(void) {
-    /* While a priority is skipped, count down the re-admission quota on
-       every pick of a lower-priority task. When it expires, re-admit the
-       skipped priority on the next call. */
+    /*
+       Select the highest-priority task that is actually eligible to run.
+       A periodic task remains in its priority queue, but its next_run_time
+       acts as a release gate.  This keeps the existing queue/bitmap model
+       while making period_ms functional without introducing a fixed task
+       count or a second task table.
+
+       The search is bounded by the 32 priority levels and the tasks linked
+       inside those levels.  The queue head is normalized to the selected
+       eligible task so os_pq_rotate() can preserve round-robin behaviour.
+    */
     if (os_rr_skip != 0 && os_rr_skip_quota > 0) {
         os_rr_skip_quota--;
         if (os_rr_skip_quota == 0) os_rr_skip = 0;
     }
+
     uint32_t effective = os_ready_bitmap & ~os_rr_skip;
     if (effective == 0) {
-        /* All priorities were skipped — reset skip mask and try again */
         os_rr_skip = 0;
         effective = os_ready_bitmap;
     }
     if (effective == 0) return nullptr;
-    uint8_t p = (uint8_t)(31UL - (uint32_t)__builtin_clz(effective));
-    TCB* head = os_pq_head[p];
-    if (!head) { os_pq_clear_bit(p); return nullptr; }
-    return head;
+
+    const uint32_t now = tick_count;
+
+    /* Highest priority first.  A periodic task is eligible when its release
+       time has arrived; aperiodic tasks (period_ticks == 0) are always ready. */
+    for (int p = 31; p >= 0; --p) {
+        if ((effective & (1UL << p)) == 0) continue;
+
+        TCB* head = os_pq_head[p];
+        if (!head) {
+            os_pq_clear_bit((uint8_t)p);
+            continue;
+        }
+
+        TCB* prev = nullptr;
+        TCB* selected = nullptr;
+        for (TCB* t = head; t; t = t->queue_next) {
+            bool eligible = (t->period_ticks == 0) ||
+                            ((int32_t)(now - t->next_run_time) >= 0);
+            if (eligible) {
+                selected = t;
+                break;
+            }
+            prev = t;
+        }
+
+        if (!selected) continue;
+
+        /* Put the selected task at the head so the existing rotation logic
+           rotates the same priority queue around the task we just ran. */
+        if (selected != head) {
+            prev->queue_next = selected->queue_next;
+            selected->queue_next = head;
+            os_pq_head[p] = selected;
+        }
+        return selected;
+    }
+
+    /* All ready tasks are waiting for their next periodic release. */
+    return nullptr;
 }
 
 extern "C" void os_pq_rotate(void) {
     if (os_ready_bitmap == 0) return;
+
     uint32_t effective = os_ready_bitmap & ~os_rr_skip;
     if (effective == 0) effective = os_ready_bitmap;
     if (effective == 0) return;
-    uint8_t p = (uint8_t)(31UL - (uint32_t)__builtin_clz(effective));
+
+    const uint32_t now = tick_count;
+    uint8_t p = 0xFF;
+
+    /* Rotate the same highest-priority level that is eligible to run. */
+    for (int prio = 31; prio >= 0; --prio) {
+        if ((effective & (1UL << prio)) == 0) continue;
+        for (TCB* t = os_pq_head[prio]; t; t = t->queue_next) {
+            if (t->period_ticks == 0 ||
+                ((int32_t)(now - t->next_run_time) >= 0)) {
+                p = (uint8_t)prio;
+                break;
+            }
+        }
+        if (p != 0xFF) break;
+    }
+
+    if (p == 0xFF) return;
+
     TCB* head = os_pq_head[p];
     if (!head) return;
     if (!head->queue_next) {
         /* Single task at this priority — give every ready priority level
-           one run, then re-admit this level. The quota is derived from
-           the ready bitmap automatically (no configuration needed), so a
-           persistently-ready lower priority can never starve it forever. */
+           one run, then re-admit this level. */
         os_rr_skip |= (1UL << p);
         os_rr_skip_quota = (uint32_t)__builtin_popcount(os_ready_bitmap);
         if (os_rr_skip_quota == 0) os_rr_skip_quota = 1;
         return;
     }
-    /* Move head to tail */
+
+    /* Move head to tail. */
     os_pq_head[p] = head->queue_next;
     TCB* tail = os_pq_head[p];
     while (tail->queue_next) tail = tail->queue_next;

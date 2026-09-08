@@ -498,18 +498,18 @@ uint8_t prio = os_get_task_priority(task_function);
 **Priority rules:**
 1. Higher number = higher priority (255 is highest)
 2. The scheduler always runs the highest-priority ready task
-3. Equal-priority tasks are not round-robin scheduled — they must yield manually
+3. Equal-priority tasks are rotated by the scheduler; tasks should still yield or block so other ready work can run
 4. A task's priority can be temporarily boosted by IPC ceiling when holding a mutex
 
 ### 2.4 Periodic Tasks
 
 ```cpp
-// Task runs every 100ms automatically
+// Periodic task with a 100ms release interval
 void task_sensor(void) {
     while (1) {
         uint16_t adc_val = read_adc();
         // ... process data ...
-        os_delay_ms(10); // Yield — next run scheduled at next period
+        os_yield(); // Yield to the scheduler
     }
 }
 
@@ -517,7 +517,7 @@ void task_sensor(void) {
 os_task_create(task_sensor, 3, 100);
 ```
 
-> **💡 Tip:** For periodic tasks, use `os_delay_ms()` at the end of each iteration. The scheduler will automatically wake the task at the next period boundary. See [Section 9](#9-periodic-tasks--the-zenos-way) for a deep dive.
+> **💡 Tip:** For a periodic task, use `os_yield()` at the end of each iteration. The scheduler uses the configured period as the task release gate. Use `os_delay_ms()` only when the task really needs to sleep for a specified duration. See [Section 9](#9-periodic-tasks--the-zenos-way) for details.
 
 ### 2.5 Stack Sizing Guide
 
@@ -1074,158 +1074,71 @@ void task_process(void) {
 
 ## 9. Periodic Tasks — The ZenOS Way
 
-### 9.1 Why No Software Timers?
+### 9.1 Software timers vs. periodic tasks
 
-ZenOS does **not** provide a software timer API. Instead, it uses **periodic tasks** — a superior approach that offers:
+ZenOS does not expose a separate software-timer API. The public task-creation API accepts an optional `period_ms` value, and the TCB stores the corresponding `period_ticks` and `next_run_time` fields.
 
-| Feature | Periodic Task | Software Timer |
-|---------|--------------|----------------|
-| **Memory** | Own stack (dedicated) | Shared callback stack |
-| **Context** | Full task context | Callback context (limited) |
-| **Blocking** | ✅ Can block on IPC, mutexes | ❌ Must return quickly |
-| **Safety** | ✅ Stack overflow detected per task | ❌ Shared stack — overflow harder to detect |
-| **Priority** | ✅ Independent per task | ❌ Typically runs at timer task priority |
-| **MPU protection** | ✅ Each task gets its own MPU region | ❌ All callbacks share one region |
-| **Error isolation** | ✅ One task fault doesn't affect others | ❌ Timer callback fault can crash system |
-| **Cancellation** | ✅ `os_task_stop()` | ❌ Must track and cancel callback |
+**Implementation note:** `period_ms` is stored in the TCB as `period_ticks`. The scheduler checks `next_run_time` before selecting a periodic task, so the configured period acts as a release-time gate. The task should still call `os_yield()` after its work so the scheduler can select the next eligible task.
 
-### 9.2 Creating a Periodic Task
+When an example is intended to demonstrate a scheduling point rather than a blocking sleep, use `os_yield()`:
 
 ```cpp
-// Method 1: Create with period (automatic scheduling)
 void task_read_sensor(void) {
     while (1) {
         uint16_t val = read_adc();
         send_to_queue(val);
-        os_delay_ms(10);  // Yield — next run at period boundary
+
+        // Give another ready task a chance to run.
+        os_yield();
     }
 }
 
-os_task_create(task_read_sensor, 3, 100);  // Every 100ms
-
-// Method 2: Manual periodic (more control)
-void task_control_loop(void) {
-    while (1) {
-        uint32_t t0 = os_get_ms();
-        
-        read_sensors();
-        compute_output();
-        apply_actuator();
-        
-        // Precise 10ms period with drift compensation
-        uint32_t elapsed = os_get_ms() - t0;
-        if (elapsed < 10) {
-            os_delay_ms(10 - elapsed);
-        }
-    }
-}
-
-os_task_create(task_control_loop, 10);  // Aperiodic — we handle timing
-```
-
-### 9.3 Comparing Approaches
-
-**❌ Software Timer approach (not available in ZenOS):**
-```cpp
-// Hypothetical — this does NOT exist in ZenOS
-void timer_callback(void* arg) {
-    uint16_t val = read_adc();  // Must return quickly!
-    send_to_queue(val);         // Can't block on mutexes!
-}
-timer_create(100, timer_callback);  // One callback for all uses
-```
-
-**✅ ZenOS Periodic Task approach:**
-```cpp
-// Each task has its own stack, priority, and error isolation
-void task_read_sensor(void) {
-    while (1) {
-        OS_LOCK(spi_mtx) {                    // Can use mutexes!
-            uint16_t val = SPI_Read();         // Can use HAL freely
-            sensor_queue.put(val);  // Queue is internally thread-safe
-        }
-        os_delay_ms(10);
-    }
-}
 os_task_create(task_read_sensor, 3, 100);
 ```
 
-### 9.4 Timing Precision
+Here `os_yield()` means **yield**, not “sleep for 100 ms”. The configured `100` is the release interval; after the task yields, the scheduler keeps it ineligible until the next release time.
 
-For precise periodic execution, compensate for execution time:
+### 9.2 Blocking delay vs. yield
+
+Use the primitives for their actual semantics:
 
 ```cpp
-void task_pid_controller(void) {
-    while (1) {
-        uint32_t t0 = os_get_us();
-        
-        // === Control work ===
-        float error = setpoint - read_encoder();
-        integral += error * dt;
-        float output = Kp * error + Ki * integral + Kd * (error - prev_error);
-        set_actuator(output);
-        prev_error = error;
-        // ===================
-        
-        // Compensate for execution time
-        uint32_t elapsed_us = os_get_us() - t0;
-        uint32_t period_us = 1000;  // 1ms period
-        if (elapsed_us < period_us) {
-            os_delay_us(period_us - elapsed_us);  // Sub-tick precision
-        }
-        // If elapsed_us >= period_us, we're already late — run next iteration immediately
-    }
-}
-
-os_task_create(task_pid_controller, 20);  // High priority, aperiodic
+os_yield();        // Reschedule without intentionally sleeping.
+os_delay_ms(100);  // Block the current task for about 100 ms.
+os_delay_us(10);   // Busy-wait for a short interval; does not yield.
 ```
 
-### 9.5 Task Communication Patterns
+Do not use an arbitrary `os_delay_ms(1..10)` as a fake replacement for a periodic scheduler. That makes the example harder to understand and couples the task's behavior to an unrelated delay value.
 
-**Producer-Consumer with Queue:**
+### 9.3 What the kernel currently tracks
+
+The task control block contains:
+
+- `period_ticks` — the configured period converted to OS ticks.
+- `next_run_time` — the next scheduled tick recorded by the PendSV path.
+- `last_yield_tick` — used by monitoring/watchdog logic.
+
+The scheduler now enforces `next_run_time` during ready-task selection, so `period_ms` is a functional periodic release mechanism rather than bookkeeping only.
+
+### 9.4 Periodic task pattern
+
+The intended application pattern is:
+
 ```cpp
-OS_QUEUE<SensorData, 16> data_queue;
-
 void task_sensor(void) {
     while (1) {
-        SensorData s = read_all_sensors();
-        data_queue.put(s);  // Blocks if queue full (backpressure)
-        os_delay_ms(50);
+        uint16_t val = read_adc();
+        sensor_queue.put(val, 100);
+
+        // Periodic task: yield, do not fake the period with os_delay_ms().
+        os_yield();
     }
 }
 
-void task_logger(void) {
-    while (1) {
-        SensorData s;
-        if (data_queue.get(s, 1000)) {
-            log_to_flash(s);
-        }
-    }
-}
+os_task_create(task_sensor, 3, 100);
 ```
 
-**ISR → Task with Semaphore:**
-```cpp
-OS_SEMAPHORE data_sem(0);
-
-void EXTI1_IRQHandler(void) {
-    data_sem.signal_from_isr();
-}
-
-void task_handle_event(void) {
-    while (1) {
-        if (data_sem.wait(5000)) {
-            handle_exti_event();
-        } else {
-            log_timeout();
-        }
-    }
-}
-```
-
----
-
-## 10. Error Handling & Monitoring
+This is the documentation contract we will keep consistent across the guide, API tutorial, and examples: **periodic task → `os_yield()`; blocking sleep → `os_delay_ms()`**.
 
 ### 10.1 Error Reporting
 
@@ -1450,7 +1363,7 @@ void task_main(void) {
 // 1. Use os_delay_ms() instead of busy-wait loops
 // 2. Long delays → deep sleep
 // 3. Short delays → partial sleep
-// 4. Periodic tasks wake up automatically from WFI
+// 4. Periodic tasks become eligible at their next release time
 ```
 
 ### 12.4 Debugging Tips
@@ -1540,7 +1453,7 @@ void task_state_machine(void) {
                 os_delay_ms(1000);
                 break;
         }
-        os_delay_ms(10);  // Always yield
+        os_yield();        // Always yield
     }
 }
 ```
@@ -1593,7 +1506,7 @@ void task_acquire(void) {
     while (1) {
         RawData raw = read_sensor();
         raw_queue.put(raw);
-        os_delay_ms(10);
+        os_yield();
     }
 }
 
@@ -1697,7 +1610,7 @@ void task_shutdown_handler(void) {
 **Solutions:**
 1. Verify `SystemCoreClock` matches your actual clock configuration
 2. Check `OS_KERNEL_TICK_PERIOD_US` — must divide 1000 evenly
-3. Use drift compensation for precise periodic tasks (see Section 9.4)
+3. Keep the periodic work short enough for its required deadline, and use `os_yield()` to hand control back to the scheduler.
 4. Higher-priority tasks will preempt — ensure your task has sufficient priority
 
 ---

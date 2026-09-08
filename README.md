@@ -29,7 +29,7 @@ The word *Zen* means clarity through simplicity — stripping away the unnecessa
 
 ZenOS handles the hard parts of embedded systems — scheduling, synchronization, memory protection, fault recovery — so you can focus on your actual application. Most things that would normally take dozens of lines of setup code are reduced to a single function call. The kernel figures out the rest.
 
-It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safety mechanisms out of the box: stack checking, MPU protection, watchdogs, CRC verification, and deadline monitoring. If you're targeting medical or industrial products, you can enforce IEC 62304 or IEC 61508 compliance at compile time — the build itself will tell you if something's missing.
+It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safety mechanisms out of the box: stack checking, MPU protection, watchdogs, CRC verification, and deadline monitoring. If you're targeting medical or industrial products, you can enable IEC 62304 or IEC 61508 target-profile checks at compile time. These checks validate required ZenOS configuration; they do not by themselves certify the OS or the application.
 
 > **No heap. No hidden allocations. No surprises.**
 
@@ -39,8 +39,8 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 |:--------|:--------|
 | 🧩 IPC Primitives | Tasks, mutexes, events, queues, semaphores — all with minimal boilerplate |
 | ⬆️ Priority Ceiling | Protocol to prevent priority inversion in real-time systems |
-| 🏥 IEC 62304 | Compile-time safety enforcement for medical devices |
-| 🏭 IEC 61508 | Compile-time safety enforcement for industrial systems |
+| 🏥 IEC 62304 | Compile-time target-profile checks |
+| 🏭 IEC 61508 | Compile-time target-profile checks |
 | 🧪 Tested | On real hardware (STM32F103C8T6) with 22+ test suites |
 | 🔒 Zero Overhead | C++ templates and RAII — abstraction without runtime cost |
 
@@ -49,11 +49,11 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 | Advantage | ZenOS | FreeRTOS | Zephyr |
 |:----------|:------|:---------|:-------|
 | **Tick resolution** | **100μs** (10× finer) | 1ms | 10ms |
-| **Scheduler** | **O(1) always** | O(n) worst case | O(n) within priority |
+| **Scheduler** | **Priority bitmap + eligibility scan** | O(n) worst case | O(n) within priority |
 | **Heap allocation** | **Never (deterministic)** | Available (risky) | Available |
 | **Safety built-in** | **Yes (canary, MPU, watchdog, RAM test, CRC)** | Optional package | Optional package |
-| **IEC 62304/61508** | **Compile-time enforcement** | None | None |
-| **Periodic tasks** | **First-class (not timers)** | Use software timers | Use software timers |
+| **IEC 62304/61508** | **Compile-time target checks** | None | None |
+| **Periodic tasks** | **Task release gate** | Use software timers | Use software timers |
 | **IPC ceiling** | **Immediate Priority Ceiling** | Priority inheritance only | None |
 | **C++ RAII** | **Full support** | None | Partial |
 
@@ -114,7 +114,7 @@ int main(void) {
 }
 ```
 
-> 💡 That's it. The kernel takes over from `os_start()` and never returns. Your task runs every 500ms, the LED blinks, and you didn't have to write a single line of scheduling code.
+> 💡 That's it. The kernel takes over from `os_start()` and never returns. Your task sleeps for 500ms between LED toggles, and you don't have to write scheduling code.
 
 ### 🏗️ Architecture
 
@@ -125,7 +125,7 @@ int main(void) {
 │              ZenOS Kernel (C++11)                 │
 │  ┌────────────┬─────────────┬──────────────────┐  │
 │  │  Scheduler │     IPC     │  Safety Layer    │  │
-│  │  O(1)      │  Events     │  Stack Canary    │  │
+│  │  Bitmap    │  Events     │  Stack Canary    │  │
 │  │  priority  │  Mutexes    │  MPU Protection  │  │
 │  │  queue     │  Queues     │  HW/SW Watchdog  │  │
 │  │            │  Semaphores │  RAM Test (C-)   │  │

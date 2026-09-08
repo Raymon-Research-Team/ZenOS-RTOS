@@ -245,8 +245,8 @@ extern "C" void os_tick(void) {
     /* DSB: all tick processing (task state changes, wakeups, stack checks)
        must be visible in RAM before PendSV runs and reads them. */
     __asm volatile("dsb" ::: "memory");
-    /* Always fire PendSV — scheduler handles time-slicing,
-       periodic task period, and round-robin rotation. */
+    /* Always fire PendSV — scheduler handles release-time gating,
+       priority selection, and round-robin rotation. */
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
 }
 
@@ -463,9 +463,9 @@ extern "C" void os_start(void) {
     while (1) __asm volatile("wfi");
 }
 
-/* ═══════════════ PendSV Handler — O(1) Bitmap Scheduler ═══════════════
-   Uses os_pq_next() with CLZ to find highest priority task in O(1).
-   The old O(n) linked list scan is replaced by a bitmap lookup. ═══════════════ */
+/* ═══════════════ PendSV Handler — Bitmap + Period Gate Scheduler ═══════════════
+   Uses the priority bitmap first, then checks periodic release eligibility
+   inside the selected priority queues. No fixed task-count limit is used. ═══════ */
 extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
     __asm volatile(
         ".syntax unified\n"
@@ -493,7 +493,7 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r8, =tick_count\n"
         "ldr r9, =os_idle_tcb_ptr\n"
 
-        /* O(1) Scheduler: call os_pq_next() to get highest priority task.
+        /* Scheduler: call os_pq_next() to get the highest-priority eligible task.
            r8/r9 hold tick_count/os_idle_tcb_ptr addresses across the calls. */
         "push {lr}\n"
         "bl os_pq_next\n"
