@@ -1,0 +1,36 @@
+name: Fix Guide action buttons
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Restore Guide action button styles
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('docs/guide.html')
+          s = p.read_text(encoding='utf-8')
+          if '.guide-actions {' not in s:
+              css = '''\n        /* Guide action buttons */\n        .guide-actions { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; }\n        .guide-actions a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; line-height:1.2; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; }\n        .guide-actions a:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.18); }\n        .guide-actions a:focus-visible { outline:3px solid #4fc3f7; outline-offset:3px; }\n        .guide-actions .github-btn { background:#24292e; color:#fff !important; }\n        .guide-actions .github-btn:hover { background:#171a1d; }\n        .guide-actions .home-btn { background:linear-gradient(135deg,#0277bd,#0288d1); color:#fff !important; }\n        .guide-actions .home-btn:hover { background:linear-gradient(135deg,#01579b,#0277bd); }\n        @media (max-width:600px) {\n            .guide-actions { gap:8px; }\n            .guide-actions a { flex:1 1 220px; max-width:100%; }\n        }\n'''
+              marker = '        /* Cover */'
+              if marker not in s:
+                  raise SystemExit('Cover CSS marker not found')
+              s = s.replace(marker, css + '\n' + marker, 1)
+          s = s.replace('<a class="home-btn" href="index.html">← Back to ZenOS Home</a>', '<a class="home-btn" href="./index.html" aria-label="Back to ZenOS Home">← Back to ZenOS Home</a>', 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit fix and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/guide.html
+          git rm .github/workflows/fix-guide-buttons.yml
+          git commit -m "Fix Guide GitHub and Home buttons"
+          git push
