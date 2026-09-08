@@ -30,7 +30,7 @@
 
         /* Sidebar */
         .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: linear-gradient(180deg, var(--sidebar-bg) 0%, #002f6c 100%); color: var(--sidebar-text); overflow-y: auto; z-index: 1000; transition: transform 0.3s ease; }
-        .sidebar-header { padding: 25px 20px; text-align: center; background: #eef3f7; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+        .sidebar-header { padding: 25px 20px; text-align: center; background: white; border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
         .sidebar-header::before {
             content: '';
             position: absolute;
@@ -70,21 +70,6 @@
         .pcb-bg {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cdefs%3E%3Cstyle%3E.trace%7Bstroke:%23e0e0e0;stroke-width:0.5;fill:none%7D.pad%7Bfill:%23f5f5f5;stroke:%23d0d0d0;stroke-width:0.3%7D.via%7Bfill:%23e8e8e8;stroke:%23d0d0d0;stroke-width:0.3%7D%3C/style%3E%3C/defs%3E%3Cpath class='trace' d='M20,50 H80 V100 H150'/%3E%3Cpath class='trace' d='M50,20 V80 H120 V150'/%3E%3Cpath class='trace' d='M150,30 V70 H100'/%3E%3Cpath class='trace' d='M30,150 H90 V110 H170'/%3E%3Cpath class='trace' d='M170,50 V120 H130'/%3E%3Ccircle class='via' cx='80' cy='50' r='2'/%3E%3Ccircle class='via' cx='150' cy='100' r='2'/%3E%3Ccircle class='via' cx='120' cy='80' r='2'/%3E%3Ccircle class='via' cx='90' cy='150' r='2'/%3E%3Crect class='pad' x='10' y='45' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='155' y='95' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='115' y='75' width='8' height='10' rx='1'/%3E%3Crect class='pad' x='85' y='145' width='8' height='10' rx='1'/%3E%3Cpath class='trace' d='M180,20 V60 H140'/%3E%3Cpath class='trace' d='M20,180 H60 V140'/%3E%3Ccircle class='via' cx='140' cy='60' r='1.5'/%3E%3Ccircle class='via' cx='60' cy='140' r='1.5'/%3E%3C/svg%3E");
             background-repeat: repeat;
-        }
-
-
-        /* Guide action buttons */
-        .guide-actions { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; }
-        .guide-actions a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; line-height:1.2; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; }
-        .guide-actions a:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.18); }
-        .guide-actions a:focus-visible { outline:3px solid #4fc3f7; outline-offset:3px; }
-        .guide-actions .github-btn { background:#24292e; color:#fff !important; }
-        .guide-actions .github-btn:hover { background:#171a1d; }
-        .guide-actions .home-btn { background:linear-gradient(135deg,#0277bd,#0288d1); color:#fff !important; }
-        .guide-actions .home-btn:hover { background:linear-gradient(135deg,#01579b,#0277bd); }
-        @media (max-width:600px) {
-            .guide-actions { gap:8px; }
-            .guide-actions a { flex:1 1 220px; max-width:100%; }
         }
 
         /* Cover */
@@ -260,8 +245,6 @@
         html { scroll-behavior: smooth; }
         .sidebar::-webkit-scrollbar { width: 6px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
-    
-
     </style>
 </head><body>
 
@@ -361,10 +344,7 @@
             <span class="badge">100μs Tick</span>
             <span class="badge">Zero Heap</span>
         </div>
-        <div class="guide-actions">
-<a class="github-btn" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">🔗 View on GitHub</a>
-<a class="home-btn" href="./index.html" aria-label="Back to ZenOS Home">← Back to ZenOS Home</a>
-</div>
+        <p style="margin-top:20px;"><a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" style="display:inline-block;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;">🔗 View on GitHub</a></p>
     </section>
 
     <!-- ==================== QUICK START ==================== -->
@@ -1569,5 +1549,5 @@ window.addEventListener('scroll', () => {
 });
 </script>
 
-\n<script>\n/* ZenOS loading message contrast fallback */\n(function () {\n  function themeLoadingMessage() {\n    document.querySelectorAll('*').forEach(function (el) {\n      if (el.children.length === 0 && el.textContent && el.textContent.indexOf('Loading ZenOS Guide') !== -1) {\n        el.style.setProperty('color', '#eef8ff', 'important');\n        el.style.setProperty('font-weight', '700', 'important');\n        el.style.setProperty('text-shadow', '0 1px 14px rgba(82,216,255,.16)', 'important');\n        var box = el.parentElement;\n        for (var i = 0; i < 4 && box; i++, box = box.parentElement) {\n          var pos = getComputedStyle(box).position;\n          if (pos === 'fixed' || pos === 'absolute') {\n            box.style.setProperty('background', 'rgba(7,17,31,.96)', 'important');\n            box.style.setProperty('color', '#eef8ff', 'important');\n            box.style.setProperty('border-color', 'rgba(82,216,255,.22)', 'important');\n            box.style.setProperty('box-shadow', '0 24px 70px rgba(0,0,0,.38), 0 0 36px rgba(82,216,255,.08)', 'important');\n            break;\n          }\n        }\n      }\n    });\n  }\n  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', themeLoadingMessage);\n  else themeLoadingMessage();\n  setTimeout(themeLoadingMessage, 100);\n})();\n</script>\n</body>
+</body>
 </html>
