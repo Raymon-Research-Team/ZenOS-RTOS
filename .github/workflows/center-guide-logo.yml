@@ -1,0 +1,39 @@
+name: Center Guide logo
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  center-logo:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'guide-ui-normalize'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: guide-ui-normalize
+          fetch-depth: 1
+      - name: Center main Guide logo
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('docs/guide-html/guide.html')
+          s = p.read_text(encoding='utf-8')
+          old = '.cover > img { width: 320px; height: auto; border-radius: 16px; margin-bottom: 18px; }'
+          new = '.cover > img { display:block; width:320px; height:auto; border-radius:16px; margin:0 auto 18px; }'
+          if old not in s:
+              raise SystemExit('Expected logo CSS not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+      - name: Verify and commit
+        run: |
+          grep -q '.cover > img { display:block; width:320px' docs/guide-html/guide.html
+          git diff --check
+          git add docs/guide-html/guide.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Center Guide logo"
+          git push origin guide-ui-normalize
