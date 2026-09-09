@@ -18,8 +18,9 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - name: Normalize guide badges and buttons
-        shell: python
+        shell: bash
         run: |
+          python3 <<'PY'
           from pathlib import Path
           p = Path('docs/guide-html/guide.html')
           s = p.read_text(encoding='utf-8')
@@ -38,24 +39,24 @@ jobs:
         </div>'''
               s = s[:start] + badges + s[end:]
 
-          # Make the feature badge row compact and prevent any inherited image sizing from enlarging it.
           marker = '        .cover .badges {'
-          if marker in s:
-              old = s[s.find(marker):s.find('        /* Cards */', s.find(marker))]
+          cards = '        /* Cards */'
+          if marker in s and cards in s:
+              a = s.find(marker)
+              b = s.find(cards, a)
               css = '''        .cover .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 14px; }
         .cover .badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
         .cover .readme-badges { line-height: 0; }
         .cover .readme-badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
-
 '''
-              s = s.replace(old, css + '        /* Cards */', 1)
+              s = s[:a] + css + s[b:]
 
-          # Add restrained icons to the two utility buttons without changing their destinations or behavior.
           s = s.replace('<button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>', '<button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Open navigation">☰</button>')
           s = s.replace('style="display:inline-block;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;">🔗 View on GitHub</a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌘</span> View on GitHub</a>')
           s = s.replace('style="display:inline-block;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;">  Back to Home  </a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌂</span> Back to Home</a>')
 
           p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Commit repair
         shell: bash
