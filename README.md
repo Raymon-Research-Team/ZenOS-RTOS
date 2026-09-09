@@ -16,6 +16,8 @@
 
 [**🇮🇷 فارسی**](docs/README_FA.md) | [**🇬🇧 English**](README.md)
 
+📘 **[ZenOS Guide](docs/guide-html/index.html)**
+
 <br>
 
 
@@ -145,11 +147,11 @@ For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنم
 
 ## 📚 Documentation
 
-> 🌐 **[Interactive Guide (HTML)](docs/guide.html)** — Complete bilingual guide with syntax highlighting, configuration wizard, and donate section.
+> 🌐 **[Interactive Guide (HTML)](docs/guide-html/index.html)** — Complete bilingual guide with syntax highlighting, configuration wizard, and donate section.
 
 | Document | What's in it |
 |:---------|:-------------|
-| 🌐 [guide.html](docs/guide.html) | Complete interactive guide (HTML) |
+| 🌐 [guide.html](docs/guide-html/index.html) | Complete interactive guide (HTML) |
 | 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
 | 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
 | 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
