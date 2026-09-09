@@ -3,7 +3,7 @@
 
 <img src="docs/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
-**RT operating system for ARM Cortex-M — written in C++11.**
+**Real-Time operating system for ARM Cortex-M — written in C++11.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.0.0-green.svg?style=for-the-badge)]()
