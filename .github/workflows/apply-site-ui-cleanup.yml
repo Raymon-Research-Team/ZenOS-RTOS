@@ -19,7 +19,7 @@ jobs:
           ref: site-ui-cleanup-final
           fetch-depth: 1
 
-      - name: Apply mobile Releases and loader cleanup
+      - name: Apply requested HTML-only changes
         shell: python
         run: |
           from pathlib import Path
@@ -27,57 +27,39 @@ jobs:
 
           index = Path('docs/guide-html/index.html')
           text = index.read_text(encoding='utf-8')
-
-          releases = '    <a class="btn alt" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/releases">Releases</a>'
-          mobile_css = '    .top .nav .btn.alt{display:none!important}'
-          if mobile_css not in text:
-              marker = '  .site-home-link{color:#334155!important;white-space:nowrap}'
-              if marker in text:
-                  text = text.replace(marker, mobile_css + '@media(max-width:850px){.top .nav .btn.alt{display:none!important}}\n' + marker, 1)
-              else:
-                  text = text.replace('</style>', '@media(max-width:850px){.top .nav .btn.alt{display:none!important}}\n</style>', 1)
+          rule = '@media(max-width:850px){.top .nav .btn.alt{display:none!important}}'
+          if rule not in text:
+              text = text.replace('</style>', rule + '\n</style>', 1)
           index.write_text(text, encoding='utf-8')
 
           guide = Path('docs/guide-html/guide.html')
           text = guide.read_text(encoding='utf-8')
-
-          loader_block = re.compile(r'\n<!-- Loading Animation -->\n<div id="loader".*?</div>\n<style>\n@keyframes pulse.*?</style>\n', re.S)
-          text, removed = loader_block.subn('\n', text, count=1)
-          if removed != 1:
-              raise SystemExit(f'Expected exactly one loader block, removed={removed}')
-
-          text = re.sub(
-              r'\n// Hide loader when page loads\n',
-              '\n',
-              text,
-              count=1,
-          )
-          text = re.sub(
-              r'\n    // Hide loader\n    setTimeout\(function\(\) \{\n        var loader = document\.getElementById\(\'loader\'\);\n        loader\.style\.opacity = \'0\';\n        setTimeout\(function\(\) \{ loader\.style\.display = \'none\'; \}, 500\);\n    \}, 1000\);',
-              '',
-              text,
-              count=1,
-          )
+          loader = re.compile(r'\n<!-- Loading Animation -->\n.*?<button class="mobile-menu-btn"', re.S)
+          text, count = loader.subn('\n\n<button class="mobile-menu-btn"', text, count=1)
+          if count != 1:
+              raise SystemExit(f'Loading block not removed exactly once: {count}')
+          text = text.replace('// Hide loader when page loads\n', '', 1)
+          loader_js = re.compile(r'\n    // Hide loader\n    setTimeout\(function\(\) \{.*?\n    \}, 1000\);', re.S)
+          text, count = loader_js.subn('', text, count=1)
+          if count != 1:
+              raise SystemExit(f'Loader JS not removed exactly once: {count}')
           guide.write_text(text, encoding='utf-8')
 
-      - name: Verify exact site-only changes
+      - name: Verify
         run: |
           test -f docs/guide-html/index.html
           test -f docs/guide-html/guide.html
           ! grep -q 'id="loader"' docs/guide-html/guide.html
           ! grep -q 'Loading ZenOS Guide' docs/guide-html/guide.html
+          ! grep -q 'document.getElementById('\''loader'\'')' docs/guide-html/guide.html
           grep -q '@media(max-width:850px){.top .nav .btn.alt{display:none!important}}' docs/guide-html/index.html
           git diff --check
-          git diff -- docs/guide-html/index.html docs/guide-html/guide.html
 
       - name: Commit site-only changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/guide-html/index.html docs/guide-html/guide.html
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Fix mobile Releases button and remove Guide loader"
           git push origin site-ui-cleanup-final
