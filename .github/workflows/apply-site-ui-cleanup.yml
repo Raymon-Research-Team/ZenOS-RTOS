@@ -43,6 +43,30 @@ jobs:
           text, count = loader_js.subn('', text, count=1)
           if count != 1:
               raise SystemExit(f'Loader JS not removed exactly once: {count}')
+
+          text = text.replace(
+              '.cover img { width: 320px; border-radius: 16px; margin-bottom: 20px; }',
+              '.cover > img { width: 320px; height: auto; border-radius: 16px; margin-bottom: 18px; }\n'
+              '.cover .readme-badges { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; align-items:center; margin:2px 0 14px; line-height:0; }\n'
+              '.cover .readme-badges a { display:inline-flex; align-items:center; margin:0; padding:0; line-height:0; }\n'
+              '.cover .readme-badges img { width:auto !important; height:20px !important; max-width:none !important; border-radius:0 !important; margin:0 !important; display:block; }\n'
+              '.cover > p[style*="margin-top:20px"] { margin-top:14px !important; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; }\n'
+              '.cover > p[style*="margin-top:20px"] a { display:inline-flex !important; align-items:center; justify-content:center; min-height:34px; padding:7px 14px !important; font-size:0.82rem !important; line-height:1.2 !important; font-weight:600; border-radius:7px !important; margin:0 !important; }'
+          )
+
+          old_badges = re.compile(r'<div class="readme-badges".*?</div>', re.S)
+          new_badges = '''<div class="readme-badges" aria-label="ZenOS project badges">
+            <img src="https://img.shields.io/badge/MIT%20License-2ea44f?style=flat" alt="MIT License" height="20">
+            <img src="https://img.shields.io/badge/Version-1.0.0-43a047?style=flat" alt="Version 1.0.0" height="20">
+            <img src="https://img.shields.io/badge/ARM%20Cortex--M-ef6c00?style=flat" alt="ARM Cortex-M" height="20">
+            <img src="https://img.shields.io/badge/C%2B%2B11-6a1b9a?style=flat" alt="C++11" height="20">
+            <img src="https://img.shields.io/badge/IEC%2062304-c62828?style=flat" alt="IEC 62304" height="20">
+            <img src="https://img.shields.io/badge/IEC%2061508-ad1457?style=flat" alt="IEC 61508" height="20">
+          </div>'''
+          text, count = old_badges.subn(new_badges, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Guide badge block not normalized exactly once: {count}')
+
           guide.write_text(text, encoding='utf-8')
 
       - name: Verify
@@ -53,6 +77,10 @@ jobs:
           ! grep -q 'Loading ZenOS Guide' docs/guide-html/guide.html
           ! grep -q 'document.getElementById('\''loader'\'')' docs/guide-html/guide.html
           grep -q '@media(max-width:850px){.top .nav .btn.alt{display:none!important}}' docs/guide-html/index.html
+          grep -q '.cover > img' docs/guide-html/guide.html
+          grep -q '.cover .readme-badges img' docs/guide-html/guide.html
+          grep -q 'style=flat' docs/guide-html/guide.html
+          ! grep -q 'style=for-the-badge' docs/guide-html/guide.html
           git diff --check
 
       - name: Commit site-only changes
@@ -61,5 +89,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/guide-html/index.html docs/guide-html/guide.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Fix mobile Releases button and remove Guide loader"
+          git commit -m "Normalize Guide logo badges and utility buttons"
           git push origin site-ui-cleanup-final
