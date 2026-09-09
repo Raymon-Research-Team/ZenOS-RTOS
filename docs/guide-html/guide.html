@@ -248,18 +248,6 @@
     </style>
 </head><body>
 
-<!-- Loading Animation -->
-<div id="loader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;transition:opacity 0.5s ease;">
-    <img src="./ZenOS_logo.svg" alt="ZenOS" style="width:240px;animation:pulse 1.5s ease-in-out infinite;">
-    <p style="margin-top:20px;font-size:1.2em;color:#01579b;font-weight:500;">Loading ZenOS Guide...</p>
-    <div style="width:200px;height:4px;background:#e0e0e0;border-radius:2px;margin-top:15px;overflow:hidden;">
-        <div style="width:100%;height:100%;background:linear-gradient(90deg,#0277bd,#00838f);animation:loading 1.5s ease-in-out infinite;"></div>
-    </div>
-</div>
-<style>
-@keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
-@keyframes loading { 0% { transform:translateX(-100%); } 100% { transform:translateX(100%); } }
-</style>
 
 <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
 
@@ -1509,7 +1497,6 @@ void task_shutdown_handler(void) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
 <script>
-// Hide loader when page loads
 window.addEventListener('load', function() {
     // Add copy buttons to all code blocks
     document.querySelectorAll('pre[class*="language-"]').forEach(function(pre) {
@@ -1531,12 +1518,6 @@ window.addEventListener('load', function() {
         pre.appendChild(btn);
     });
 
-    // Hide loader
-    setTimeout(function() {
-        var loader = document.getElementById('loader');
-        loader.style.opacity = '0';
-        setTimeout(function() { loader.style.display = 'none'; }, 500);
-    }, 1000);
 });
 
 function setLang(lang) {
