@@ -1,7 +1,7 @@
 <meta name="google-site-verification" content="WDbhN_r-HKmS5ue_mJL8otHIkSioPnhX6Pml04KWFi4" />
 <div align="center">
 
-<img src="docs/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
+<img src="docs/guide-html/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
 **Real-Time operating system for ARM Cortex-M — written in C++11.**
 
@@ -234,7 +234,7 @@ Your donation directly funds development, testing, certification, and documentat
 </td>
 <td rowspan="2" align="center" width="50%">
 
-<img src="docs/donate-qr.png" alt="Donate QR Code" width="180" />
+<img src="docs/guide-html/donate-qr.png" alt="Donate QR Code" width="180" />
 
 </td>
 </tr>
