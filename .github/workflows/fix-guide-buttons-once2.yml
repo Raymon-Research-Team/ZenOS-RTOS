@@ -13,36 +13,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore Guide action button styles
+      - name: Normalize Guide badges and action buttons
+        shell: bash
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
-          p = Path('docs/guide.html')
+          p = Path('docs/guide-html/guide.html')
           s = p.read_text(encoding='utf-8')
-          marker = '/* Guide action buttons */'
-          if marker not in s:
-              css = '''
-        /* Guide action buttons */
-        .guide-actions { display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; margin-top:20px; }
-        .guide-actions a { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:700; line-height:1.2; box-sizing:border-box; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; }
-        .guide-actions a:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(0,0,0,.15); }
-        .guide-actions .github-btn { background:#24292e; color:#fff !important; }
-        .guide-actions .github-btn:hover { background:#1b1f23; }
-        .guide-actions .home-btn { background:linear-gradient(135deg,#0277bd,#00838f); color:#fff !important; }
-        .guide-actions .home-btn:hover { background:linear-gradient(135deg,#01579b,#006064); }
-        @media (max-width:600px) {
-            .guide-actions { gap:8px; }
-            .guide-actions a { width:100%; max-width:320px; }
-        }
+
+          start = s.find('<div class="readme-badges"')
+          end = s.find('</div>', start)
+          if start != -1 and end != -1:
+              end += len('</div>')
+              badges = '''<div class="readme-badges" aria-label="ZenOS project badges" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 18px;">
+            <img src="https://img.shields.io/badge/MIT%20License-2ea44f?style=flat" alt="MIT License" height="20">
+            <img src="https://img.shields.io/badge/Safety%20Mechanisms-0277bd?style=flat" alt="Safety Mechanisms" height="20">
+            <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="IEC Target Profiles" height="20">
+            <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap Scheduler" height="20">
+            <img src="https://img.shields.io/badge/100%C2%B5s%20Tick-00838f?style=flat" alt="100μs Tick" height="20">
+            <img src="https://img.shields.io/badge/Zero%20Heap-546e7a?style=flat" alt="Zero Heap" height="20">
+        </div>'''
+              s = s[:start] + badges + s[end:]
+
+          marker = '        .cover .badges {'
+          cards = '        /* Cards */'
+          if marker in s and cards in s:
+              a = s.find(marker)
+              b = s.find(cards, a)
+              css = '''        .cover .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 14px; }
+        .cover .badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
+        .cover .readme-badges { line-height: 0; }
+        .cover .readme-badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
 '''
-              s = s.replace('</style>', css + '\n    </style>', 1)
-              p.write_text(s, encoding='utf-8')
+              s = s[:a] + css + s[b:]
+
+          s = s.replace('<button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>', '<button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Open navigation">☰</button>')
+          s = s.replace('style="display:inline-block;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;">🔗 View on GitHub</a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌘</span> View on GitHub</a>')
+          s = s.replace('style="display:inline-block;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;">  Back to Home  </a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌂</span> Back to Home</a>')
+
+          p.write_text(s, encoding='utf-8')
           PY
       - name: Commit changes
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/guide.html
+          git add docs/guide-html/guide.html
           git diff --cached --quiet && exit 0
-          git commit -m 'Fix Guide action button layout'
+          git commit -m 'Fix Guide badge sizing and button icons'
           git push
