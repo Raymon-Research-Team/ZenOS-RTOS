@@ -1,82 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Support ZenOS RTOS and the Raymon Research Team. Help fund open-source embedded systems research, development, testing, documentation, and security work.">
-  <meta name="robots" content="index,follow,max-image-preview:large">
-  <link rel="canonical" href="https://raymon-research-team.github.io/ZenOS-RTOS/donate.html">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Support ZenOS RTOS — Raymon Research Team">
-  <meta property="og:description" content="Support the development of ZenOS RTOS and open-source embedded systems research.">
-  <meta property="og:url" content="https://raymon-research-team.github.io/ZenOS-RTOS/donate.html">
-  <meta property="og:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Support ZenOS RTOS">
-  <meta name="twitter:description" content="Help fund open-source RTOS development, testing, documentation and security work.">
-  <meta name="twitter:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
-  <title>Support ZenOS RTOS — Raymon Research Team</title>
-  <style>
-    :root{--bg:#07111f;--surface:#0d1c2e;--surface2:#10243a;--ink:#eef8ff;--muted:#9bb0c5;--cyan:#52d8ff;--blue:#2188ff;--violet:#9b6cff;--green:#43d17b;--line:rgba(151,190,220,.16);--shadow:0 24px 70px rgba(0,0,0,.24);--radius:18px}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);background:radial-gradient(circle at 80% 0%,rgba(33,136,255,.18),transparent 34%),radial-gradient(circle at 10% 20%,rgba(155,108,255,.12),transparent 30%),var(--bg);line-height:1.65}a{color:inherit;text-decoration:none}
-    .top{position:sticky;top:0;z-index:20;background:rgba(238,243,247,.96);border-bottom:1px solid #dfe5df;backdrop-filter:blur(14px);box-shadow:0 8px 28px rgba(0,0,0,.12)}.nav{max-width:1080px;margin:auto;padding:12px 22px;display:flex;align-items:center;gap:20px}.brand{display:flex;align-items:center;margin-right:auto}.brand img{width:190px;max-height:50px;object-fit:contain;display:block}.nav a:not(.btn){color:#334155;font-size:.92rem;font-weight:700}.nav a:not(.btn):hover{color:#2188ff}.btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--violet));color:#fff!important;font-weight:800}.btn.secondary{background:#e2e8f0;color:#334155!important}.donate{background:linear-gradient(135deg,#6c5ce7,#a855f7);box-shadow:0 0 20px rgba(108,92,231,.35)}
-    .hero{max-width:1080px;margin:auto;padding:68px 22px 30px;text-align:center}.avatar{width:108px;height:108px;margin:0 auto 22px;padding:13px;border-radius:50%;background:linear-gradient(145deg,rgba(82,216,255,.2),rgba(155,108,255,.2));border:1px solid rgba(82,216,255,.28);box-shadow:0 16px 50px rgba(33,136,255,.15)}.avatar img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:#eef3f7}.eyebrow{display:inline-block;color:var(--cyan);font-size:.78rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero h1{font-size:clamp(2.25rem,6vw,4.25rem);line-height:1.04;letter-spacing:-.045em;margin:12px 0 16px}.hero p{max-width:690px;margin:0 auto;color:var(--muted);font-size:1.08rem}.hero .sub{margin-top:10px;font-size:.92rem;color:#7890a6}
-    .wrap{max-width:900px;margin:auto;padding:22px}.card{background:linear-gradient(145deg,rgba(16,36,58,.94),rgba(13,28,46,.94));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.story{padding:28px;margin-top:18px}.story h2{margin:0 0 10px;font-size:1.55rem}.story p{color:var(--muted);margin:8px 0}.methods{display:grid;gap:14px;margin-top:18px}.method{display:grid;grid-template-columns:54px 1fr auto;gap:16px;align-items:center;padding:19px 20px}.method-icon{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;font-size:1.35rem;background:rgba(82,216,255,.09);border:1px solid rgba(82,216,255,.16)}.method h3{margin:0 0 3px;font-size:1.05rem}.method p{margin:0;color:var(--muted);font-size:.9rem}.method .go{color:var(--cyan);font-weight:800;white-space:nowrap}.method.primary{border-color:rgba(82,216,255,.3);background:linear-gradient(145deg,rgba(16,45,67,.96),rgba(13,28,46,.96))}.method.primary .method-icon{background:linear-gradient(135deg,rgba(82,216,255,.16),rgba(155,108,255,.16))}
-    .impact{margin-top:28px}.impact h2{font-size:1.55rem;margin:0 0 14px}.impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.impact-item{padding:20px;text-align:center}.impact-item .i{font-size:1.55rem}.impact-item strong{display:block;margin-top:8px}.impact-item span{display:block;color:var(--muted);font-size:.85rem;margin-top:3px}
-    .note{margin-top:18px;padding:18px 20px;border:1px solid rgba(82,216,255,.18);border-radius:14px;background:rgba(82,216,255,.05);color:#b9d4e8;font-size:.9rem}.note strong{color:var(--cyan)}
-    footer{margin-top:48px;border-top:1px solid var(--line);background:#07111f}.foot{max-width:1080px;margin:auto;padding:30px 22px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;color:#91a7bb;font-size:.86rem}.foot a{color:#dcecf8}.links{display:flex;gap:16px;flex-wrap:wrap}
-    @media(max-width:680px){.nav{gap:9px}.brand img{width:150px}.nav a.hide-mobile{display:none}.hero{padding-top:48px}.method{grid-template-columns:46px 1fr}.method .go{grid-column:2}.impact-grid{grid-template-columns:1fr}.method-icon{width:44px;height:44px}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Support ZenOS RTOS — open-source real-time operating system for ARM Cortex-M and STM32.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://raymon-research-team.github.io/ZenOS-RTOS/donate.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Support ZenOS RTOS">
+<meta property="og:description" content="Support the independent development, testing and documentation of ZenOS RTOS.">
+<meta property="og:url" content="https://raymon-research-team.github.io/ZenOS-RTOS/donate.html">
+<meta property="og:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Support ZenOS RTOS">
+<meta name="twitter:description" content="Support the independent development of ZenOS RTOS.">
+<meta name="twitter:image" content="https://raymon-research-team.github.io/ZenOS-RTOS/ZenOS_logo_site.svg">
+<title>Support ZenOS RTOS — Raymon Research Team</title>
+<style>
+:root{--bg:#07111f;--card:rgba(13,28,46,.9);--card2:#10243a;--ink:#eef8ff;--muted:#9bb0c5;--cyan:#52d8ff;--blue:#2188ff;--violet:#9b6cff;--line:rgba(151,190,220,.16);--shadow:0 24px 80px rgba(0,0,0,.28)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);overflow-x:hidden}body:before,body:after{content:"";position:fixed;z-index:-2;pointer-events:none;border-radius:50%;filter:blur(10px)}body:before{width:55vw;height:55vw;max-width:700px;max-height:700px;top:-20vw;right:-12vw;background:radial-gradient(circle,rgba(33,136,255,.24),transparent 68%);animation:float 12s ease-in-out infinite}body:after{width:50vw;height:50vw;max-width:620px;max-height:620px;left:-20vw;top:25vh;background:radial-gradient(circle,rgba(155,108,255,.18),transparent 68%);animation:float 15s ease-in-out infinite reverse}@keyframes float{50%{transform:translate(20px,25px) scale(1.08)}}a{color:inherit;text-decoration:none}button{font:inherit}.top{position:sticky;top:0;z-index:50;background:rgba(238,243,247,.96);border-bottom:1px solid #dfe5df;backdrop-filter:blur(16px);box-shadow:0 8px 30px rgba(0,0,0,.13)}.nav{max-width:980px;margin:auto;padding:11px 18px;display:flex;align-items:center;gap:10px}.brand{margin-right:auto;display:flex;align-items:center}.brand img{width:175px;height:48px;object-fit:contain}.navlink{padding:9px 11px;color:#334155;font-size:.9rem;font-weight:750}.navlink:hover{color:#2188ff}.navbtn{padding:10px 17px;border-radius:10px;background:linear-gradient(135deg,#6c5ce7,#a855f7);color:white;font-weight:850;box-shadow:0 0 20px rgba(108,92,231,.3)}
+.page{width:min(700px,calc(100% - 28px));margin:auto;padding:48px 0 65px}.profile{text-align:center}.avatar{width:112px;height:112px;margin:0 auto 17px;padding:12px;border-radius:50%;background:linear-gradient(145deg,rgba(82,216,255,.16),rgba(155,108,255,.18));border:1px solid rgba(82,216,255,.32);box-shadow:0 20px 70px rgba(33,136,255,.2);animation:pulse 5s ease-in-out infinite}.avatar img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:#eef3f7}@keyframes pulse{50%{transform:translateY(-4px);box-shadow:0 25px 85px rgba(82,216,255,.25)}}.handle{color:var(--cyan);font-size:.8rem;font-weight:850;letter-spacing:.13em;text-transform:uppercase}.profile h1{font-size:clamp(2.2rem,8vw,3.45rem);line-height:1;letter-spacing:-.05em;margin:10px 0 14px}.profile p{margin:0 auto;color:var(--muted);max-width:590px;font-size:1rem;line-height:1.7}.tags{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:16px 0 28px}.tag{border:1px solid var(--line);background:rgba(255,255,255,.035);padding:6px 10px;border-radius:999px;color:#b8cadb;font-size:.76rem}
+.card{border:1px solid var(--line);background:linear-gradient(145deg,rgba(16,36,58,.94),rgba(10,24,40,.94));box-shadow:var(--shadow);border-radius:20px}.featured{position:relative;overflow:hidden;padding:21px;margin-bottom:13px;border-color:rgba(82,216,255,.3)}.featured:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,rgba(82,216,255,.08),transparent 45%,rgba(155,108,255,.08));pointer-events:none}.featured>*{position:relative}.label{font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}.featured h2{margin:5px 0 5px;font-size:1.2rem}.featured p{margin:0;color:var(--muted);font-size:.87rem}.open{display:inline-flex;margin-top:14px;padding:10px 15px;border-radius:10px;background:linear-gradient(135deg,#2188ff,#9b6cff);font-weight:850;color:white;box-shadow:0 8px 25px rgba(33,136,255,.25)}
+.methods{display:grid;gap:11px}.method{padding:15px;display:grid;grid-template-columns:45px 1fr auto;gap:12px;align-items:center;transition:.2s}.method:hover{transform:translateY(-2px);border-color:rgba(82,216,255,.3);box-shadow:0 18px 45px rgba(0,0,0,.25)}.icon{width:45px;height:45px;border-radius:13px;display:grid;place-items:center;background:rgba(82,216,255,.08);border:1px solid rgba(82,216,255,.14);font-size:1.25rem}.method h3{margin:0;font-size:.98rem}.method .network{display:block;color:var(--muted);font-size:.74rem;margin-top:2px}.copy{border:1px solid rgba(82,216,255,.25);background:rgba(82,216,255,.06);color:var(--cyan);border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.copy:hover{background:rgba(82,216,255,.13)}.addr{grid-column:2 / -1;margin-top:-4px;padding:9px 10px;border-radius:9px;background:#081522;color:#9eb8ca;font:700 .72rem ui-monospace,SFMono-Regular,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.section-title{display:flex;align-items:center;justify-content:space-between;margin:28px 3px 11px}.section-title h2{margin:0;font-size:1.05rem}.section-title span{font-size:.72rem;color:#7890a6}
+.qr{padding:18px;display:flex;align-items:center;gap:18px}.qr img{width:108px;height:108px;object-fit:contain;border-radius:12px;background:white;padding:7px}.qr h3{margin:0 0 5px;font-size:1rem}.qr p{margin:0;color:var(--muted);font-size:.82rem}.goal{padding:19px}.goalrow{display:flex;justify-content:space-between;gap:10px;font-size:.85rem}.goalrow span:last-child{color:var(--cyan);font-weight:850}.bar{height:9px;margin-top:11px;border-radius:999px;background:#071521;overflow:hidden;border:1px solid var(--line)}.fill{height:100%;width:35%;border-radius:999px;background:linear-gradient(90deg,#2188ff,#52d8ff,#9b6cff);box-shadow:0 0 18px rgba(82,216,255,.35)}.goal small{display:block;margin-top:8px;color:#7890a6}.other{display:grid;grid-template-columns:1fr 1fr;gap:11px}.other a{padding:16px;text-align:center;font-weight:800}.other span{display:block;color:var(--muted);font-size:.74rem;font-weight:500;margin-top:3px}.note{margin-top:14px;padding:14px 16px;color:#91a9bd;font-size:.76rem;text-align:center;line-height:1.6}.note strong{color:#c8dce9}.footer{padding:26px 0 5px;text-align:center;color:#71889d;font-size:.76rem}.footer a{color:#a9c7da}.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#eaf8ff;color:#07111f;border-radius:10px;padding:9px 14px;font-size:.8rem;font-weight:850;box-shadow:0 12px 35px rgba(0,0,0,.35);transition:.22s;z-index:100}.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:580px){.page{padding-top:38px}.nav{padding:9px 12px}.brand img{width:145px}.navlink{display:none}.profile h1{font-size:2.55rem}.method{grid-template-columns:42px 1fr}.method .copy{grid-column:2;justify-self:start}.icon{width:42px;height:42px}.addr{grid-column:1/-1;margin-top:1px}.qr{align-items:flex-start;flex-direction:column}.qr img{width:125px;height:125px}.other{grid-template-columns:1fr}.featured{padding:18px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
 </head>
 <body>
-<header class="top"><nav class="nav">
-  <a class="brand" href="index.html"><img src="./ZenOS_logo_site.svg" alt="ZenOS logo"></a>
-  <a class="hide-mobile" href="guide.html">Documentation</a>
-  <a class="hide-mobile" href="about.html">About</a>
-  <a class="btn donate" href="donate.html">Support ZenOS</a>
-</nav></header>
+<header class="top"><nav class="nav"><a class="brand" href="index.html"><img src="./ZenOS_logo_site.svg" alt="ZenOS"></a><a class="navlink" href="guide.html">Documentation</a><a class="navlink" href="about.html">About</a><a class="navbtn" href="https://donatr.ee/raymon-research-team" target="_blank" rel="noopener">Donate</a></nav></header>
+<main class="page">
+<section class="profile">
+<div class="avatar"><img src="./ZenOS_logo_site.svg" alt="ZenOS RTOS logo"></div>
+<div class="handle">@raymon-research-team</div>
+<h1>ZenOS RTOS</h1>
+<p>Open-source real-time operating system for ARM Cortex-M. Built in C++11 with a focus on simplicity, deterministic behavior, safety-oriented engineering and practical STM32 development.</p>
+<div class="tags"><span class="tag">Open Source</span><span class="tag">C++11</span><span class="tag">ARM Cortex-M</span><span class="tag">STM32</span></div>
+</section>
 
-<main>
-  <section class="hero">
-    <div class="avatar"><img src="./ZenOS_logo_site.svg" alt="ZenOS"></div>
-    <span class="eyebrow">Open source • Embedded • Independent</span>
-    <h1>Support ZenOS RTOS</h1>
-    <p>Help us keep ZenOS open, tested, documented, and moving forward. Your support helps fund embedded development, hardware testing, documentation, security work, and the infrastructure behind the project.</p>
-    <p class="sub">Every contribution is voluntary. ZenOS remains open source.</p>
-  </section>
+<section class="card featured">
+<div class="label">Featured support method</div>
+<h2>Support ZenOS through Donatr</h2>
+<p>Use one donation page for the available crypto and other payment methods.</p>
+<a class="open" href="https://donatr.ee/raymon-research-team" target="_blank" rel="noopener">Open Donatr ↗</a>
+</section>
 
-  <div class="wrap">
-    <section class="card story">
-      <h2>Why your support matters</h2>
-      <p>ZenOS is being developed as a compact C++11 real-time operating system for ARM Cortex-M and STM32 microcontrollers. Building reliable embedded software takes more than writing code: it requires hardware, long-running tests, debugging, documentation, release infrastructure, and careful safety-oriented engineering.</p>
-      <p>If ZenOS is useful to you, supporting the project helps us spend more time on those parts of the work that make an open-source RTOS dependable for everyone.</p>
-    </section>
+<div class="section-title"><h2>Crypto wallets</h2><span>Direct to your wallet</span></div>
+<section class="methods">
+<article class="card method"><div class="icon">₿</div><div><h3>Bitcoin</h3><span class="network">BTC · Native SegWit</span></div><button class="copy" data-copy="bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650">Copy</button><div class="addr">bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650</div></article>
+<article class="card method"><div class="icon">Ξ</div><div><h3>Ethereum</h3><span class="network">ETH · ERC-20</span></div><button class="copy" data-copy="0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C">Copy</button><div class="addr">0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C</div></article>
+<article class="card method"><div class="icon">₮</div><div><h3>USDT</h3><span class="network">ERC-20 · Ethereum</span></div><button class="copy" data-copy="0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C">Copy</button><div class="addr">0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C</div></article>
+</section>
 
-    <section class="methods" aria-label="Support methods">
-      <a class="card method primary" href="https://donatr.ee/raymon-research-team" target="_blank" rel="noopener">
-        <div class="method-icon">💜</div><div><h3>Donate via Donatr</h3><p>Crypto and other supported donation methods in one secure page.</p></div><span class="go">Open →</span>
-      </a>
-      <a class="card method" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">
-        <div class="method-icon">⭐</div><div><h3>Support with a GitHub Star</h3><p>Star the repository and help more developers discover ZenOS.</p></div><span class="go">GitHub →</span>
-      </a>
-      <a class="card method" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/issues" target="_blank" rel="noopener">
-        <div class="method-icon">🧪</div><div><h3>Contribute engineering time</h3><p>Report bugs, test hardware targets, improve documentation, or submit fixes.</p></div><span class="go">Contribute →</span>
-      </a>
-    </section>
+<div class="section-title"><h2>QR donation</h2><span>Scan with your phone</span></div>
+<section class="card qr"><img src="./donate-qr.png" alt="ZenOS donation QR code"><div><h3>ZenOS Donation QR</h3><p>Scan the project's existing donation QR code to access the configured donation destination.</p></div></section>
 
-    <section class="impact">
-      <h2>What support can help with</h2>
-      <div class="impact-grid">
-        <div class="card impact-item"><div class="i">🔬</div><strong>Testing</strong><span>Boards, peripherals and long-running stress tests</span></div>
-        <div class="card impact-item"><div class="i">🛡️</div><strong>Reliability</strong><span>Debugging, diagnostics and safety-oriented work</span></div>
-        <div class="card impact-item"><div class="i">📚</div><strong>Documentation</strong><span>Guides, examples and developer tooling</span></div>
-      </div>
-    </section>
+<div class="section-title"><h2>Why support ZenOS?</h2><span>Where it helps</span></div>
+<section class="card goal"><div class="goalrow"><span>Open-source development</span><span>Every contribution helps</span></div><div class="bar"><div class="fill"></div></div><small>Support helps with hardware testing, debugging, documentation, infrastructure and continued RTOS development.</small></section>
 
-    <div class="note"><strong>Transparency:</strong> This page does not process payments. The donation button opens the external Donatr page, where available payment methods are shown and donations are sent directly through the selected method.</div>
-  </div>
+<div class="section-title"><h2>Other ways to help</h2><span>Beyond donations</span></div>
+<section class="other"><a class="card" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">⭐ Star on GitHub<span>Help more developers discover ZenOS</span></a><a class="card" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/issues" target="_blank" rel="noopener">🧪 Report or fix issues<span>Testing and engineering contributions matter</span></a></section>
+
+<div class="note"><strong>Transparency:</strong> This page does not hold or process donations. Crypto donations are sent to the wallet address shown above; other payment methods open their respective external service.</div>
+<div class="footer"><a href="index.html">← ZenOS Home</a> · <a href="guide.html">Documentation</a> · <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">GitHub</a><br><br>Built with ❤️ for the embedded community</div>
 </main>
-
-<footer><div class="foot"><div>© 2026 Raymon Research Team · ZenOS RTOS</div><div class="links"><a href="index.html">Home</a><a href="guide.html">Documentation</a><a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener">GitHub</a></div></div></footer>
+<div class="toast" id="toast">Address copied</div>
+<script>
+const toast=document.getElementById('toast');let timer;
+document.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',async()=>{const value=btn.dataset.copy;try{await navigator.clipboard.writeText(value);btn.textContent='Copied';toast.textContent='Wallet address copied';toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>{toast.classList.remove('show');btn.textContent='Copy'},1500)}catch(e){const ta=document.createElement('textarea');ta.value=value;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();btn.textContent='Copied';toast.textContent='Wallet address copied';toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>{toast.classList.remove('show');btn.textContent='Copy'},1500)}}));
+</script>
 </body>
 </html>
