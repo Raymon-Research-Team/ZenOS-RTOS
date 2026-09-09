@@ -1,0 +1,71 @@
+name: Repair Guide UI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - name: Normalize guide badges and buttons
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('docs/guide-html/guide.html')
+          s = p.read_text(encoding='utf-8')
+
+          start = s.find('<div class="readme-badges"')
+          end = s.find('</div>', start)
+          if start != -1 and end != -1:
+              end += len('</div>')
+              badges = '''<div class="readme-badges" aria-label="ZenOS project badges" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 18px;">
+            <img src="https://img.shields.io/badge/MIT%20License-2ea44f?style=flat" alt="MIT License" height="20">
+            <img src="https://img.shields.io/badge/Safety%20Mechanisms-0277bd?style=flat" alt="Safety Mechanisms" height="20">
+            <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="IEC Target Profiles" height="20">
+            <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap Scheduler" height="20">
+            <img src="https://img.shields.io/badge/100%C2%B5s%20Tick-00838f?style=flat" alt="100μs Tick" height="20">
+            <img src="https://img.shields.io/badge/Zero%20Heap-546e7a?style=flat" alt="Zero Heap" height="20">
+        </div>'''
+              s = s[:start] + badges + s[end:]
+
+          # Make the feature badge row compact and prevent any inherited image sizing from enlarging it.
+          marker = '        .cover .badges {'
+          if marker in s:
+              old = s[s.find(marker):s.find('        /* Cards */', s.find(marker))]
+              css = '''        .cover .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 14px; }
+        .cover .badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
+        .cover .readme-badges { line-height: 0; }
+        .cover .readme-badges img { width: auto !important; height: 20px !important; max-width: none; border-radius: 0; margin: 0 !important; display: block; }
+
+'''
+              s = s.replace(old, css + '        /* Cards */', 1)
+
+          # Add restrained icons to the two utility buttons without changing their destinations or behavior.
+          s = s.replace('<button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>', '<button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Open navigation">☰</button>')
+          s = s.replace('style="display:inline-block;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;">🔗 View on GitHub</a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#24292e;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌘</span> View on GitHub</a>')
+          s = s.replace('style="display:inline-block;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;">  Back to Home  </a>', 'style="display:inline-flex;align-items:center;gap:7px;padding:10px 24px;background:#01579b;color:white;border-radius:8px;text-decoration:none;font-weight:600;"><span aria-hidden="true">⌂</span> Back to Home</a>')
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/guide-html/guide.html
+          if git diff --cached --quiet; then
+            echo "No guide UI changes needed."
+            exit 0
+          fi
+          git commit -m "Fix guide badge sizing and button icons"
+          git push
