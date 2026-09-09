@@ -4,8 +4,6 @@
 
 # ZenOS RTOS — Safety Manual
 
-**Version:** 1.0.0  
-**Date:** September 2026  
 **Author:** Raymon Research Team — Rahman Heidari (rahman.h22@gmail.com)  
 **License:** MIT
 

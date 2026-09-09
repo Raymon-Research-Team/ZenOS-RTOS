@@ -4,7 +4,7 @@
 
 # ZenOS RTOS — Complete API Tutorial & Cookbook
 
-**Version:** 1.0.0 | **Platform:** ARM Cortex-M (STM32) | **Language:** C++11 / C
+**Platform:** ARM Cortex-M (STM32) | **Language:** C++11 / C
 
 > **📝 Note:** All examples and sample code in this tutorial are written for **STM32F103C8T6** (Blue Pill, Cortex-M3, 72MHz, 64KB Flash, 20KB RAM). The code is portable to other STM32 families — just adjust pin names and peripheral handles to match your board.
 
