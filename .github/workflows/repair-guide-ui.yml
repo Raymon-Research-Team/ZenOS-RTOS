@@ -1,8 +1,10 @@
 name: Repair Guide UI
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    paths:
+      - '.github/workflows/repair-guide-ui.yml'
+      - 'docs/guide-html/guide.html'
   workflow_dispatch:
 
 permissions:
@@ -10,12 +12,10 @@ permissions:
 
 jobs:
   repair:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - name: Normalize guide badges and buttons
         shell: bash
