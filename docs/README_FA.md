@@ -17,7 +17,7 @@
 
 [**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](../README.md)
 
-📘 **[راهنمای ZenOS](guide-html/index.html)**
+📘 **[راهنمای ZenOS](https://raymon-research-team.github.io/ZenOS-RTOS/)**
 
 <br>
 
@@ -194,7 +194,7 @@ int main(void) {
 
 | سند | محتوا |
 |:----|:------|
-| 🌐 [guide.html](guide-html/index.html) | راهنمای تعاملی کامل (HTML) |
+| 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | راهنمای تعاملی کامل (HTML) |
 | 📖 [SAFETY_MANUAL_FA.md](SAFETY_MANUAL_FA.md) | معماری ایمنی، محدودیت‌ها، جزئیات انطباق با استانداردها |
 | 📘 [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | راهنمای کامل API با مثال‌ها (فارسی) |
 | 📗 [API_TUTORIAL.md](API_TUTORIAL.md) | راهنمای کامل API با مثال‌ها (انگلیسی) |
