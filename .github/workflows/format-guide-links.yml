@@ -1,0 +1,60 @@
+name: Format Guide Links and Badges
+
+on:
+  push:
+    paths:
+      - '.github/workflows/format-guide-links.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update README guide links and guide badges
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          # English README: add a prominent Guide link and fix all old guide paths.
+          p = Path('README.md')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('(docs/guide.html)', '(docs/guide-html/index.html)')
+          marker = '[**🇮🇷 فارسی**](docs/README_FA.md) | [**🇬🇧 English**](README.md)'
+          if 'docs/guide-html/index.html' not in s.split('---', 1)[0]:
+              s = s.replace(marker, marker + '\n\n📘 **[ZenOS Guide](docs/guide-html/index.html)**', 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Persian README: add a prominent Guide link and fix the moved guide path.
+          p = Path('docs/README_FA.md')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('(guide.html)', '(guide-html/index.html)')
+          marker = '[**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](../README.md)'
+          if 'guide-html/index.html' not in s.split('---', 1)[0]:
+              s = s.replace(marker, marker + '\n\n📘 **[راهنمای ZenOS](guide-html/index.html)**', 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Add the same colorful Shields badges used by the README to the HTML guide cover.
+          p = Path('docs/guide-html/guide.html')
+          s = p.read_text(encoding='utf-8')
+          anchor = '<img src="./ZenOS_logo.svg" alt="ZenOS Logo">'
+          badges = '''\n        <div class="readme-badges" aria-label="ZenOS project badges" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin:4px 0 18px;">\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License: MIT"></a>\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Version-1.0.0-green.svg?style=for-the-badge" alt="Version 1.0.0"></a>\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge" alt="Platform: ARM Cortex-M"></a>\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge" alt="Language: C++11"></a>\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge" alt="IEC 62304"></a>\n            <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge" alt="IEC 61508"></a>\n        </div>'''
+          if 'class="readme-badges"' not in s:
+              if anchor not in s:
+                  raise SystemExit('Guide cover logo anchor not found')
+              s = s.replace(anchor, anchor + badges, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit changes and remove one-time workflow
+        run: |
+          rm -f .github/workflows/format-guide-links.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/README_FA.md docs/guide-html/guide.html .github/workflows/format-guide-links.yml
+          git diff --cached --quiet || git commit -m "Update guide links and add README badges to guide"
+          git push
