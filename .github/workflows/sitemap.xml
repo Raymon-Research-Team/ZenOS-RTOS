@@ -9,7 +9,7 @@
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
         <xhtml:link rel="alternate" hreflang="en" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS"/>
-        <xhtml:link rel="alternate" hreflang="fa" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/docs/README_FA.md"/>
+        <xhtml:link rel="alternate" hreflang="fa" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS"/>
     </url>
 
     <!-- Main README (English) -->
@@ -82,12 +82,12 @@
 
     <!-- HTML Guide (English/Farsi) -->
     <url>
-        <loc>https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/docs/guide.html</loc>
+        <loc>https://raymon-research-team.github.io/ZenOS-RTOS/</loc>
         <lastmod>2026-09-07</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
-        <xhtml:link rel="alternate" hreflang="en" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/docs/guide.html"/>
-        <xhtml:link rel="alternate" hreflang="fa" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/blob/main/docs/guide.html"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://raymon-research-team.github.io/ZenOS-RTOS/"/>
+        <xhtml:link rel="alternate" hreflang="fa" href="https://raymon-research-team.github.io/ZenOS-RTOS/"/>
     </url>
 
     <!-- Source Files -->
