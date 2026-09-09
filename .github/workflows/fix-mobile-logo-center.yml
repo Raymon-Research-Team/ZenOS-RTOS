@@ -1,38 +1,37 @@
 name: Fix mobile Guide logo centering
 on:
-  pull_request:
+  push:
     branches: [main]
-    types: [opened, synchronize, reopened]
 permissions:
   contents: write
 jobs:
   fix:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix-guide-mobile-logo'
+    if: github.repository == 'Raymon-Research-Team/ZenOS-RTOS'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           ref: fix-guide-mobile-logo
           fetch-depth: 1
-      - name: Center logo responsively
+      - name: Resize and center logo
         shell: python
         run: |
           from pathlib import Path
           p = Path('docs/guide-html/guide.html')
           s = p.read_text(encoding='utf-8')
-          old = '.cover > img { width: 320px; height: auto; border-radius: 16px; margin-bottom: 18px; }'
-          new = '.cover > img { display:block; width:320px; max-width:100%; height:auto; border-radius:16px; margin:0 auto 18px; }'
+          old = '.cover > img { display:block; width:320px; max-width:100%; height:auto; border-radius:16px; margin:0 auto 18px; }'
+          new = '.cover > img { display:block; width:288px; max-width:100%; height:auto; border-radius:16px; margin:0 auto 18px; }'
           if old not in s:
-              raise SystemExit('Expected CSS rule not found')
+              raise SystemExit('Expected centered logo CSS rule not found')
           p.write_text(s.replace(old, new, 1), encoding='utf-8')
       - name: Verify
         run: |
-          grep -q 'display:block; width:320px; max-width:100%' docs/guide-html/guide.html
+          grep -q 'display:block; width:288px; max-width:100%' docs/guide-html/guide.html
           git diff --check
       - name: Commit
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/guide-html/guide.html
-          git commit -m 'Center Guide logo on mobile' || exit 0
+          git commit -m 'Reduce Guide logo size by 10%' || exit 0
           git push origin fix-guide-mobile-logo
