@@ -825,7 +825,10 @@ OSError last = os_get_last_error();
 printf("Total errors: %u, Last: %d\n", total_errors, (int)last);
 
 // Suppress expected errors during testing (won't trigger watchdog)
-os_error_expect_begin() / os_error_expect_end() {
+os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
 }</code></pre>
         <p><span data-lang="en"><strong>What happens:</strong> <code>os_get_stack_usage()</code> returns how many bytes of stack a task has used (peak watermark). If a task has a 512-byte stack and uses 480 bytes, you're close to overflow — increase the stack size. <code>os_get_cpu_usage_total()</code> returns total CPU utilization (0-100%). If it's above 80%, your system is overloaded. <code>os_get_task_cpu_usage()</code> shows which task is consuming the most CPU.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_get_stack_usage()</code> تعداد بایت‌های استفاده شده از پشته تسک را برمی‌گرداند. اگر تسکی پشته ۵۱۲ بایتی دارد و ۴۸۰ بایت استفاده کرده، نزدیک به سرریز هستید — پشته را بزرگ‌تر کنید. <code>os_get_cpu_usage_total()</code> کل استفاده CPU را برمی‌گرداند (۰-۱۰۰٪). اگر بالای ۸۰٪ باشد، سیستم بیش از حد بارگذاری شده است.</span></p>
@@ -1009,7 +1012,10 @@ printf("Errors: %u total, %u unexpected\n", total, unexpected);
 
 // Suppress expected errors during testing
 // Use this when you intentionally trigger errors for testing
-os_error_expect_begin() / os_error_expect_end() {
+os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
 }
 // os_get_unexpected_error_count() does NOT increase
@@ -1024,7 +1030,13 @@ os_error_expect_begin() / os_error_expect_end() {
                entry.timestamp_tick, entry.code, entry.task_id, entry.severity);
     }
 #endif</code></pre>
-        <p><span data-lang="en"><strong>What happens:</strong> <code>os_log_error()</code> records an error with a code and severity level. The error is stored in a ring buffer (circular log) with a timestamp. <code>os_error_expect_begin() / os_error_expect_end() { ... }</code> marks a block where errors are expected — they won't trigger the watchdog or count as unexpected errors. This is useful during testing when you intentionally test error paths.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_log_error()</code> خطایی را با کد و سطح شدت ثبت می‌کند. خطا در بافر حلقه‌ای (لاگ دایره‌ای) با زمان ذخیره می‌شود. <code>os_error_expect_begin() / os_error_expect_end() { ... }</code> بلوکی را علامت‌گذاری می‌کند که در آن خطاها مورد انتظار هستند.</span></p>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_log_error()</code> records an error with a code and severity level. The error is stored in a ring buffer (circular log) with a timestamp. <code>os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end(); ... }</code> marks a block where errors are expected — they won't trigger the watchdog or count as unexpected errors. This is useful during testing when you intentionally test error paths.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_log_error()</code> خطایی را با کد و سطح شدت ثبت می‌کند. خطا در بافر حلقه‌ای (لاگ دایره‌ای) با زمان ذخیره می‌شود. <code>os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end(); ... }</code> بلوکی را علامت‌گذاری می‌کند که در آن خطاها مورد انتظار هستند.</span></p>
 
         <h3><span data-lang="en">Error Severity Levels</span><span data-lang="fa">سطوح شدت خطا</span></h3>
         <table>
