@@ -830,7 +830,7 @@ os_error_expect_begin();
     os_event_signal(-1);
     os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
-}</code></pre>
+    os_error_expect_end();</code></pre>
         <p><span data-lang="en"><strong>What happens:</strong> <code>os_get_stack_usage()</code> returns how many bytes of stack a task has used (peak watermark). If a task has a 512-byte stack and uses 480 bytes, you're close to overflow — increase the stack size. <code>os_get_cpu_usage_total()</code> returns total CPU utilization (0-100%). If it's above 80%, your system is overloaded. <code>os_get_task_cpu_usage()</code> shows which task is consuming the most CPU.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_get_stack_usage()</code> تعداد بایت‌های استفاده شده از پشته تسک را برمی‌گرداند. اگر تسکی پشته ۵۱۲ بایتی دارد و ۴۸۰ بایت استفاده کرده، نزدیک به سرریز هستید — پشته را بزرگ‌تر کنید. <code>os_get_cpu_usage_total()</code> کل استفاده CPU را برمی‌گرداند (۰-۱۰۰٪). اگر بالای ۸۰٪ باشد، سیستم بیش از حد بارگذاری شده است.</span></p>
 
         <h3><span data-lang="en">Monitoring Dashboard Example</span><span data-lang="fa">مثال داشبورد پایش</span></h3>
@@ -1017,7 +1017,7 @@ os_error_expect_begin();
     os_event_signal(-1);
     os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
-}
+    os_error_expect_end();
 // os_get_unexpected_error_count() does NOT increase
 // os_get_expected_error_count() DOES increase
 
@@ -1272,7 +1272,7 @@ void task_shutdown_handler(void) {
     <div class="card" id="config-guide">
         <h1>⚙️ <span data-lang="en">Configuration Guide</span><span data-lang="fa">راهنمای پیکربندی</span></h1>
 
-        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. All safety features are <strong>enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
+        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
 
         <h2>1. <span data-lang="en">What Do You Need?</span><span data-lang="fa">چه چیزی نیاز دارید؟</span></h2>
         <p><span data-lang="en">Answer these questions to determine your configuration:</span><span data-lang="fa">این سؤالات را پاسخ دهید تا پیکربندی خود را تعیین کنید:</span></p>
@@ -1428,7 +1428,7 @@ void task_shutdown_handler(void) {
 │  │  Bitmap    │  Events     │  Stack Canary    │  │
 │  │  priority  │  Mutexes    │  MPU Protection  │  │
 │  │  queue     │  Queues     │  HW/SW Watchdog  │  │
-│  │            │  Semaphores │  RAM Test (C-)   │  │
+│  │            │  Semaphores │  RAM integrity test   │  │
 │  │            │             │  CRC ROM Check   │  │
 │  │            │             │  Deadline Mon.   │  │
 │  └────────────┴─────────────┴──────────────────┘  │
