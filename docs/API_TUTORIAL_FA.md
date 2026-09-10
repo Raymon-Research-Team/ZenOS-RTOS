@@ -1767,10 +1767,4 @@ void task_shutdown_handler(void) {
 
 </div>
 
----
-
-<div dir="rtl">
-
-*تولید شده برای ZenOS RTOS v1.0.0 — همچنین ببینید: SAFETY_MANUAL.md، ZenOS_Config.hpp*
-
-</div>
+---<div dir="rtl"> *تولید شده برای ZenOS RTOS v1.0.1 — همچنین ببینید: CONFIG_GUIDE_FA.md، SAFETY_MANUAL.md، ZenOS_Config.hpp*</div>

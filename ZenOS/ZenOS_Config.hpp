@@ -35,7 +35,7 @@
  *   [IND-4]  Industrial IEC 61508 SIL 4 — highest-integrity (rare in SW)
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 
@@ -75,6 +75,25 @@
  *          requires stack depth analysis for all execution paths. */
 #ifndef OS_KERNEL_STACK_SIZE
 #define OS_KERNEL_STACK_SIZE  512
+#endif
+
+
+/**
+ * Compile-time scheduler priority configuration
+ *
+ * OS_KERNEL_MAX_PRIORITIES is the number of scheduler priority slots.
+ * Priority 0 is reserved; usable priorities are 1..OS_KERNEL_MAX_PRIORITIES-1.
+ *
+ * Default: 32 slots (priorities 1..31).
+ * Maximum: 256 slots (priorities 1..255).
+ */
+
+#ifndef OS_KERNEL_MAX_PRIORITIES
+#define OS_KERNEL_MAX_PRIORITIES 32
+#endif
+
+#if (OS_KERNEL_MAX_PRIORITIES < 2) || (OS_KERNEL_MAX_PRIORITIES > 256)
+#error "OS_KERNEL_MAX_PRIORITIES must be between 2 and 256"
 #endif
 
 

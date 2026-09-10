@@ -1646,6 +1646,4 @@ void task_shutdown_handler(void) {
 | `OS_QUEUE<T,N>` | — | Bounded FIFO queue |
 | `OS_SEMAPHORE` | — | Counting semaphore |
 
----
-
-*Generated for ZenOS RTOS v1.0.0 — Tested on STM32F103C8T6 — See also: SAFETY_MANUAL.md, ZenOS_Config.hpp*
+--- *Generated for ZenOS RTOS v1.0.1 — Tested on STM32F103C8T6 — See also: CONFIG_GUIDE.md, SAFETY_MANUAL.md, ZenOS_Config.hpp*

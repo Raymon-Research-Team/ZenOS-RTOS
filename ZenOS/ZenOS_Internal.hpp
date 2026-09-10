@@ -8,12 +8,11 @@
  * translation units (scheduler, IPC, safety, monitor).
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 #define OS_BUILD
 #include "ZenOS.hpp"
-#include "ZenOS_Priority_Config.hpp"
 
 /* ═══════════════ Shared Globals ═══════════════ */
 extern TCB*              volatile task_list;
@@ -42,7 +41,7 @@ extern volatile uint32_t stack_recovery_count;
    Higher priorities use extension storage compiled only when requested. */
 extern volatile uint32_t os_ready_bitmap;
 extern TCB* volatile     os_pq_head[32];
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
 extern volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS];
 extern TCB* volatile     os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
 #endif
@@ -80,6 +79,42 @@ uint32_t os_ms_to_ticks(uint32_t ms);
 TCB* os_find_task_by_entry(void(*entry)(void));
 TCB* os_find_task_by_id(uint8_t id);
 
+/* ═══════════════ Microsecond Time Extension ═══════════════ */
+/* Wrap-safe µs domain used by os_get_us() — state and rationale in ZenOS.cpp.
+   os_time_fold() is the single fold path: it samples DWT CYCCNT (wrap-safe
+   via unsigned subtraction), converts cycles to µs exactly for ANY
+   SystemCoreClock via cycles × 10^6 / SystemCoreClock, and carries the
+   fractional remainder in cycle·µs units so per-fold truncation cannot
+   accumulate into drift.  A SystemCoreClock change automatically applies
+   to subsequent windows only; call os_time_reset() after a clock change to
+   also zero the domain and resync the wrap baseline.  One 64-bit division
+   per fold at the 100 µs tick rate — negligible on Cortex-M3+.
+   Safe from task and ISR context (nested critical sections). */
+extern volatile uint32_t os_us_cycles_pending;
+extern volatile uint32_t os_us_remainder;
+extern volatile uint32_t os_us_accumulated;
+void os_time_reset(void);
+void os_time_sample(void);
+
+#if OS_HAS_CYCLE_COUNTER
+inline void os_time_fold(void) {
+    uint32_t cs  = os_critical_enter();
+    uint32_t now = OS_DWT_CYCCNT;
+    /* Unsigned subtraction is wrap-safe (mod-2^32 arithmetic). */
+    uint32_t delta = now - os_us_cycles_pending;
+    os_us_cycles_pending = now;
+    /* cycle·µs units → exact µs for any clock; remainder carried so no
+       truncation accumulates across folds. */
+    uint64_t units = (uint64_t)delta * 1000000ULL + os_us_remainder;
+    uint32_t clk   = (SystemCoreClock != 0UL) ? SystemCoreClock : 1UL;
+    os_us_accumulated += (uint32_t)(units / clk);
+    os_us_remainder    = (uint32_t)(units % clk);
+    os_critical_exit(cs);
+}
+#else
+inline void os_time_fold(void) { /* no DWT — tick-derived domain */ }
+#endif
+
 #if OS_TOOL_TICKLESS_IDLE
 bool os_tickless_process(uint32_t skip);
 #endif
@@ -104,7 +139,11 @@ inline bool os_tcb_check_magic(TCB* t) {
 #endif
 
 /* ═══════════════ Monitor Functions ═══════════════ */
+/* Defined in ZenOS_Monitor.cpp under OS_MONITOR_ENABLED — the declaration
+   guard must mirror the definition guard so a disabled build has neither. */
+#if OS_MONITOR_ENABLED
 uint32_t os_stack_watermark_scan(const TCB* task);
+#endif
 
 /* ═══════════════ Critical Section ═══════════════ */
 extern "C" uint32_t os_critical_enter(void);

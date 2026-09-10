@@ -6,7 +6,7 @@
 **Real-Time operating system for ARM Cortex-M — written in C++11.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
@@ -153,6 +153,8 @@ For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنم
 |:---------|:-------------|
 | 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | Complete interactive guide (HTML) |
 | 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
+| ⚙️ [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) | Complete configuration guide — every option, defaults, profiles, IEC enforcement (English) |
+| ⚙️ [CONFIG_GUIDE_FA.md](docs/CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی (فارسی) |
 | 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
 | 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
 | 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
@@ -222,6 +224,8 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 
 Your donation directly funds development, testing, certification, and documentation.
 
+> 💡 **Click a wallet address to copy it into your wallet app. Click the QR code to open it in a new tab.**
+
 
 <table>
 <tr>
@@ -229,12 +233,12 @@ Your donation directly funds development, testing, certification, and documentat
 
 🟠 **Bitcoin (BTC)**
 
-`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
+[`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`](bitcoin:bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650)
 
 </td>
 <td rowspan="2" align="center" width="50%">
 
-<img src="docs/guide-html/donate-qr.png" alt="Donate QR Code" width="180" />
+<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="docs/guide-html/donate-qr.png" alt="Donate QR Code" width="180" /></a>
 
 </td>
 </tr>
@@ -243,7 +247,7 @@ Your donation directly funds development, testing, certification, and documentat
 
 🔵 **Ethereum (ETH) / USDT (ERC-20)**
 
-`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`
+[`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`](ethereum:0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C)
 
 </td>
 </tr>

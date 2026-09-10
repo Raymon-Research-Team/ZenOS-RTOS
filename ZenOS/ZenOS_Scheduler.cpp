@@ -3,28 +3,28 @@
  * @brief   ZenOS RTOS — Configurable priority bitmap scheduler & task management
  *
  * Extracted from ZenOS.cpp as part of the modular split.
- * Priority slots are configured by OS_MAX_PRIORITIES (2..256), with
- * priority 0 reserved and usable priorities 1..OS_MAX_PRIORITIES-1.
+ * Priority slots are configured by OS_KERNEL_MAX_PRIORITIES (2..256), with
+ * priority 0 reserved and usable priorities 1..OS_KERNEL_MAX_PRIORITIES-1.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
 
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
 volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
 TCB* volatile os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT] = {nullptr};
 #endif
 
 static inline bool os_priority_valid(uint8_t prio) {
-    return prio > 0 && prio < OS_MAX_PRIORITIES;
+    return prio > 0 && prio < OS_KERNEL_MAX_PRIORITIES;
 }
 
 static inline TCB* volatile* os_pq_head_for(uint8_t prio) {
     if (prio < 32) return &os_pq_head[prio];
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     return &os_pq_head_ext[prio - 32];
 #else
     return nullptr;
@@ -37,7 +37,7 @@ static inline void os_pq_set_bit(uint8_t prio) {
         os_ready_bitmap |= (1UL << prio);
         return;
     }
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
     os_ready_bitmap_ext[p >> 5] |= (1UL << (p & 31));
 #endif
@@ -49,7 +49,7 @@ static inline void os_pq_clear_bit(uint8_t prio) {
         os_ready_bitmap &= ~(1UL << prio);
         return;
     }
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
     os_ready_bitmap_ext[p >> 5] &= ~(1UL << (p & 31));
 #endif
@@ -58,7 +58,7 @@ static inline void os_pq_clear_bit(uint8_t prio) {
 static inline bool os_pq_bit_is_set(uint8_t prio) {
     if (!os_priority_valid(prio)) return false;
     if (prio < 32) return (os_ready_bitmap & (1UL << prio)) != 0;
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
     return (os_ready_bitmap_ext[p >> 5] & (1UL << (p & 31))) != 0;
 #else
@@ -67,13 +67,13 @@ static inline bool os_pq_bit_is_set(uint8_t prio) {
 }
 
 static inline uint8_t os_pq_highest_prio(void) {
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     for (int word = (int)OS_PRIORITY_EXTRA_WORDS - 1; word >= 0; --word) {
         uint32_t bits = os_ready_bitmap_ext[word];
         if (bits != 0) {
             uint8_t bit = (uint8_t)(31UL - (uint32_t)__builtin_clz(bits));
             uint16_t prio = (uint16_t)(32U + (uint16_t)word * 32U + bit);
-            if (prio < OS_MAX_PRIORITIES) return (uint8_t)prio;
+            if (prio < OS_KERNEL_MAX_PRIORITIES) return (uint8_t)prio;
         }
     }
 #endif
@@ -118,7 +118,7 @@ void os_pq_remove(TCB* task) {
 }
 
 /* ── Round-Robin Throttle ── */
-#if OS_MAX_PRIORITIES <= 32
+#if OS_KERNEL_MAX_PRIORITIES <= 32
 static uint32_t os_rr_skip = 0;
 #else
 static uint32_t os_rr_skip = 0;
@@ -132,7 +132,7 @@ extern "C" void os_priority_queues_init(void) {
     os_ready_bitmap = 0;
     for (uint32_t i = 0; i < 32; ++i) os_pq_head[i] = nullptr;
 
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i) {
         os_ready_bitmap_ext[i] = 0;
         os_rr_skip_ext[i] = 0;
@@ -148,7 +148,7 @@ extern "C" void os_priority_queues_init(void) {
 static inline bool os_rr_is_skipped(uint8_t prio) {
     if (!os_priority_valid(prio)) return false;
     if (prio < 32) return (os_rr_skip & (1UL << prio)) != 0;
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
     return (os_rr_skip_ext[p >> 5] & (1UL << (p & 31))) != 0;
 #else
@@ -158,8 +158,8 @@ static inline bool os_rr_is_skipped(uint8_t prio) {
 
 static inline void os_rr_set_skip(uint8_t prio) {
     if (prio < 32) os_rr_skip |= (1UL << prio);
-#if OS_MAX_PRIORITIES > 32
-    else if (prio < OS_MAX_PRIORITIES) {
+#if OS_KERNEL_MAX_PRIORITIES > 32
+	else if (prio < OS_KERNEL_MAX_PRIORITIES) {
         uint8_t p = (uint8_t)(prio - 32);
         os_rr_skip_ext[p >> 5] |= (1UL << (p & 31));
     }
@@ -168,7 +168,7 @@ static inline void os_rr_set_skip(uint8_t prio) {
 
 static inline void os_rr_clear_all(void) {
     os_rr_skip = 0;
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
         os_rr_skip_ext[i] = 0;
 #endif
@@ -176,7 +176,7 @@ static inline void os_rr_clear_all(void) {
 
 static inline uint32_t os_ready_level_count(void) {
     uint32_t count = (uint32_t)__builtin_popcount(os_ready_bitmap);
-#if OS_MAX_PRIORITIES > 32
+#if OS_KERNEL_MAX_PRIORITIES > 32
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
         count += (uint32_t)__builtin_popcount(os_ready_bitmap_ext[i]);
 #endif
@@ -192,7 +192,7 @@ extern "C" TCB* os_pq_next(void) {
     if (os_pq_highest_prio() == 0) return nullptr;
     const uint32_t now = tick_count;
 
-    for (int p = (int)OS_MAX_PRIORITIES - 1; p >= 1; --p) {
+    for (int p = (int)OS_KERNEL_MAX_PRIORITIES - 1; p >= 1; --p) {
         uint8_t prio = (uint8_t)p;
         if (!os_pq_bit_is_set(prio) || os_rr_is_skipped(prio)) continue;
         TCB* head = *os_pq_head_for(prio);
@@ -229,7 +229,7 @@ extern "C" void os_pq_rotate(void) {
     const uint32_t now = tick_count;
     uint8_t p = 0xFF;
 
-    for (int prio = (int)OS_MAX_PRIORITIES - 1; prio >= 1; --prio) {
+    for (int prio = (int)OS_KERNEL_MAX_PRIORITIES - 1; prio >= 1; --prio) {
         uint8_t candidate = (uint8_t)prio;
         if (!os_pq_bit_is_set(candidate) || os_rr_is_skipped(candidate)) continue;
         for (TCB* t = *os_pq_head_for(candidate); t; t = t->queue_next) {
@@ -546,6 +546,40 @@ bool os_tickless_process(uint32_t skip) {
 #endif
 
 extern "C" uint32_t os_get_tick(void) { return tick_count; }
+
+/* ── Time getters ─────────────────────────────────────────────────────────
+   os_get_ms() derives from the kernel tick, so it stays consistent with
+   os_get_tick() (including tickless-idle catch-up ticks) and wraps after
+   ~49.5 days (32-bit ms counter).
+
+   os_get_us() — wrap-safe extension of the DWT cycle counter.
+   CYCCNT is only 32-bit (wraps every ~59.6 s at 72 MHz), so a raw read
+   cannot measure beyond one wrap period.  os_us_accumulated holds the µs
+   folded in by os_time_fold() (called from os_tick, os_time_reset and the
+   lazy path below); this function simply folds what is pending and returns
+   the accumulator.  All state changes happen inside the critical section,
+   so task, ISR and tickless-wake callers cannot interleave.
+
+   SystemCoreClock changes: conversion uses the current SystemCoreClock at
+   every fold, so a clock change automatically applies only to subsequent
+   windows.  After any clock change (e.g. HAL_RCC_ClockConfig +
+   SystemCoreClockUpdate), call os_time_reset() to resynchronize the domain
+   with the counter. */
+extern "C" uint32_t os_get_us(void) {
+#if OS_HAS_CYCLE_COUNTER
+    os_time_fold();          /* lazy sample — same path os_tick uses */
+    return os_us_accumulated;
+#else
+    /* No DWT: scale the kernel tick (resolution = OS_KERNEL_TICK_PERIOD_US,
+       wraps mod 2^32 µs like the ms counter above). */
+    return (uint32_t)((uint64_t)tick_count * OS_KERNEL_TICK_PERIOD_US);
+#endif
+}
+
+extern "C" uint32_t os_get_ms(void) {
+    return tick_count / OS_TICKS_PER_MS;
+}
+
 extern "C" uint16_t os_get_task_count(void) { return task_count; }
 extern "C" uint32_t os_get_version(void) { return OS_VERSION_PACKED; }
 extern "C" const char* os_get_version_string(void) { return OS_VERSION_STRING; }

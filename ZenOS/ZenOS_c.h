@@ -5,7 +5,7 @@
  * @brief   Thin C wrapper for ZenOS — use from .c files only
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  *
  * Declares every ZenOS function callable from C. For C++ code include
  * ZenOS.hpp directly (C++-only features: task creation templates, RAII
@@ -73,7 +73,10 @@ void OS_Fault_C_Handler(void);
    Mirrors the switches in ZenOS_Config.hpp — each block compiles
    only when its feature is enabled. */
 
-/* Monitor: task state / CPU usage / stack watermark */
+/* Monitor: task state / CPU usage / stack watermark.
+   NOTE: the error-log query API (os_log_error, os_get_error_log_entry/count/total)
+   is declared only in ZenOS.hpp — it takes the C++-only OSError type, so no
+   C counterpart exists. Do not add it here. */
 #if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
 uint8_t  os_task_get_state(void(*entry)(void));
 uint8_t  os_get_cpu_usage(void);
@@ -84,6 +87,16 @@ uint32_t os_get_stack_usage(void(*entry)(void));
 uint8_t  os_get_task_cpu_usage(void(*entry)(void));
 uint32_t os_get_stack_watermark(uint8_t task_id);
 uint32_t os_get_stack_watermark_percent(uint8_t task_id);
+/* Per-task stack usage report — same OS_MONITOR_ENABLED guard as the
+   definitions in ZenOS_Monitor.cpp. */
+typedef struct {
+    const char* name;        /* task name ("idle" for the idle task) */
+    uint8_t     id;          /* task ID */
+    uint32_t    size_bytes;  /* total stack size */
+    uint32_t    peak_bytes;  /* peak usage since last start/reset */
+} os_stack_report_entry_t;
+uint8_t  os_get_stack_report_count(void);
+bool     os_get_stack_report(uint8_t index, os_stack_report_entry_t* out);
 #endif
 
 /* Deadline monitoring */

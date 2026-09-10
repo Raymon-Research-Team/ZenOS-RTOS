@@ -7,7 +7,7 @@
  * C++ features (enums, classes, templates) are guarded by __cplusplus.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 #include <stdint.h>
@@ -26,6 +26,23 @@
 #else
 #define OS_MONITOR_ENABLED  0
 #endif
+
+/* ----------------------------------------------------------------------------
+ *  Scheduler priority storage dimensions (internal — do not edit)
+ * ---------------------------------------------------------------------------
+ *  Derived from OS_KERNEL_MAX_PRIORITIES in ZenOS_Config.hpp:
+ *    - Priorities 0..31 use the scalar ready bitmap (os_ready_bitmap) and the
+ *      fixed queue-head array os_pq_head[32] — no extra RAM by default.
+ *    - Priorities beyond 32 use extension storage sized by these macros:
+ *        OS_PRIORITY_BITMAP_WORDS : ready-bitmap words for ALL priorities
+ *        OS_PRIORITY_EXTRA_COUNT  : extension queue-head slots (32..MAX-1)
+ *        OS_PRIORITY_EXTRA_WORDS  : extension bitmap words
+ *  Kept here (not in ZenOS_Config.hpp) because they are calculated values,
+ *  not user settings — the user only edits OS_KERNEL_MAX_PRIORITIES.
+ * -------------------------------------------------------------------------- */
+#define OS_PRIORITY_BITMAP_WORDS ((OS_KERNEL_MAX_PRIORITIES + 31U) / 32U)
+#define OS_PRIORITY_EXTRA_COUNT  ((OS_KERNEL_MAX_PRIORITIES > 32U) ? (OS_KERNEL_MAX_PRIORITIES - 32U) : 0U)
+#define OS_PRIORITY_EXTRA_WORDS  ((OS_KERNEL_MAX_PRIORITIES > 32U) ? ((OS_PRIORITY_EXTRA_COUNT + 31U) / 32U) : 0U)
 
 
 /* ============================================================================
@@ -74,7 +91,7 @@ static inline void os_hw_enable_irq()  { __asm volatile("cpsie i" ::: "memory");
 
 #define OS_VERSION_MAJOR           1
 #define OS_VERSION_MINOR           0
-#define OS_VERSION_PATCH           0
+#define OS_VERSION_PATCH           1
 #define OS_VERSION_PACKED          ((OS_VERSION_MAJOR << 16) | (OS_VERSION_MINOR << 8) | OS_VERSION_PATCH)
 
 #define OS_STR_(x) #x

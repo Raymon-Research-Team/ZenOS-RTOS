@@ -7,7 +7,7 @@
 ### **سادگی — امنیت — سرعت**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](../LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
@@ -196,6 +196,8 @@ int main(void) {
 |:----|:------|
 | 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | راهنمای تعاملی کامل (HTML) |
 | 📖 [SAFETY_MANUAL_FA.md](SAFETY_MANUAL_FA.md) | معماری ایمنی، محدودیت‌ها، جزئیات انطباق با استانداردها |
+| ⚙️ [CONFIG_GUIDE_FA.md](CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی — همه گزینه‌ها، پیش‌فرض‌ها، پروفایل‌ها، اجرای IEC (فارسی) |
+| ⚙️ [CONFIG_GUIDE.md](CONFIG_GUIDE.md) | Complete configuration guide (English) |
 | 📘 [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | راهنمای کامل API با مثال‌ها (فارسی) |
 | 📗 [API_TUTORIAL.md](API_TUTORIAL.md) | راهنمای کامل API با مثال‌ها (انگلیسی) |
 | ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | مقایسه فنی با FreeRTOS، Zephyr، RT-Thread |
@@ -280,6 +282,8 @@ int main(void) {
 
 حمایت مالی شما مستقیماً توسعه، تست، گواهینامه و مستندات را تأمین می‌کند.
 
+> 💡 **برای کپی کردن آدرس کیف پول، روی خودِ آدرس کلیک کنید. برای باز شدن تصویر QR در تب جدید، روی تصویر کلیک کنید.**
+
 </div>
 
 <br>
@@ -290,12 +294,12 @@ int main(void) {
 
 🟠 **بیت‌کوین (BTC)**
 
-`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`
+[`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`](bitcoin:bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650)
 
 </td>
 <td rowspan="2" align="center" width="50%">
 
-<img src="donate-qr.png" alt="Donate QR Code" width="180" />
+<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="donate-qr.png" alt="Donate QR Code" width="180" /></a>
 
 </td>
 </tr>
@@ -304,7 +308,7 @@ int main(void) {
 
 🔵 **اتریوم (ETH) / تتر (USDT - ERC-20)**
 
-`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`
+[`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`](ethereum:0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C)
 
 </td>
 </tr>

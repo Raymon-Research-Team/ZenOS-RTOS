@@ -6,7 +6,7 @@
  * Extracted from ZenOS.cpp as part of the modular split.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 #define OS_BUILD
@@ -18,10 +18,12 @@ extern "C" uint32_t SystemCoreClock;
 /* Error counters are touched from ISR context (os_tick reports DEADLINE_MISS /
    TASK_STUCK / STACK_OVERFLOW) and read from task context — volatile too. */
 
-#if OS_SAFETY_SOFT_WATCHDOG
+/* Always defined: the counters are unconditional globals in ZenOS.cpp and
+   the public headers declare the getters inside the OS_MONITOR block, which
+   is on by default — guarding them with OS_SAFETY_SOFT_WATCHDOG left the
+   declarations active with no definition (undefined reference at link). */
 uint32_t os_get_wdg_reset_count(void)      { return wdg_reset_count; }
 uint32_t os_get_stack_recovery_count(void) { return stack_recovery_count; }
-#endif
 
 uint32_t os_get_error_count(void)            { return error_total; }
 uint32_t os_get_expected_error_count(void)   { return error_expected; }
@@ -287,7 +289,9 @@ extern "C" void os_hw_watchdog_check(void) {
     /* Only feed if system is healthy:
        - error count below the transient-error threshold
        - scheduler is running a task */
-    if (os_get_error_count() < 10 && os_get_current_task() != nullptr) {
+    /* os_get_current_task() is defined under OS_TOOL_MUTEX — do not depend
+       on an unrelated feature here. The internal global serves directly. */
+    if (os_get_error_count() < 10 && current_task != nullptr) {
         os_hw_watchdog_feed();
     }
     /* If not healthy: skip feed → IWDG will reset MCU */

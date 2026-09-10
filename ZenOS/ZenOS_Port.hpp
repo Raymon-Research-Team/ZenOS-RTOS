@@ -7,7 +7,7 @@
  * Provides: vector count, register addresses, compiler attributes.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 

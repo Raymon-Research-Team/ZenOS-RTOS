@@ -10,7 +10,7 @@
  *   ZenOS_Monitor.cpp   — Stack watermark, CPU usage, deadline, error log
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 #define OS_BUILD
@@ -54,6 +54,25 @@ volatile uint32_t os_syst_rvr_normal = 0;
 static uint32_t fault_stack[OS_FAULT_STACK_WORDS] OS_ALIGNED(8);
 
 volatile uint32_t os_safe_depth = 0;
+
+/* ── Microsecond time domain (see os_time_fold in ZenOS_Internal.hpp) ──
+   The DWT cycle counter is 32-bit and wraps (~59.6 s at 72 MHz), so raw
+   CYCCNT reads cannot measure beyond one wrap period.  These three values
+   form a wrap-safe µs accumulator:
+     os_us_cycles_pending — CYCCNT value at the last fold (wrap baseline)
+     os_us_remainder      — fractional µs not yet convertible, carried in
+                            cycle·µs units (cycles × 10^6) so per-fold
+                            truncation cannot accumulate into drift
+     os_us_accumulated    — µs since os_init()/os_time_reset()
+   Conversion is exact for ANY SystemCoreClock via µs = cycles × 10^6 /
+   SystemCoreClock, and a clock change automatically applies only to
+   subsequent windows.  os_time_fold() is the single writer (os_tick,
+   os_time_reset and the lazy path in os_get_us all route through it);
+   os_time_reset() reinitializes the domain.  All state is guarded by
+   os_critical_enter/exit at every call site. */
+volatile uint32_t os_us_cycles_pending = 0;
+volatile uint32_t os_us_remainder      = 0;
+volatile uint32_t os_us_accumulated    = 0;
 
 volatile uint32_t error_total = 0;
 volatile OSError  error_last  = OSError::NONE;
@@ -163,8 +182,10 @@ extern "C" void os_tick(void) {
        scheduler state (priority queues, bitmap, blocked_count). They must
        run with interrupts disabled, otherwise a higher-priority ISR
        (e.g. EXTI calling os_event_signal_from_isr) can corrupt that state
-       concurrently. */
+       concurrently with the µs sampler below. */
     uint32_t cs = os_critical_enter();
+
+    os_time_sample();
 
     tick_count++;
 
@@ -397,8 +418,51 @@ extern "C" void os_init(void) {
     OS_DWT_CYCCNT = 0;
     OS_DWT_CTRL  |= OS_DWT_CYCCNTENA;
 #endif
+
+    /* µs time domain: start the extension from zero exactly when the DWT
+       counter resets.  MUST run after the DWT block above (which zeroes
+       CYCCNT). */
+    os_time_reset();
 #if OS_SAFETY_MPU
     os_mpu_init();
+#endif
+}
+
+
+/* ═══════════════ Microsecond Time Extension (DWT wrap safety) ═══════════════
+   The DWT CYCCNT register is 32-bit: at 72 MHz it wraps every ~59.6 s,
+   at 480 MHz every ~8.9 s.  A bare read of CYCCNT therefore cannot
+   measure beyond one wrap period.  These two functions keep a 32-bit
+   µs accumulator that survives wraparound indefinitely:
+
+   os_time_sample()  — folds the DWT cycles elapsed since the previous
+                       sample into os_us_accumulated.  Conversion is exact
+                       for any SystemCoreClock via cycles × 10^6 / clock,
+                       and the carried remainder prevents truncation from
+                       accumulating into drift across folds.
+   os_time_reset()   — reinitializes the domain after os_init() zeroes
+                       CYCCNT, and after SystemCoreClock updates.
+
+   Every caller holds the os_critical section — the state is touched
+   from task context, SysTick and the tickless-idle wake path. */
+void os_time_reset(void) {
+    uint32_t cs = os_critical_enter();
+    os_us_accumulated = 0;
+    os_us_remainder   = 0;
+#if OS_HAS_CYCLE_COUNTER
+    os_us_cycles_pending = OS_DWT_CYCCNT;
+#else
+    os_us_cycles_pending = 0;
+#endif
+    os_critical_exit(cs);
+}
+
+void os_time_sample(void) {
+#if OS_HAS_CYCLE_COUNTER
+    os_time_fold();
+#else
+    /* No DWT: the µs domain is derived from tick_count directly in
+       os_get_us(); nothing to sample. */
 #endif
 }
 
