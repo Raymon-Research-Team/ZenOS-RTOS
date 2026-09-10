@@ -1,0 +1,81 @@
+name: Documentation consistency cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message != 'docs: finish consistency cleanup'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix stale documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('docs/guide-html/guide.html'),
+              Path('docs/guide-html/current.html'),
+              Path('docs/guide-html/faq.html'),
+              Path('docs/guide-html/stm32-rtos.html'),
+              Path('docs/guide-html/about.html'),
+          ]
+
+          replacements = {
+              'Version 1.0.0': 'Version 1.0.1',
+              'ZenOS v1.0.0': 'ZenOS v1.0.1',
+              'version 1.0.0': 'version 1.0.1',
+              '32 priority levels': '32 default priority slots',
+              '32-level priority': 'priority slots (default 32, configurable 2–256)',
+              '32 levels': '32 default slots',
+              'Priority Inheritance': 'IPC Priority Ceiling',
+              'priority inheritance': 'IPC priority ceiling',
+              'O(1) scheduler': 'priority bitmap scheduler with configured-range eligibility scan',
+              'O(1) Scheduler': 'priority bitmap scheduler with configured-range eligibility scan',
+              'O(1) scheduling': 'priority bitmap scheduling with configured-range eligibility scan',
+              'all enabled by default': 'configurable; most safety mechanisms are disabled by default',
+              'all safety features are enabled by default': 'safety features are configurable; most are disabled by default',
+              'all safety mechanisms are enabled by default': 'safety mechanisms are configurable; most are disabled by default',
+              'March C-': 'bounded SRAM integrity test',
+          }
+
+          priority_note = '''\n        <div class="note"><span data-lang="en"><strong>Priority configuration:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> defines the number of scheduler priority slots. Default: <strong>32</strong>. Supported range: <strong>2 to 256</strong>. Priority 0 is reserved for idle; at 256 slots, application priorities are 1–255. Higher numeric values mean higher scheduling priority.</span><span data-lang="fa"><strong>پیکربندی اولویت:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> تعداد اسلات‌های اولویت زمان‌بند را تعیین می‌کند. پیش‌فرض <strong>۳۲</strong> و محدوده پشتیبانی‌شده <strong>۲ تا ۲۵۶</strong> است. اولویت ۰ برای idle رزرو شده و در ۲۵۶ اسلات، اولویت برنامه ۱ تا ۲۵۵ خواهد بود.</span></div>\n        <pre dir="ltr"><code class="language-cpp">#define OS_KERNEL_MAX_PRIORITIES 32   // default: 32 slots, supported range: 2..256</code></pre>\n'''
+
+          for path in files:
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding='utf-8')
+              original = text
+              for old, new in replacements.items():
+                  text = text.replace(old, new)
+              if path.name == 'guide.html' and 'OS_KERNEL_MAX_PRIORITIES' not in text:
+                  marker = '<!-- ==================== API REFERENCE ==================== -->'
+                  if marker in text:
+                      text = text.replace(marker, priority_note + '\n    ' + marker, 1)
+              if path.name == 'guide.html':
+                  text = text.replace('they are not not not all enabled by default', 'they are configurable; most safety mechanisms are disabled by default')
+                  text = text.replace('all optional', 'optional and configuration-dependent')
+                  text = text.replace('Everything (already enabled)', 'Keep only the features you need')
+                  text = text.replace('The task will be scheduled to run when <code>os_start()</code> is called. ', 'The task is registered and becomes schedulable according to its state and priority when <code>os_start()</code> is called. ')
+                  text = text.replace('<code>os_delay_ms(0)</code> immediately yields', '<code>os_delay_ms(0)</code> does not yield; use <code>os_yield()</code>')
+                  text = text.replace('<code>os_error_expect_begin()</code>', 'error-path testing')
+                  text = text.replace('<code>os_error_expect_end()</code>', 'the corresponding error-path check')
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+          PY
+      - name: Remove temporary workflow
+        run: rm -f .github/workflows/doc-cleanup.yml
+      - name: Commit documentation cleanup
+        run: |
+          git config user.name 'Raymon Research Team'
+          git config user.email '4611120+Raymon-Research-Team@users.noreply.github.com'
+          git add docs/guide-html .github/workflows/doc-cleanup.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs: finish consistency cleanup'
+          git push
