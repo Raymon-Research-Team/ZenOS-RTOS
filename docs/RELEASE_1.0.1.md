@@ -24,3 +24,7 @@ ZenOS RTOS 1.0.1 is an open-source RTOS release. Configuration options named for
 ## Version
 
 The public API version is **1.0.1** (`OS_VERSION_MAJOR=1`, `OS_VERSION_MINOR=0`, `OS_VERSION_PATCH=1`).
+
+## Release gate
+
+The release is not considered final until source, optional-feature builds, tests, documentation, website content, version metadata, and CI have all passed the final audit.
