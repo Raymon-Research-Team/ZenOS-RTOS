@@ -37,11 +37,12 @@ class ReleaseStructureTests(unittest.TestCase):
     def test_guide_is_authoritative_for_101(self):
         guide = (ROOT / "docs/guide-html/guide.html").read_text(encoding="utf-8")
         self.assertIn("ZenOS 1.0.1", guide)
-        self.assertIn("32 priority slots by default", guide)
+        self.assertIn("Default priority slots", guide)
         self.assertIn("2 to 256", guide)
         self.assertIn("priority-ceiling", guide)
-        self.assertNotIn("O(1)", guide)
+        self.assertIn("priority-count-independent O(1)", guide)
         self.assertNotIn("Priority Inheritance", guide)
+        self.assertNotIn("32-level priority", guide)
 
 
 if __name__ == "__main__":
