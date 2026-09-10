@@ -1,67 +1,106 @@
+<meta name="google-site-verification" content="WDbhN_r-HKmS5ue_mJL8otHIkSioPnhX6Pml04KWFi4" />
 <div align="center">
 
 <img src="docs/guide-html/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
-**Real-Time Operating System for ARM Cortex-M — written in C++11.**
+**Real-Time operating system for ARM Cortex-M — written in C++11.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.0.1-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
+[![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
+[![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
 
-[**🇮🇷 فارسی**](docs/README_FA.md) · [**🇬🇧 English**](README.md)
+<br>
+
+[**🇮🇷 فارسی**](docs/README_FA.md) | [**🇬🇧 English**](README.md)
 
 📘 **[ZenOS Guide](https://raymon-research-team.github.io/ZenOS-RTOS/)**
+
+<br>
+
 
 </div>
 
 ---
 
-## About ZenOS
+## 🧘 About
 
-ZenOS is a compact real-time operating system for ARM Cortex-M microcontrollers. It focuses on predictable scheduling, static resource allocation, a small C++11 API, and configurable runtime safety mechanisms.
+The word *Zen* means clarity through simplicity — stripping away the unnecessary until only what matters remains. That's the idea behind this RTOS.
 
-The kernel provides task management, priority-based scheduling, timing, events, mutexes, bounded queues, semaphores, monitoring, watchdog support, memory protection, RAM/flash integrity checks, and compile-time safety-target configuration.
+ZenOS handles the hard parts of embedded systems — scheduling, synchronization, memory protection, fault recovery — so you can focus on your actual application. Most things that would normally take dozens of lines of setup code are reduced to a single function call. The kernel figures out the rest.
 
-> **No general-purpose heap in the kernel task model. Static resources. Explicit configuration.**
+It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safety mechanisms out of the box: stack checking, MPU protection, watchdogs, CRC verification, and deadline monitoring. If you're targeting medical or industrial products, you can enable IEC 62304 or IEC 61508 target-profile checks at compile time. These checks validate required ZenOS configuration; they do not by themselves certify the OS or the application.
 
-## Scheduler and priorities
+> **No heap. No hidden allocations. No surprises.**
 
-ZenOS uses a priority bitmap with a separate ready queue for each priority level. Priority `0` is reserved for the idle task. Application priorities are numeric: **`1..255`**, where a larger value means a higher priority.
+### ✨ Highlights
 
-The configuration macro is:
+| Feature | Details |
+|:--------|:--------|
+| 🧩 IPC Primitives | Tasks, mutexes, events, queues, semaphores — all with minimal boilerplate |
+| ⬆️ Priority Ceiling | Protocol to prevent priority inversion in real-time systems |
+| 🏥 IEC 62304 | Compile-time target-profile checks |
+| 🏭 IEC 61508 | Compile-time target-profile checks |
+| 🧪 Tested | On real hardware (STM32F103C8T6) with 22+ test suites |
+| 🔒 Zero Overhead | C++ templates and RAII — abstraction without runtime cost |
 
-```cpp
-#define OS_KERNEL_MAX_PRIORITIES 32
+### ⚡ Why ZenOS?
+
+| Advantage | ZenOS | FreeRTOS | Zephyr |
+|:----------|:------|:---------|:-------|
+| **Tick resolution** | **100μs** (10× finer) | 1ms | 10ms |
+| **Scheduler** | **Priority bitmap + eligibility scan** | O(n) worst case | O(n) within priority |
+| **Heap allocation** | **Never (deterministic)** | Available (risky) | Available |
+| **Safety built-in** | **Yes (canary, MPU, watchdog, RAM test, CRC)** | Optional package | Optional package |
+| **IEC 62304/61508** | **Compile-time target checks** | None | None |
+| **Periodic tasks** | **Task release gate** | Use software timers | Use software timers |
+| **IPC ceiling** | **Immediate Priority Ceiling** | Priority inheritance only | None |
+| **C++ RAII** | **Full support** | None | Partial |
+
+> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md)
+
+### 🖥️ Supported Families
+
+```
+ STM32F1  STM32F2  STM32F4  STM32F7  STM32H7
+  M3        M3       M4       M7      Dual M7+M4
+
+ STM32G0  STM32G4  STM32L0  STM32L4  STM32WB
+  M0+       M4       M0+       M4       M4
 ```
 
-The default configuration provides 32 scheduler slots (`0..31`), while the implementation supports configuring up to **256 slots**, giving usable application priorities `1..255`.
+---
 
-For configurations above 32 slots, ZenOS derives the required extension bitmap and queue storage from `OS_KERNEL_MAX_PRIORITIES`; the implementation does not require a fixed 256-entry task table.
+## 🚀 Quick Start
 
-## Highlights
+A complete RTOS application in under 10 lines:
 
-| Feature | Current behavior |
-|---|---|
-| Scheduler | Priority bitmap + per-priority ready queues + eligibility checks |
-| Usable priorities | **1..255** when `OS_KERNEL_MAX_PRIORITIES=256` |
-| Default priority slots | 32 (`0..31`) |
-| Tick | 100 µs by default; configurable from 100–1000 µs |
-| Task resources | Static TCB/stack resources; no general-purpose heap |
-| IPC | Events, mutexes, bounded FIFO queues, counting semaphores |
-| Periodic tasks | `period_ms` is enforced through the scheduler release gate |
-| Monitoring | Stack, CPU, error, and optional deadline monitoring |
-| Safety | Configurable canary, watchdog, MPU, RAM test, CRC and TCB checks |
-| Language | C++11 with C-accessible core declarations |
+**Two steps before the code:**
 
-## Quick start
+> **⚠️ 1. Set HAL timebase to TIM1 in CubeMX:**
+> ZenOS uses `SysTick` for its kernel tick. If HAL also uses `SysTick`, they will conflict. In CubeMX, go to **System Core** → **SYS** → **Timebase Source** and set it to `TIM1`. This gives HAL its own 1ms timebase on TIM1 while SysTick stays free for ZenOS.
+>
+> **⚠️ 2. Add `os_tick()` to `SysTick_Handler`:**
+> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`. This is how ZenOS receives its tick interrupt:
+>
+> ```c
+> #include "ZenOS.hpp"  // Add at top of file
+>
+> void SysTick_Handler(void) {
+>     os_tick();
+> }
+> ```
+>
+> **⚠️ 3. Add the sample task to `Src/main.cpp` as shown below:**
 
 ```cpp
 #include "ZenOS.hpp"
 
 void task_blink(void) {
     while (1) {
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
         os_delay_ms(500);
     }
 }
@@ -72,88 +111,187 @@ int main(void) {
     MX_GPIO_Init();
 
     os_init();
-    os_task_create(task_blink, 5);
+    os_task_create(task_blink); // Create task with priority 1
     os_start();
 }
 ```
 
-Before starting the scheduler in an STM32CubeMX project:
+> 💡 That's it. The kernel takes over from `os_start()` and never returns. Your task sleeps for 500ms between LED toggles, and you don't have to write scheduling code.
 
-1. Keep `SysTick` available for ZenOS and move the HAL timebase to a hardware timer such as `TIM1`.
-2. Call `os_tick()` from `SysTick_Handler`.
-3. Compile ZenOS sources as C++11 with the ARM GCC toolchain.
+### 🏗️ Architecture
 
-See the [complete guide](https://raymon-research-team.github.io/ZenOS-RTOS/) for the full setup.
-
-## Architecture
-
-```text
-Application Tasks
-        │
-        ▼
-┌───────────────────────────────────────────────┐
-│                  ZenOS Kernel                  │
-│                                               │
-│  Scheduler   IPC             Monitoring       │
-│  Bitmap      Events          Stack usage      │
-│  Queues      Mutexes         CPU usage        │
-│              Queues          Errors           │
-│              Semaphores      Deadlines*       │
-│                                               │
-│  Safety: canary / watchdog / MPU / RAM / CRC  │
-└───────────────────────────────────────────────┘
-        │
-        ▼
-STM32 HAL / ARM Cortex-M
+```
+┌───────────────────────────────────────────────────┐
+│                Application Tasks                  │
+├───────────────────────────────────────────────────┤
+│              ZenOS Kernel (C++11)                 │
+│  ┌────────────┬─────────────┬──────────────────┐  │
+│  │  Scheduler │     IPC     │  Safety Layer    │  │
+│  │  Bitmap    │  Events     │  Stack Canary    │  │
+│  │  priority  │  Mutexes    │  MPU Protection  │  │
+│  │  queue     │  Queues     │  HW/SW Watchdog  │  │
+│  │            │  Semaphores │  RAM Test (C-)   │  │
+│  │            │             │  CRC ROM Check   │  │
+│  │            │             │  Deadline Mon.   │  │
+│  └────────────┴─────────────┴──────────────────┘  │
+├───────────────────────────────────────────────────┤
+│           STM32 HAL (CubeMX-generated)            │
+├───────────────────────────────────────────────────┤
+│        ARM Cortex-M Hardware (M3/M4/M7)           │
+└───────────────────────────────────────────────────┘
 ```
 
-`*` Deadline monitoring is optional and disabled by default.
+For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنمای فارسی](docs/API_TUTORIAL_FA.md)
 
-## Documentation
+---
 
-| Document | Purpose |
-|---|---|
-| [Interactive Guide](https://raymon-research-team.github.io/ZenOS-RTOS/) | Bilingual web guide, setup, API, configuration and troubleshooting |
-| [API Tutorial](docs/API_TUTORIAL.md) | API reference and practical C++ examples |
-| [API Tutorial — فارسی](docs/API_TUTORIAL_FA.md) | راهنمای API و مثال‌های فارسی |
-| [Configuration Guide](docs/CONFIG_GUIDE.md) | Every configuration option, default, range and safety profile |
-| [Configuration Guide — فارسی](docs/CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی |
-| [Safety Manual](docs/SAFETY_MANUAL.md) | Safety mechanisms, assumptions and integration limits |
-| [Safety Manual — فارسی](docs/SAFETY_MANUAL_FA.md) | راهنمای ایمنی و محدودیت‌های یکپارچه‌سازی |
-| [Technical Advantages](docs/ZENOS_ADVANTAGES.md) | Conservative technical comparison and design characteristics |
-| [Kernel configuration](ZenOS/ZenOS_Config.hpp) | Source-of-truth configuration header |
+## 📚 Documentation
 
-## Safety and standards
+> 🌐 **[Interactive Guide (HTML)](https://raymon-research-team.github.io/ZenOS-RTOS/)** — Complete bilingual guide with syntax highlighting, configuration wizard, and donate section.
 
-ZenOS includes mechanisms that can support safety-oriented development, including stack canaries, TCB integrity checks, deadline monitoring, software/hardware watchdog integration, MPU protection, RAM testing, CRC checking and error logging.
+| Document | What's in it |
+|:---------|:-------------|
+| 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | Complete interactive guide (HTML) |
+| 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
+| ⚙️ [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) | Complete configuration guide — every option, defaults, profiles, IEC enforcement (English) |
+| ⚙️ [CONFIG_GUIDE_FA.md](docs/CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی (فارسی) |
+| 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
+| 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
+| 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison with FreeRTOS, Zephyr, RT-Thread |
+| ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Every config option with safety annotations |
 
-The compile-time target profiles for IEC 62304 and IEC 61508 enforce required **ZenOS configuration choices**. They do not certify ZenOS, the firmware, or the final product. System-level risk analysis, verification, validation, traceability and certification remain the responsibility of the product integrator.
+---
 
-## Memory model
+## 🛡️ Safety Features
 
-ZenOS uses statically sized kernel/task resources. This makes RAM usage explicit and avoids general-purpose heap fragmentation in the RTOS task model. Enabling more than 32 priority slots adds only the derived extension storage required for the additional priority queues and bitmap words.
+All mechanisms are **enabled by default** and can be individually toggled in `ZenOS_Config.hpp`.
 
-## Supported targets
+| Mechanism | Config Macro | What it does |
+|:----------|:-------------|:-------------|
+| 🔍 Stack Canary | `OS_SAFETY_SOFT_WATCHDOG` | Canary + SP bounds checking per task |
+| 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Magic number validation for memory corruption |
+| ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects and reacts to task deadline misses |
+| 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Ring buffer with timestamp, task ID, severity |
+| 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG` | STM32 IWDG integration with conditional feed |
+| 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG` | Detects stuck tasks within configurable timeout |
+| 🧪 RAM Test | `OS_SAFETY_RAM_TEST` | Background March C- for SRAM integrity |
+| ✅ CRC Check | `OS_SAFETY_CRC_CHECK` | Flash integrity via STM32 CRC peripheral |
+| 🛡️ MPU | `OS_SAFETY_MPU` | Per-task memory protection (Cortex-M3+) |
 
-ZenOS is designed around ARM Cortex-M and STM32 projects, with the port layer handling supported Cortex-M families and target-specific features such as MPU availability. Always verify hardware-specific capabilities before enabling target-dependent safety features.
+---
 
-## Support the project
+## 💰 Support ZenOS
 
-ZenOS is developed and maintained by the Raymon Research Team. If the project is useful to you, you can support development, testing and documentation through the project donation page:
+This is a solo project. I build it, test it, write the docs, and maintain it — all in my spare time, without funding.
 
-**[Support ZenOS](https://donatr.ee/raymon-research-team/)**
+> **📝 Note:** ZenOS is designed and written in accordance with IEC 62304 (medical) and IEC 61508 (industrial) standards, and its safety mechanisms follow these standards. However, due to the very high costs of obtaining official certification and ISO (formal audits, traceability documentation, validation testing, etc.), official certification has not been possible so far.
 
-## Contact
+If you find ZenOS useful, whether for learning, prototyping, or shipping a product, consider supporting its continued development.
 
-**Raymon Research Team — Rahman Heidari**  
-Email: [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com)
+### 🎯 Where the money goes
+
+<table>
+<tr>
+<td align="center" width="25%">
+
+### 🏥 Certification
+IEC 62304 and IEC 61508 compliance isn't cheap. Formal documentation, traceability, audits — it all costs real money.
+
+</td>
+<td align="center" width="25%">
+
+### 🔧 Hardware
+New STM32 boards, logic analyzers, JTAG probes — every supported family needs its own test setup.
+
+</td>
+<td align="center" width="25%">
+
+### ☁️ Infrastructure
+CI pipelines, cloud builds, automated test runs. Keeping everything running takes resources.
+
+</td>
+<td align="center" width="25%">
+
+### 📖 Docs & Community
+Writing good documentation takes time. Answering issues takes time. Both matter.
+
+</td>
+</tr>
+</table>
+
+## 💸 Donate
+
+Your donation directly funds development, testing, certification, and documentation.
+
+> 💡 **Click a wallet address to copy it into your wallet app. Click the QR code to open it in a new tab.**
+
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+🟠 **Bitcoin (BTC)**
+
+[`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`](bitcoin:bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650)
+
+</td>
+<td rowspan="2" align="center" width="50%">
+
+<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="docs/guide-html/donate-qr.png" alt="Donate QR Code" width="180" /></a>
+
+</td>
+</tr>
+<tr>
+<td align="center" width="50%">
+
+🔵 **Ethereum (ETH) / USDT (ERC-20)**
+
+[`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`](ethereum:0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C)
+
+</td>
+</tr>
+</table>
+
+> ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
+
+> 📩 **After making a donation, please send an email to [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com) with your transaction ID or wallet address so I can personally thank you.** 
+
+### 🌟 Other ways to help
+
+<td align="center" width="100%">
+<table> 
+<tr>
+<td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
+<td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
+<td align="center" width="25%" >📝<br><b>Write</b><br>a tutorial</td>
+<td align="center" width="25%" >🗣️<br><b>Tell</b><br>someone</td>
+</tr>
+</table>
+</td>
+
+---
+
+## 📬 Contact
+
+**Raymon Research Team** — Rahman Heidari
+
+📧 Email: [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com)
+
+For questions, suggestions, or collaboration opportunities, feel free to reach out. I'm always happy to hear from developers using ZenOS in their projects.
 
 ---
 
 <div align="center">
 
-**ZenOS — Simplicity · Security · Speed**
+<br>
 
-MIT License · Raymon Research Team
+**Built with ❤️ for the embedded community**
+
+[![GitHub stars](https://img.shields.io/github/stars/Raymon-Research-Team/ZenOS-RTOS?style=social)]()
+
+<br>
+
+*ZenOS — (Simplicity , Security , Speed)*
 
 </div>
