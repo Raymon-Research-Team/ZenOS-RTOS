@@ -1,0 +1,52 @@
+name: Normalize guide for 1.0.1
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: ${{ !startsWith(github.event.head_commit.message, 'docs: normalize guide for 1.0.1') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Normalize stale guide claims
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('docs/guide-html/guide.html')
+          s = p.read_text(encoding='utf-8')
+          original = s
+          replacements = [
+              (r'\bO\(1\)\b', 'bounded priority-range scan'),
+              (r'Priority Inheritance', 'Priority Ceiling'),
+              (r'priority inheritance', 'priority ceiling'),
+              (r'March C-', 'bounded RAM integrity test'),
+              (r'32-level priority', '32-default-slot priority configuration'),
+              (r'32 level priority', '32-default-slot priority configuration'),
+              (r'32 priority levels', '32 default priority slots (configurable from 2 to 256)'),
+              (r'32 priority level', '32 default priority slots (configurable from 2 to 256)'),
+          ]
+          for pattern, repl in replacements:
+              s = re.sub(pattern, repl, s, flags=re.IGNORECASE)
+          notice = '''\n<section id="release-101-notice" style="margin:20px 0;padding:18px 20px;border-left:5px solid #0277bd;background:#eef8ff;border-radius:8px;">\n  <h2>ZenOS 1.0.1 — authoritative implementation note</h2>\n  <p>This guide is the rich historical/technical guide for ZenOS. For release 1.0.1, the authoritative implementation facts are: <strong>32 priority slots by default</strong>, configurable from <strong>2 to 256</strong>; priority 0 is reserved for idle and application priorities use 1..255 at the 256-slot limit; higher numeric priority values are higher priority; the scheduler uses a priority bitmap with per-priority ready queues and scans the configured priority range rather than claiming a priority-count-independent O(1) bound; the default kernel tick is <strong>100 µs</strong> (configurable 100–1000 µs); mutexes use an <strong>IPC priority-ceiling</strong> mechanism; and safety mechanisms are configurable, with most disabled by default.</p>\n  <p>Safety configuration and target-profile checks are engineering mechanisms, not certification evidence. This page does not claim IEC 62304/61508 certification or product compliance.</p>\n  <p>For the maintained release-specific facts, see <a href="current.html">Current Implementation — ZenOS 1.0.1</a>.</p>\n</section>\n'''
+          if 'id="release-101-notice"' not in s:
+              s = s.replace('<body>', '<body>' + notice, 1)
+          if s != original:
+              p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit normalized guide
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/guide-html/guide.html
+          if git diff --cached --quiet; then
+            echo "Guide already normalized"
+            exit 0
+          fi
+          git commit -m "docs: normalize guide for 1.0.1"
+          git push
