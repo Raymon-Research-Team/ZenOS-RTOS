@@ -1,6 +1,7 @@
 <div align="center" >
 <img src="guide-html/ZenOS_logo.svg" alt="ZenOS Logo" width="400" /> 
  </div>  
+ 
 # ZenOS RTOS — Complete Configuration Guide
 
 This is the **single reference for every ZenOS configuration option**. All settings live in
