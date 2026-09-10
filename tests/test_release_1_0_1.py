@@ -38,6 +38,7 @@ class Release101ConsistencyTests(unittest.TestCase):
         ]
         for path in paths:
             self.assertNotIn("OS_ERROR_EXPECTED", read(path), path)
+            self.assertNotIn("os_error_expect_begin() / os_error_expect_end()", read(path), path)
 
     def test_site_keeps_current_implementation_page(self):
         self.assertTrue((ROOT / "docs/guide-html/current.html").exists())
