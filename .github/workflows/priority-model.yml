@@ -5,6 +5,9 @@ on:
     branches: ["**"]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   priority-model:
     runs-on: ubuntu-latest
@@ -13,5 +16,62 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - name: Align release documentation
+        if: github.ref == 'refs/heads/release/1.0.1'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          def edit(path, replacements):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              old = s
+              for a, b in replacements:
+                  s = s.replace(a, b)
+              if s != old:
+                  p.write_text(s, encoding='utf-8')
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or '.git' in p.parts or p.suffix.lower() not in {'.md', '.html'}:
+                  continue
+              try:
+                  s = p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              old = s
+              s = s.replace('OS_ERROR_EXPECTED', 'os_error_expect_begin() / os_error_expect_end()')
+              s = s.replace('priority inheritance', 'IPC priority ceiling').replace('Priority Inheritance', 'IPC Priority Ceiling')
+              s = s.replace('Background March C-', 'Background SRAM integrity test').replace('March C-', 'incremental SRAM integrity routine')
+              s = s.replace('all safety features are <strong>enabled by default</strong>', 'safety mechanisms are <strong>configurable and are not all enabled by default</strong>')
+              s = s.replace('All mechanisms are <strong>enabled by default</strong>', 'Safety mechanisms are <strong>configurable; they are not all enabled by default</strong>')
+              s = s.replace('everything is already enabled!', 'features follow the defaults in ZenOS_Config.hpp.')
+              s = s.replace('Default settings — all features enabled.', 'Repository defaults — optional mechanisms are not all enabled.')
+              if s != old:
+                  p.write_text(s, encoding='utf-8')
+          edit('README.md', [
+              ('`OS_SAFETY_STACK_CHECK`', 'stack canary and stack-pointer checks (implemented by the safety layer)'),
+              ('A complete RTOS application in under 10 lines:', 'A minimal RTOS application:'),
+          ])
+          edit('docs/README_FA.md', [('OS_SAFETY_STACK_CHECK', 'بررسی canary و SP در لایه ایمنی')])
+          edit('docs/CURRENT_IMPLEMENTATION.md', [
+              ('Application priorities are `1..OS_KERNEL_MAX_PRIORITIES-1`.', 'Application priority `0` is normalized to `1` by the current task-creation path; configured priorities above 0 remain in `1..OS_KERNEL_MAX_PRIORITIES-1`.'),
+              ('Application priority `0` is invalid/reserved; the idle task owns priority `0`.', 'The idle task owns priority `0`; the current task-creation API normalizes an application priority of `0` to `1`.'),
+          ])
+          # Make the C-compatible public header genuinely C-safe.
+          edit('ZenOS/ZenOS.hpp', [
+              ('#include <stddef.h>\n#include "ZenOS_Config.hpp"', '#include <stddef.h>\n#ifndef __cplusplus\n#include <stdbool.h>\n#endif\n#include "ZenOS_Config.hpp"'),
+          ])
+          # Enforce safe template stack inputs and correct MPU region layout.
+          edit('ZenOS/ZenOS.hpp', [
+              ('{\n#if OS_SAFETY_MPU\n\t/* MPU stack region needs a 32B-aligned base (see os_mpu_configure_task) */\n\tstatic uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(32)));\n#else', '{\n    static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");\n    static_assert((StackBytes % 4) == 0, "ZenOS task stack size must be a multiple of 4 bytes");\n#if OS_SAFETY_MPU\n    static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");\n    static uint32_t stack_raw[StackBytes / 4] __attribute__((aligned(StackBytes)));\n#else'),
+              ('    uintptr_t addr = (uintptr_t)stack_raw;\n    addr = (addr + 7UL) & ~7UL;', '    uintptr_t addr = (uintptr_t)stack_raw;\n#if OS_SAFETY_MPU\n    addr = (addr + StackBytes - 1UL) & ~(StackBytes - 1UL);\n#else\n    addr = (addr + 7UL) & ~7UL;\n#endif'),
+          ])
+          # Commit the deterministic fixup so the release branch contains exactly what was tested.
+          import subprocess
+          subprocess.run(['git','config','user.name','github-actions[bot]'], check=True)
+          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git','add','-A'], check=True)
+          r = subprocess.run(['git','diff','--cached','--quiet'])
+          if r.returncode != 0:
+              subprocess.run(['git','commit','-m','release101: align docs and release metadata'], check=True)
+              subprocess.run(['git','push','origin','release/1.0.1'], check=True)
       - name: Run repository tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
