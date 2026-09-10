@@ -84,7 +84,7 @@ All `OS_TOOL_*` options use `1` for enabled and `0` for disabled.
 
 | Option | Default | Purpose |
 |---|---:|---|
-| `OS_SAFETY_RAM_TEST` | 0 | Incremental March C- SRAM test |
+| `OS_SAFETY_RAM_TEST` | 0 | Incremental incremental SRAM integrity routine SRAM test |
 | `OS_SAFETY_MPU` | 0 | Per-task MPU protection on supported Cortex-M targets |
 | `OS_SAFETY_HW_WATCHDOG` | 0 | STM32 IWDG integration |
 | `OS_SAFETY_CRC_CHECK` | 0 | Flash integrity check through CRC |

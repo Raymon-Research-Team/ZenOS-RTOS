@@ -66,7 +66,7 @@
 
 | گزینه | پیش‌فرض | کاربرد |
 |---|---:|---|
-| `OS_SAFETY_RAM_TEST` | 0 | آزمون تدریجی March C- |
+| `OS_SAFETY_RAM_TEST` | 0 | آزمون تدریجی incremental SRAM integrity routine |
 | `OS_SAFETY_MPU` | 0 | حفاظت MPU هر تسک در سخت‌افزارهای پشتیبانی‌شده |
 | `OS_SAFETY_HW_WATCHDOG` | 0 | اتصال به IWDG |
 | `OS_SAFETY_CRC_CHECK` | 0 | بررسی CRC حافظه برنامه |

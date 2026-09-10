@@ -633,7 +633,7 @@ if (mtx.lock(1000)) {  // Wait up to 1000ms
     mtx.unlock();
 }
 
-// With IPC ceiling (priority inheritance)
+// With IPC ceiling (IPC priority ceiling)
 OS_MUTEX shared_data_mtx(8);  // Ceiling priority = 8</code></pre>
         <p><span data-lang="en"><strong>What happens:</strong> When Task A enters <code>OS_LOCK(uart_mtx)</code>, it acquires the mutex. If Task B tries to enter while Task A holds it, Task B blocks until Task A exits. <code>OS_LOCK</code> is an RAII guard — it automatically releases the mutex when the block ends. <strong>IPC Ceiling:</strong> When you pass a ceiling priority (e.g., <code>OS_MUTEX mtx(8)</code>), the task's priority is temporarily boosted to that level while holding the mutex, preventing priority inversion.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> وقتی تسک A وارد <code>OS_LOCK(uart_mtx)</code> می‌شود، mutex را به دست می‌آورد. اگر تسک B سعی کند وارد شود در حالی که تسک A آن را نگه داشته، تسک B بلاک می‌شود تا تسک A خارج شود. <code>OS_LOCK</code> یک محافظ RAII است — به طور خودکار mutex را آزاد می‌کند. <strong>سقف IPC:</strong> اولویت تسک به طور موقت به سطح سقف افزایش می‌یابد و از وارونگی اولویت جلوگیری می‌کند.</span></p>
 
@@ -825,9 +825,12 @@ OSError last = os_get_last_error();
 printf("Total errors: %u, Last: %d\n", total_errors, (int)last);
 
 // Suppress expected errors during testing (won't trigger watchdog)
-OS_ERROR_EXPECTED {
+os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
-}</code></pre>
+    os_error_expect_end();</code></pre>
         <p><span data-lang="en"><strong>What happens:</strong> <code>os_get_stack_usage()</code> returns how many bytes of stack a task has used (peak watermark). If a task has a 512-byte stack and uses 480 bytes, you're close to overflow — increase the stack size. <code>os_get_cpu_usage_total()</code> returns total CPU utilization (0-100%). If it's above 80%, your system is overloaded. <code>os_get_task_cpu_usage()</code> shows which task is consuming the most CPU.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_get_stack_usage()</code> تعداد بایت‌های استفاده شده از پشته تسک را برمی‌گرداند. اگر تسکی پشته ۵۱۲ بایتی دارد و ۴۸۰ بایت استفاده کرده، نزدیک به سرریز هستید — پشته را بزرگ‌تر کنید. <code>os_get_cpu_usage_total()</code> کل استفاده CPU را برمی‌گرداند (۰-۱۰۰٪). اگر بالای ۸۰٪ باشد، سیستم بیش از حد بارگذاری شده است.</span></p>
 
         <h3><span data-lang="en">Monitoring Dashboard Example</span><span data-lang="fa">مثال داشبورد پایش</span></h3>
@@ -866,7 +869,7 @@ CPU Usage: 45%
         <h1>🛡️ <span data-lang="en">Safety Features</span><span data-lang="fa">ویژگی‌های ایمنی</span></h1>
 
         <h2 id="safety-mechanisms">1. <span data-lang="en">Safety Mechanisms</span><span data-lang="fa">مکانیسم‌های ایمنی</span></h2>
-        <p><span data-lang="en">All mechanisms are <strong>enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
+        <p><span data-lang="en">Safety mechanisms are <strong>configurable; they are not all enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
 
         <table>
             <tr><th><span data-lang="en">Mechanism</span><span data-lang="fa">مکانیسم</span></th><th><span data-lang="en">Config Macro</span><span data-lang="fa">ماکرو</span></th><th><span data-lang="en">What it does</span><span data-lang="fa">عملکرد</span></th></tr>
@@ -876,7 +879,7 @@ CPU Usage: 45%
             <tr><td>📋 Error Log</td><td><code>OS_MONITOR_ERROR_LOG</code></td><td><span data-lang="en">Ring buffer with timestamp</span><span data-lang="fa">بافر حلقه‌ای با زمان</span></td></tr>
             <tr><td>🐕 HW Watchdog</td><td><code>OS_SAFETY_HW_WATCHDOG</code></td><td><span data-lang="en">STM32 IWDG integration</span><span data-lang="fa">ادغام IWDG STM32</span></td></tr>
             <tr><td>💤 SW Watchdog</td><td><code>OS_SAFETY_SOFT_WATCHDOG</code></td><td><span data-lang="en">Detects stuck tasks</span><span data-lang="fa">تشخیص تسک‌های گیر کرده</span></td></tr>
-            <tr><td>🧪 RAM Test</td><td><code>OS_SAFETY_RAM_TEST</code></td><td><span data-lang="en">Background March C-</span><span data-lang="fa">March C- پس‌زمینه</span></td></tr>
+            <tr><td>🧪 RAM Test</td><td><code>OS_SAFETY_RAM_TEST</code></td><td><span data-lang="en">Background SRAM integrity test</span><span data-lang="fa">incremental SRAM integrity routine پس‌زمینه</span></td></tr>
             <tr><td>✅ CRC Check</td><td><code>OS_SAFETY_CRC_CHECK</code></td><td><span data-lang="en">Flash integrity via CRC</span><span data-lang="fa">یکپارچگی فلش از طریق CRC</span></td></tr>
             <tr><td>🛡️ MPU</td><td><code>OS_SAFETY_MPU</code></td><td><span data-lang="en">Per-task memory protection</span><span data-lang="fa">حفاظت حافظه هر تسک</span></td></tr>
         </table>
@@ -1009,9 +1012,12 @@ printf("Errors: %u total, %u unexpected\n", total, unexpected);
 
 // Suppress expected errors during testing
 // Use this when you intentionally trigger errors for testing
-OS_ERROR_EXPECTED {
+os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end();
     os_event_signal(-1);  // Deliberately invalid — expected error
-}
+    os_error_expect_end();
 // os_get_unexpected_error_count() does NOT increase
 // os_get_expected_error_count() DOES increase
 
@@ -1024,7 +1030,13 @@ OS_ERROR_EXPECTED {
                entry.timestamp_tick, entry.code, entry.task_id, entry.severity);
     }
 #endif</code></pre>
-        <p><span data-lang="en"><strong>What happens:</strong> <code>os_log_error()</code> records an error with a code and severity level. The error is stored in a ring buffer (circular log) with a timestamp. <code>OS_ERROR_EXPECTED { ... }</code> marks a block where errors are expected — they won't trigger the watchdog or count as unexpected errors. This is useful during testing when you intentionally test error paths.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_log_error()</code> خطایی را با کد و سطح شدت ثبت می‌کند. خطا در بافر حلقه‌ای (لاگ دایره‌ای) با زمان ذخیره می‌شود. <code>OS_ERROR_EXPECTED { ... }</code> بلوکی را علامت‌گذاری می‌کند که در آن خطاها مورد انتظار هستند.</span></p>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_log_error()</code> records an error with a code and severity level. The error is stored in a ring buffer (circular log) with a timestamp. <code>os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end(); ... }</code> marks a block where errors are expected — they won't trigger the watchdog or count as unexpected errors. This is useful during testing when you intentionally test error paths.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_log_error()</code> خطایی را با کد و سطح شدت ثبت می‌کند. خطا در بافر حلقه‌ای (لاگ دایره‌ای) با زمان ذخیره می‌شود. <code>os_error_expect_begin();
+    /* intentionally trigger and verify the expected error */
+    os_event_signal(-1);
+    os_error_expect_end(); ... }</code> بلوکی را علامت‌گذاری می‌کند که در آن خطاها مورد انتظار هستند.</span></p>
 
         <h3><span data-lang="en">Error Severity Levels</span><span data-lang="fa">سطوح شدت خطا</span></h3>
         <table>
@@ -1250,7 +1262,7 @@ void task_shutdown_handler(void) {
             <tr><td><code>_OsSafeGuard</code></td><td><code>OS_SAFE { ... }</code></td><td><span data-lang="en">Interrupt-disable guard</span><span data-lang="fa">محافظ غیرفعال کردن وقفه</span></td></tr>
             <tr><td><code>_OsLockGuard</code></td><td><code>OS_LOCK(mtx) { ... }</code></td><td><span data-lang="en">Mutex lock guard</span><span data-lang="fa">محافظ قفل mutex</span></td></tr>
             <tr><td><code>OS_EVENT</code></td><td>—</td><td><span data-lang="en">Inter-task event signaling</span><span data-lang="fa">سیگنال‌دهی رویداد بین تسک‌ها</span></td></tr>
-            <tr><td><code>OS_MUTEX</code></td><td>—</td><td><span data-lang="en">Mutex with priority inheritance</span><span data-lang="fa">Mutex با ارث بری اولویت</span></td></tr>
+            <tr><td><code>OS_MUTEX</code></td><td>—</td><td><span data-lang="en">Mutex with IPC priority ceiling</span><span data-lang="fa">Mutex با ارث بری اولویت</span></td></tr>
             <tr><td><code>OS_QUEUE&lt;T,N&gt;</code></td><td>—</td><td><span data-lang="en">Bounded FIFO queue</span><span data-lang="fa">صف FIFO محدود</span></td></tr>
             <tr><td><code>OS_SEMAPHORE</code></td><td>—</td><td><span data-lang="en">Counting semaphore</span><span data-lang="fa">سمافور شمارشی</span></td></tr>
         </table>
@@ -1260,7 +1272,7 @@ void task_shutdown_handler(void) {
     <div class="card" id="config-guide">
         <h1>⚙️ <span data-lang="en">Configuration Guide</span><span data-lang="fa">راهنمای پیکربندی</span></h1>
 
-        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. All safety features are <strong>enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
+        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
 
         <h2>1. <span data-lang="en">What Do You Need?</span><span data-lang="fa">چه چیزی نیاز دارید؟</span></h2>
         <p><span data-lang="en">Answer these questions to determine your configuration:</span><span data-lang="fa">این سؤالات را پاسخ دهید تا پیکربندی خود را تعیین کنید:</span></p>
@@ -1300,9 +1312,9 @@ void task_shutdown_handler(void) {
 #define OS_SAFETY_SOFT_WATCHDOG    1         // Keep — detects stuck tasks</code></pre>
 
         <h3>2.2 <span data-lang="en">Standard Configuration (Recommended)</span><span data-lang="fa">پیکربندی استاندارد (پیشنهادی)</span></h3>
-        <p><span data-lang="en">Default settings — all features enabled. Best for most applications:</span><span data-lang="fa">تنظیمات پیش‌فرض — تمام ویژگی‌ها فعال. بهترین برای بیشتر برنامه‌ها:</span></p>
+        <p><span data-lang="en">Repository defaults — optional mechanisms are not all enabled. Best for most applications:</span><span data-lang="fa">تنظیمات پیش‌فرض — تمام ویژگی‌ها فعال. بهترین برای بیشتر برنامه‌ها:</span></p>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Standard configuration (all defaults)
-// No changes needed — everything is already enabled!
+// No changes needed — features follow the defaults in ZenOS_Config.hpp.
 // Just use the file as-is.</code></pre>
 
         <h3>2.3 <span data-lang="en">Medical Device Configuration (IEC 62304 Class B)</span><span data-lang="fa">پیکربندی دستگاه پزشکی (کلاس B)</span></h3>
@@ -1371,7 +1383,7 @@ void task_shutdown_handler(void) {
             <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>100</td><td><span data-lang="en">Tick resolution in microseconds</span><span data-lang="fa">رزولوشن تیک (میکروثانیه)</span></td></tr>
             <tr><td><code>OS_KERNEL_STACK_SIZE</code></td><td>512</td><td><span data-lang="en">Default stack size in bytes</span><span data-lang="fa">اندازه پیش‌فرض پشته (بایت)</span></td></tr>
             <tr><td><code>OS_TOOL_EVENT</code></td><td>1</td><td><span data-lang="en">Enable event primitives</span><span data-lang="fa">فعال کردن رویدادها</span></td></tr>
-            <tr><td><code>OS_TOOL_MUTEX</code></td><td>1</td><td><span data-lang="en">Enable mutex with priority inheritance</span><span data-lang="fa">فعال کردن mutex با ارث بری اولویت</span></td></tr>
+            <tr><td><code>OS_TOOL_MUTEX</code></td><td>1</td><td><span data-lang="en">Enable mutex with IPC priority ceiling</span><span data-lang="fa">فعال کردن mutex با ارث بری اولویت</span></td></tr>
             <tr><td><code>OS_TOOL_QUEUE</code></td><td>1</td><td><span data-lang="en">Enable bounded FIFO queue</span><span data-lang="fa">فعال کردن صف FIFO</span></td></tr>
             <tr><td><code>OS_TOOL_SEMAPHORE</code></td><td>1</td><td><span data-lang="en">Enable counting semaphore</span><span data-lang="fa">فعال کردن سمافور شمارشی</span></td></tr>
             <tr><td><code>OS_TOOL_TICKLESS_IDLE</code></td><td>1</td><td><span data-lang="en">Enable WFI-based idle for power savings</span><span data-lang="fa">فعال کردن حالت idle برای صرفه‌جویی در مصرف</span></td></tr>
@@ -1382,7 +1394,7 @@ void task_shutdown_handler(void) {
             <tr><td><code>OS_SAFETY_SOFT_WATCHDOG</code></td><td>0</td><td><span data-lang="en">Software stuck-task detection (disabled by default)</span><span data-lang="fa">تشخیص تسک‌های گیر کرده (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_SAFETY_HW_WATCHDOG</code></td><td>0</td><td><span data-lang="en">IWDG integration (disabled by default)</span><span data-lang="fa">ادغام IWDG (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_SAFETY_MPU</code></td><td>0</td><td><span data-lang="en">Hardware MPU per-task protection (disabled by default, Cortex-M3+ only)</span><span data-lang="fa">حفاظت MPU سخت‌افزاری (پیش‌فرض غیرفعال، فقط Cortex-M3+)</span></td></tr>
-            <tr><td><code>OS_SAFETY_RAM_TEST</code></td><td>0</td><td><span data-lang="en">Background March C- SRAM test (disabled by default)</span><span data-lang="fa">آزمون پس‌زمینه March C- SRAM (پیش‌فرض غیرفعال)</span></td></tr>
+            <tr><td><code>OS_SAFETY_RAM_TEST</code></td><td>0</td><td><span data-lang="en">Background SRAM integrity test SRAM test (disabled by default)</span><span data-lang="fa">آزمون پس‌زمینه incremental SRAM integrity routine SRAM (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_SAFETY_CRC_CHECK</code></td><td>0</td><td><span data-lang="en">Flash CRC integrity check (disabled by default)</span><span data-lang="fa">بررسی یکپارچگی CRC فلش (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_SAFETY_DEADLINE_ACTION</code></td><td>1</td><td><span data-lang="en">0=log, 1=reset, 2=disable on deadline miss</span><span data-lang="fa">۰=ثبت، ۱=ریست، ۲=غیرفعال در از دست دادن ددلاین</span></td></tr>
             <tr><td><code>OS_SAFETY_TASK_MAX_RECOVERY</code></td><td>3</td><td><span data-lang="en">Max stack recovery attempts</span><span data-lang="fa">حداکثر تلاش بازیابی پشته</span></td></tr>
@@ -1416,7 +1428,7 @@ void task_shutdown_handler(void) {
 │  │  Bitmap    │  Events     │  Stack Canary    │  │
 │  │  priority  │  Mutexes    │  MPU Protection  │  │
 │  │  queue     │  Queues     │  HW/SW Watchdog  │  │
-│  │            │  Semaphores │  RAM Test (C-)   │  │
+│  │            │  Semaphores │  RAM integrity test   │  │
 │  │            │             │  CRC ROM Check   │  │
 │  │            │             │  Deadline Mon.   │  │
 │  └────────────┴─────────────┴──────────────────┘  │

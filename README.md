@@ -74,7 +74,7 @@ It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes 
 
 ## 🚀 Quick Start
 
-A complete RTOS application in under 10 lines:
+A minimal RTOS application:
 
 **Two steps before the code:**
 
@@ -82,17 +82,7 @@ A complete RTOS application in under 10 lines:
 > ZenOS uses `SysTick` for its kernel tick. If HAL also uses `SysTick`, they will conflict. In CubeMX, go to **System Core** → **SYS** → **Timebase Source** and set it to `TIM1`. This gives HAL its own 1ms timebase on TIM1 while SysTick stays free for ZenOS.
 >
 > **⚠️ 2. Add `os_tick()` to `SysTick_Handler`:**
-> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`:
->
-> ```c
-> #include "ZenOS.hpp"
->
-> void SysTick_Handler(void) {
->     os_tick();
-> }
-> ```
->
-> **⚠️ 3. Add the sample task to `Src/main.cpp` as shown below:**
+> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`.
 
 ```cpp
 #include "ZenOS.hpp"
@@ -169,7 +159,7 @@ Safety and monitoring mechanisms are **configurable** in `ZenOS_Config.hpp`; the
 
 | Mechanism | Config Macro | What it does |
 |:----------|:-------------|:-------------|
-| 🔍 Stack Canary | `OS_SAFETY_STACK_CHECK` | Stack canary / bounds diagnostics when enabled |
+| 🔍 Stack Canary | stack canary and stack-pointer checks (implemented by the safety layer) | Stack canary / bounds diagnostics when enabled |
 | 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Detects TCB corruption when enabled |
 | ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects deadline misses when enabled |
 | 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Records kernel error diagnostics |
@@ -258,16 +248,14 @@ Your donation directly funds development, testing, certification, and documentat
 
 ### 🌟 Other ways to help
 
-<td align="center" width="100%">
 <table>
 <tr>
-<td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
-<td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
-<td align="center" width="25%" >📝<br><b>Write</b><br>a tutorial</td>
-<td align="center" width="25%" >🗣️<br><b>Tell</b><br>someone</td>
+<td align="center" width="25%">⭐<br><b>Star</b><br>the repo</td>
+<td align="center" width="25%">🐛<br><b>Report</b><br>a bug</td>
+<td align="center" width="25%">📝<br><b>Write</b><br>a tutorial</td>
+<td align="center" width="25%">🗣️<br><b>Tell</b><br>someone</td>
 </tr>
 </table>
-</td>
 
 ---
 
