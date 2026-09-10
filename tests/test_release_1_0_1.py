@@ -65,3 +65,5 @@ class Release101ConsistencyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Release 1.0.1 final validation trigger.
