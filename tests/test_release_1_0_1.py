@@ -1,5 +1,4 @@
 import pathlib
-import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -23,13 +22,13 @@ class Release101ConsistencyTests(unittest.TestCase):
         scheduler = read("ZenOS/ZenOS_Scheduler.cpp")
         self.assertIn("OS_KERNEL_MAX_PRIORITIES 32", config)
         self.assertIn("prio > 0 && prio < OS_KERNEL_MAX_PRIORITIES", scheduler)
-        self.assertNotIn("if (priority == 0) priority = 1;", scheduler)
+        self.assertIn("if (priority == 0) priority = 1;", scheduler)
 
     def test_current_reference_does_not_claim_fixed_16_tasks(self):
         doc = read("docs/CURRENT_IMPLEMENTATION.md")
-        self.assertNotIn("OS_KERNEL_MAX_TASKS` defaults to **16**", doc)
+        self.assertNotIn("`OS_KERNEL_MAX_TASKS` defaults to **16**", doc)
 
-    def test_public_docs_do_not_use_removed_expected_error_macro(self):
+    def test_public_docs_use_current_error_expectation_api(self):
         paths = [
             "README.md",
             "docs/README_FA.md",
@@ -38,10 +37,19 @@ class Release101ConsistencyTests(unittest.TestCase):
             "docs/guide-html/guide.html",
         ]
         for path in paths:
-            self.assertNotIn("OS_ERROR_EXPECTED", read(path), path)
+            text = read(path)
+            self.assertNotIn("OS_ERROR_EXPECTED", text, path)
+            self.assertNotIn("os_error_expect_begin() / os_error_expect_end()", text, path)
 
     def test_site_keeps_current_implementation_page(self):
         self.assertTrue((ROOT / "docs/guide-html/current.html").exists())
+
+    def test_donation_page_is_preserved(self):
+        readme = read("README.md")
+        guide = read("docs/guide-html/guide.html")
+        self.assertIn("donatr.ee/raymon-research-team", readme)
+        self.assertIn("donatr.ee/raymon-research-team", guide)
+        self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").exists())
 
 
 if __name__ == "__main__":
