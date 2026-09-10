@@ -1,0 +1,58 @@
+name: documentation fix
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Align guide with ZenOS 1.0.1
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('docs/guide-html/guide.html')
+          s=p.read_text()
+          replacements={
+            'Priority-bitmap scheduler • 100μs tick • Zero heap • Built-in safety':'Priority bitmap • 100μs default tick • Zero heap • Configurable safety',
+            'Priority Bitmap Scheduler':'Priority Bitmap + Ready Queues',
+            'IEC Target Profiles':'Safety Target Profiles',
+            'IEC 62304':'IEC 62304 target profile',
+            'IEC 61508':'IEC 61508 target profile',
+            'os_delay_ms(0);    // Immediate yield (gives other tasks a chance)':'os_delay_ms(0);    // No implicit yield; use os_yield() to yield',
+            'os_delay_ms(0)</code> immediately yields':'<code>os_delay_ms(0)</code> does not yield; use <code>os_yield()</code>',
+            'priority bitmap + queue scan for eligibility':'priority bitmap + ready-queue scan for eligibility',
+            'IPC ceiling':'IPC priority ceiling',
+            'Task release gate':'Period information is recorded; verify scheduler behavior',
+            'OS_TOOL_TICKLESS_IDLE      1':'OS_TOOL_TICKLESS_IDLE      0',
+            'Enable WFI-based idle for power savings':'WFI-based idle when supported/enabled',
+            'Version 1.0.0':'Version 1.0.1',
+            'ZenOS 1.0.0':'ZenOS 1.0.1',
+            '32 priority levels':'2–256 configurable priority slots',
+            '32 priority slots':'32 default priority slots; 2–256 configurable',
+            '32-level priority':'2–256 configurable priority slots',
+            'Priority Inheritance':'Priority Ceiling',
+            'priority inheritance':'priority ceiling',
+            'full March C-':'bounded SRAM integrity test; not a full March C- implementation',
+            'March C-':'bounded SRAM integrity test',
+            'all enabled by default':'not all enabled by default',
+            'everything enabled':'optional mechanisms are not all enabled',
+          }
+          for a,b in replacements.items(): s=s.replace(a,b)
+          # Remove misleading legacy/duplicate authority language if present.
+          s=s.replace('The previous rich guide is preserved below as <code>guide-legacy.html</code>.','This page is the single authoritative guide for ZenOS 1.0.1.')
+          s=s.replace('Open the full historical/graphical guide →','')
+          s=s.replace('guide-legacy.html','guide.html')
+          p.write_text(s)
+          PY
+      - name: Remove obsolete legacy guide
+        run: rm -f docs/guide-html/guide-legacy.html
+      - name: Commit documentation correction
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/guide-html/guide.html docs/guide-html/guide-legacy.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'docs: align main guide with ZenOS 1.0.1'
+          git push
