@@ -13,6 +13,7 @@
 
 #define OS_BUILD
 #include "ZenOS.hpp"
+#include "ZenOS_Priority_Config.hpp"
 
 /* ═══════════════ Shared Globals ═══════════════ */
 extern TCB*              volatile task_list;
@@ -36,8 +37,15 @@ extern volatile uint32_t error_expect_depth;
 extern volatile uint32_t wdg_reset_count;
 extern volatile uint32_t stack_recovery_count;
 
+/* The first 32 priorities keep the original scalar bitmap and queue-head
+   storage, so the default configuration has no additional scheduler RAM.
+   Higher priorities use extension storage compiled only when requested. */
 extern volatile uint32_t os_ready_bitmap;
 extern TCB* volatile     os_pq_head[32];
+#if OS_MAX_PRIORITIES > 32
+extern volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS];
+extern TCB* volatile     os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
+#endif
 
 extern volatile uint32_t os_syst_rvr_normal;
 
@@ -70,10 +78,6 @@ inline void os_wake_on_timeout_expiry(TCB* task) {
 uint32_t os_ms_to_ticks(uint32_t ms);
 TCB* os_find_task_by_entry(void(*entry)(void));
 TCB* os_find_task_by_id(uint8_t id);
-
-#if OS_TOOL_TICKLESS_IDLE
-bool os_tickless_process(uint32_t skip);
-#endif
 
 #if OS_TOOL_TICKLESS_IDLE
 bool os_tickless_process(uint32_t skip);

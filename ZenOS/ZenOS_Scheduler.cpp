@@ -1,10 +1,10 @@
 /**
  * @file    ZenOS_Scheduler.cpp
- * @brief   ZenOS RTOS — O(1) Priority Bitmap Scheduler & Task Management
+ * @brief   ZenOS RTOS — Configurable priority bitmap scheduler & task management
  *
  * Extracted from ZenOS.cpp as part of the modular split.
- * Contains: priority bitmap, priority queues, task create/stop/start/lookup,
- *           task reset, task exit, wake/block helpers, tickless processing.
+ * Priority slots are configured by OS_MAX_PRIORITIES (2..256), with
+ * priority 0 reserved and usable priorities 1..OS_MAX_PRIORITIES-1.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
  * @version 1.0.0
@@ -13,90 +13,164 @@
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
 
-/* ═══════════════ Priority Bitmap Helpers ═══════════════ */
+#if OS_MAX_PRIORITIES > 32
+volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
+TCB* volatile os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT] = {nullptr};
+#endif
+
+static inline bool os_priority_valid(uint8_t prio) {
+    return prio > 0 && prio < OS_MAX_PRIORITIES;
+}
+
+static inline TCB* volatile* os_pq_head_for(uint8_t prio) {
+    if (prio < 32) return &os_pq_head[prio];
+#if OS_MAX_PRIORITIES > 32
+    return &os_pq_head_ext[prio - 32];
+#else
+    return nullptr;
+#endif
+}
+
 static inline void os_pq_set_bit(uint8_t prio) {
-    if (prio < 32) os_ready_bitmap |= (1UL << prio);
+    if (!os_priority_valid(prio)) return;
+    if (prio < 32) {
+        os_ready_bitmap |= (1UL << prio);
+        return;
+    }
+#if OS_MAX_PRIORITIES > 32
+    uint8_t p = (uint8_t)(prio - 32);
+    os_ready_bitmap_ext[p >> 5] |= (1UL << (p & 31));
+#endif
 }
 
 static inline void os_pq_clear_bit(uint8_t prio) {
-    if (prio < 32) os_ready_bitmap &= ~(1UL << prio);
+    if (!os_priority_valid(prio)) return;
+    if (prio < 32) {
+        os_ready_bitmap &= ~(1UL << prio);
+        return;
+    }
+#if OS_MAX_PRIORITIES > 32
+    uint8_t p = (uint8_t)(prio - 32);
+    os_ready_bitmap_ext[p >> 5] &= ~(1UL << (p & 31));
+#endif
+}
+
+static inline bool os_pq_bit_is_set(uint8_t prio) {
+    if (!os_priority_valid(prio)) return false;
+    if (prio < 32) return (os_ready_bitmap & (1UL << prio)) != 0;
+#if OS_MAX_PRIORITIES > 32
+    uint8_t p = (uint8_t)(prio - 32);
+    return (os_ready_bitmap_ext[p >> 5] & (1UL << (p & 31))) != 0;
+#else
+    return false;
+#endif
 }
 
 static inline uint8_t os_pq_highest_prio(void) {
-    if (os_ready_bitmap == 0) return 0;
-    return (uint8_t)(31UL - (uint32_t)__builtin_clz(os_ready_bitmap));
+#if OS_MAX_PRIORITIES > 32
+    for (int word = (int)OS_PRIORITY_EXTRA_WORDS - 1; word >= 0; --word) {
+        uint32_t bits = os_ready_bitmap_ext[word];
+        if (bits != 0) {
+            uint8_t bit = (uint8_t)(31UL - (uint32_t)__builtin_clz(bits));
+            uint16_t prio = (uint16_t)(32U + (uint16_t)word * 32U + bit);
+            if (prio < OS_MAX_PRIORITIES) return (uint8_t)prio;
+        }
+    }
+#endif
+    if (os_ready_bitmap != 0)
+        return (uint8_t)(31UL - (uint32_t)__builtin_clz(os_ready_bitmap));
+    return 0;
 }
 
 /* ═══════════════ Priority Queue Operations ═══════════════ */
-
-/* Add a task to its priority queue and set the bitmap bit */
 void os_pq_add(TCB* task) {
-    if (!task || task->priority >= 32) return;
+    if (!task || !os_priority_valid(task->priority)) return;
     uint8_t p = task->priority;
-    task->queue_next = os_pq_head[p];
-    os_pq_head[p] = task;
+    TCB* volatile* head = os_pq_head_for(p);
+    if (!head) return;
+    task->queue_next = *head;
+    *head = task;
     os_pq_set_bit(p);
 }
 
-/* Remove a task from its priority queue */
 void os_pq_remove(TCB* task) {
-    if (!task || task->priority >= 32) return;
+    if (!task || !os_priority_valid(task->priority)) return;
     uint8_t p = task->priority;
-    TCB* volatile* pp = &os_pq_head[p];
+    TCB* volatile* pp = os_pq_head_for(p);
+    if (!pp) return;
     while (*pp) {
         if (*pp == task) {
             *pp = task->queue_next;
             task->queue_next = nullptr;
-            if (!os_pq_head[p]) os_pq_clear_bit(p);
+            if (!*pp) os_pq_clear_bit(p);
             return;
         }
         pp = &(*pp)->queue_next;
     }
 }
 
-/* ── Round-Robin Throttle ──
-   When a single task at the highest priority runs, temporarily skip that
-   priority so lower-priority tasks get a turn. Prevents starvation.
-   A bounded quota counter re-admits the skipped priority after a few
-   lower-priority runs — otherwise a persistently-ready lower priority
-   would starve the single-task level forever. */
+/* ── Round-Robin Throttle ── */
+#if OS_MAX_PRIORITIES <= 32
 static uint32_t os_rr_skip = 0;
+#else
+static uint32_t os_rr_skip = 0;
+static uint32_t os_rr_skip_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
+#endif
 static uint32_t os_rr_skip_quota = 0;
 
+static inline bool os_rr_is_skipped(uint8_t prio) {
+    if (!os_priority_valid(prio)) return false;
+    if (prio < 32) return (os_rr_skip & (1UL << prio)) != 0;
+#if OS_MAX_PRIORITIES > 32
+    uint8_t p = (uint8_t)(prio - 32);
+    return (os_rr_skip_ext[p >> 5] & (1UL << (p & 31))) != 0;
+#else
+    return false;
+#endif
+}
+
+static inline void os_rr_set_skip(uint8_t prio) {
+    if (prio < 32) os_rr_skip |= (1UL << prio);
+#if OS_MAX_PRIORITIES > 32
+    else if (prio < OS_MAX_PRIORITIES) {
+        uint8_t p = (uint8_t)(prio - 32);
+        os_rr_skip_ext[p >> 5] |= (1UL << (p & 31));
+    }
+#endif
+}
+
+static inline void os_rr_clear_all(void) {
+    os_rr_skip = 0;
+#if OS_MAX_PRIORITIES > 32
+    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
+        os_rr_skip_ext[i] = 0;
+#endif
+}
+
+static inline uint32_t os_ready_level_count(void) {
+    uint32_t count = (uint32_t)__builtin_popcount(os_ready_bitmap);
+#if OS_MAX_PRIORITIES > 32
+    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
+        count += (uint32_t)__builtin_popcount(os_ready_bitmap_ext[i]);
+#endif
+    return count;
+}
+
 extern "C" TCB* os_pq_next(void) {
-    /*
-       Select the highest-priority task that is actually eligible to run.
-       A periodic task remains in its priority queue, but its next_run_time
-       acts as a release gate.  This keeps the existing queue/bitmap model
-       while making period_ms functional without introducing a fixed task
-       count or a second task table.
-
-       The search is bounded by the 32 priority levels and the tasks linked
-       inside those levels.  The queue head is normalized to the selected
-       eligible task so os_pq_rotate() can preserve round-robin behaviour.
-    */
-    if (os_rr_skip != 0 && os_rr_skip_quota > 0) {
-        os_rr_skip_quota--;
-        if (os_rr_skip_quota == 0) os_rr_skip = 0;
+    if (os_rr_skip_quota > 0) {
+        --os_rr_skip_quota;
+        if (os_rr_skip_quota == 0) os_rr_clear_all();
     }
 
-    uint32_t effective = os_ready_bitmap & ~os_rr_skip;
-    if (effective == 0) {
-        os_rr_skip = 0;
-        effective = os_ready_bitmap;
-    }
-    if (effective == 0) return nullptr;
-
+    if (os_pq_highest_prio() == 0) return nullptr;
     const uint32_t now = tick_count;
 
-    /* Highest priority first.  A periodic task is eligible when its release
-       time has arrived; aperiodic tasks (period_ticks == 0) are always ready. */
-    for (int p = 31; p >= 0; --p) {
-        if ((effective & (1UL << p)) == 0) continue;
-
-        TCB* head = os_pq_head[p];
+    for (int p = (int)OS_MAX_PRIORITIES - 1; p >= 1; --p) {
+        uint8_t prio = (uint8_t)p;
+        if (!os_pq_bit_is_set(prio) || os_rr_is_skipped(prio)) continue;
+        TCB* head = *os_pq_head_for(prio);
         if (!head) {
-            os_pq_clear_bit((uint8_t)p);
+            os_pq_clear_bit(prio);
             continue;
         }
 
@@ -111,69 +185,56 @@ extern "C" TCB* os_pq_next(void) {
             }
             prev = t;
         }
-
         if (!selected) continue;
 
-        /* Put the selected task at the head so the existing rotation logic
-           rotates the same priority queue around the task we just ran. */
         if (selected != head) {
             prev->queue_next = selected->queue_next;
             selected->queue_next = head;
-            os_pq_head[p] = selected;
+            *os_pq_head_for(prio) = selected;
         }
         return selected;
     }
-
-    /* All ready tasks are waiting for their next periodic release. */
     return nullptr;
 }
 
 extern "C" void os_pq_rotate(void) {
-    if (os_ready_bitmap == 0) return;
-
-    uint32_t effective = os_ready_bitmap & ~os_rr_skip;
-    if (effective == 0) effective = os_ready_bitmap;
-    if (effective == 0) return;
-
+    if (os_pq_highest_prio() == 0) return;
     const uint32_t now = tick_count;
     uint8_t p = 0xFF;
 
-    /* Rotate the same highest-priority level that is eligible to run. */
-    for (int prio = 31; prio >= 0; --prio) {
-        if ((effective & (1UL << prio)) == 0) continue;
-        for (TCB* t = os_pq_head[prio]; t; t = t->queue_next) {
+    for (int prio = (int)OS_MAX_PRIORITIES - 1; prio >= 1; --prio) {
+        uint8_t candidate = (uint8_t)prio;
+        if (!os_pq_bit_is_set(candidate) || os_rr_is_skipped(candidate)) continue;
+        for (TCB* t = *os_pq_head_for(candidate); t; t = t->queue_next) {
             if (t->period_ticks == 0 ||
                 ((int32_t)(now - t->next_run_time) >= 0)) {
-                p = (uint8_t)prio;
+                p = candidate;
                 break;
             }
         }
         if (p != 0xFF) break;
     }
-
     if (p == 0xFF) return;
 
-    TCB* head = os_pq_head[p];
+    TCB* volatile* head_ptr = os_pq_head_for(p);
+    TCB* head = *head_ptr;
     if (!head) return;
+
     if (!head->queue_next) {
-        /* Single task at this priority — give every ready priority level
-           one run, then re-admit this level. */
-        os_rr_skip |= (1UL << p);
-        os_rr_skip_quota = (uint32_t)__builtin_popcount(os_ready_bitmap);
+        os_rr_set_skip(p);
+        os_rr_skip_quota = os_ready_level_count();
         if (os_rr_skip_quota == 0) os_rr_skip_quota = 1;
         return;
     }
 
-    /* Move head to tail. */
-    os_pq_head[p] = head->queue_next;
-    TCB* tail = os_pq_head[p];
+    *head_ptr = head->queue_next;
+    TCB* tail = *head_ptr;
     while (tail->queue_next) tail = tail->queue_next;
     tail->queue_next = head;
     head->queue_next = nullptr;
 }
 
 /* ═══════════════ Stack Init ═══════════════ */
-/* Opt2: os_stack_init — STMDB batch for exception frame (~40% faster) */
 void os_stack_init(TCB* task) {
     uint32_t* base = task->stack_base;
     uint32_t  size = task->stack_size;
@@ -184,66 +245,53 @@ void os_stack_init(TCB* task) {
 
     uint32_t* sp = base + size;
     sp = (uint32_t*)((uint32_t)sp & ~0x7UL);
-
-    /* Build exception frame: xPSR, PC, LR, r0-r3, r4-r11 via STMDB */
     uint32_t ctx[16];
-    ctx[0]  = 0x01000000UL;         /* xPSR: Thumb bit */
-    ctx[1]  = (uint32_t)task->entry; /* PC */
-    ctx[2]  = (uint32_t)os_task_exit;/* LR */
-    ctx[3]  = 0x0000000CUL;         /* r12 */
-    ctx[4]  = 0x00000003UL; ctx[5]  = 0x00000002UL;
-    ctx[6]  = 0x00000001UL; ctx[7]  = 0x00000000UL;
-    ctx[8]  = 0x0000000BUL; ctx[9]  = 0x0000000AUL;
+    ctx[0]  = 0x01000000UL;
+    ctx[1]  = (uint32_t)task->entry;
+    ctx[2]  = (uint32_t)os_task_exit;
+    ctx[3]  = 0x0000000CUL;
+    ctx[4]  = 0x00000003UL; ctx[5] = 0x00000002UL;
+    ctx[6]  = 0x00000001UL; ctx[7] = 0x00000000UL;
+    ctx[8]  = 0x0000000BUL; ctx[9] = 0x0000000AUL;
     ctx[10] = 0x00000009UL; ctx[11] = 0x00000008UL;
     ctx[12] = 0x00000007UL; ctx[13] = 0x00000006UL;
     ctx[14] = 0x00000005UL; ctx[15] = 0x00000004UL;
-
-    /* STMDB sp!, {r0-r15} in one bus transaction per word */
     sp -= 16;
     for (int i = 0; i < 16; i++) sp[i] = ctx[15-i];
-
     task->stack_top = sp;
 }
 
-/* ═══════════════ Task Reset ═══════════════ */
 void os_reset_task_internal(TCB* task) {
     os_stack_init(task);
-    /* Remove from old priority queue if was in one */
     os_pq_remove(task);
-    task->state           = TaskState::READY;
-    task->delay_ticks     = 0;
-    task->blocking_on     = nullptr;
-    task->block_timeout   = 0;
-    task->wait_result     = 0;
-    task->next_run_time   = tick_count;
+    task->state = TaskState::READY;
+    task->delay_ticks = 0;
+    task->blocking_on = nullptr;
+    task->block_timeout = 0;
+    task->wait_result = 0;
+    task->next_run_time = tick_count;
     task->last_yield_tick = tick_count;
-    task->priority        = task->base_priority;
-    task->mutex_nesting   = 0;
-    /* O(1) scheduler: add to priority queue */
+    task->priority = task->base_priority;
+    task->mutex_nesting = 0;
     os_pq_add(task);
 }
 
-/* ═══════════════ Task Exit ═══════════════ */
 void os_task_exit(void) {
     uint32_t cs = os_critical_enter();
-    if (current_task) {
-        current_task->state = TaskState::INACTIVE;
-    }
+    if (current_task) current_task->state = TaskState::INACTIVE;
     os_critical_exit(cs);
     os_yield();
     while (1) { __asm volatile("nop"); }
 }
 
-/* ═══════════════ Helper: wake a blocked task ═══════════════ */
 void os_wake_task(TCB* t, uint8_t result) {
-    t->wait_result     = result;
-    t->state           = TaskState::READY;
-    t->blocking_on     = nullptr;
-    t->block_timeout   = 0;
-    t->next_run_time   = tick_count;
+    t->wait_result = result;
+    t->state = TaskState::READY;
+    t->blocking_on = nullptr;
+    t->block_timeout = 0;
+    t->next_run_time = tick_count;
     t->last_yield_tick = tick_count;
     if (blocked_count > 0) {
-        /* LDREX/STREX atomic decrement */
         uint32_t tmp, res;
         __asm volatile(
             "1: ldrex %0, [%2]\n"
@@ -259,26 +307,19 @@ void os_wake_task(TCB* t, uint8_t result) {
             : "memory", "cc"
         );
     }
-    /* O(1) scheduler: add to priority queue */
     os_pq_add(t);
 }
 
-/* ═══════════════ Unified block/wake helpers ═══════════════
-   Consolidates the repeated blocking pattern found in:
-   os_delay_ms, os_event_wait, os_mutex_block_on.
-   Returns true if the caller should yield. ═══════════════ */
 bool os_block_current(TaskState state, void* blocking_on,
                       uint32_t block_timeout, uint32_t delay_ticks) {
     if (!current_task) return false;
-    /* O(1) scheduler: remove from priority queue before blocking */
     os_pq_remove(current_task);
-    current_task->state         = state;
-    current_task->blocking_on   = blocking_on;
+    current_task->state = state;
+    current_task->blocking_on = blocking_on;
     current_task->block_timeout = block_timeout;
-    current_task->delay_ticks   = delay_ticks;
-    current_task->wait_result   = 0;
+    current_task->delay_ticks = delay_ticks;
+    current_task->wait_result = 0;
     current_task->last_yield_tick = tick_count;
-    /* LDREX/STREX atomic increment */
     uint32_t tmp, res;
     __asm volatile(
         "1: ldrex %0, [%2]\n"
@@ -293,12 +334,8 @@ bool os_block_current(TaskState state, void* blocking_on,
     return true;
 }
 
-/* ═══════════════ Helper: ms to ticks ═══════════════ */
-/* Opt3: os_ms_to_ticks — 32-bit fast path (eliminates 64-bit MUL) */
 uint32_t os_ms_to_ticks(uint32_t ms) {
     if (ms == OS_WAIT_FOREVER) return 0;
-    /* <= keeps the largest exact value: ms == 0xFFFFFFFF/OS_TICKS_PER_MS
-       still fits in 32 bits when multiplied. */
     if (ms <= (0xFFFFFFFFUL / OS_TICKS_PER_MS)) {
         uint32_t r = ms * OS_TICKS_PER_MS;
         return r ? r : 1;
@@ -306,7 +343,6 @@ uint32_t os_ms_to_ticks(uint32_t ms) {
     return 0xFFFFFFFEUL;
 }
 
-/* ═══════════════ Task Create ═══════════════ */
 extern "C" int8_t _os_task_create_internal(
     TCB* task,
     uint32_t* stack_mem,
@@ -318,39 +354,39 @@ extern "C" int8_t _os_task_create_internal(
 {
     if (os_started) { os_report_error(OSError::TASK_AFTER_START); return -1; }
     if (!task || !stack_mem || !entry) return -1;
-    /* Prevent duplicate entry functions — each task must have a unique entry */
     if (os_find_task_by_entry(entry)) return -1;
     if (priority == 0) priority = 1;
+    if (!os_priority_valid(priority)) return -1;
     if (stack_size < 64) stack_size = 64;
 
-    task->id            = task_count++;
-    task->name          = name;
-    task->entry         = entry;
-    task->priority      = priority;
+    task->id = task_count++;
+    task->name = name;
+    task->entry = entry;
+    task->priority = priority;
     task->base_priority = priority;
     task->mutex_nesting = 0;
 
     uint64_t p64 = (uint64_t)period_ms * OS_TICKS_PER_MS;
-    task->period_ticks  = (p64 > 0xFFFFFFFEULL) ? 0xFFFFFFFEUL : (uint32_t)p64;
+    task->period_ticks = (p64 > 0xFFFFFFFEULL) ? 0xFFFFFFFEUL : (uint32_t)p64;
     task->next_run_time = 0;
-    task->state         = TaskState::READY;
-    task->delay_ticks   = 0;
-    task->blocking_on   = nullptr;
+    task->state = TaskState::READY;
+    task->delay_ticks = 0;
+    task->blocking_on = nullptr;
     task->block_timeout = 0;
-    task->wait_result   = 0;
-    task->stack_size    = stack_size;
+    task->wait_result = 0;
+    task->stack_size = stack_size;
     task->last_yield_tick = tick_count;
-    task->wdg_retries   = 0;
-    task->cpu_ticks     = 0;
+    task->wdg_retries = 0;
+    task->cpu_ticks = 0;
 #if OS_SMP_CORES > 1
-    task->core_id       = 0; /* 0 = run on any core */
+    task->core_id = 0;
     task->_pad[0] = task->_pad[1] = task->_pad[2] = 0;
 #endif
 #if OS_MONITOR_ENABLED
-    task->peak_sp       = task->stack_top; /* Watermark: lowest SP seen */
+    task->peak_sp = task->stack_top;
 #endif
 #if OS_MONITOR_TCB_INTEGRITY
-    task->magic         = OS_TCB_MAGIC;
+    task->magic = OS_TCB_MAGIC;
     task->overflow_count = 0;
 #endif
 #if OS_SAFETY_MPU
@@ -359,25 +395,18 @@ extern "C" int8_t _os_task_create_internal(
 
     uintptr_t addr = (uintptr_t)stack_mem;
 #if OS_SAFETY_MPU
-    /* MPU stack region needs a 32B-aligned base (see os_mpu_configure_task) */
     addr = (addr + 31) & ~31;
 #else
     addr = (addr + 7) & ~7;
 #endif
     task->stack_base = (uint32_t*)addr;
-
     os_stack_init(task);
-
     task->next = task_list;
-    task_list  = task;
-
-    /* O(1) scheduler: add to priority queue */
+    task_list = task;
     os_pq_add(task);
-
     return (int8_t)task->id;
 }
 
-/* ═══════════════ Task Lookup ═══════════════ */
 TCB* os_find_task_by_entry(void(*entry)(void)) {
     if (!entry) return nullptr;
     for (TCB* t = task_list; t; t = t->next)
@@ -391,12 +420,10 @@ TCB* os_find_task_by_id(uint8_t id) {
     return nullptr;
 }
 
-/* ═══════════════ Task Control ═══════════════ */
 extern "C" void os_task_stop(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = os_find_task_by_entry(entry);
     if (t && t != &idle_tcb) {
-        /* O(1) scheduler: remove from priority queue */
         os_pq_remove(t);
         if (t->state == TaskState::BLOCKED && blocked_count > 0) {
             uint32_t tmp, res;
@@ -414,9 +441,9 @@ extern "C" void os_task_stop(void(*entry)(void)) {
                 : "memory", "cc"
             );
         }
-        t->state         = TaskState::INACTIVE;
-        t->delay_ticks   = 0;
-        t->blocking_on   = nullptr;
+        t->state = TaskState::INACTIVE;
+        t->delay_ticks = 0;
+        t->blocking_on = nullptr;
         t->block_timeout = 0;
         if (t == current_task) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
     }
@@ -460,48 +487,37 @@ extern "C" uint8_t os_get_task_priority(void(*entry)(void)) {
     return result;
 }
 
-/* ═══════════════ Tickless Processing ═══════════════ */
 #if OS_TOOL_TICKLESS_IDLE
 bool os_tickless_process(uint32_t skip) {
     tick_count += skip;
     bool woke = false;
-
     if (blocked_count > 0) {
         for (TCB* task = task_list; task; task = task->next) {
             if (task->state != TaskState::BLOCKED) continue;
-
             if (task->delay_ticks > 0) {
                 if (task->delay_ticks <= skip) {
                     task->delay_ticks = 0;
                     os_wake_on_delay_expiry(task);
                     woke = true;
-                } else {
-                    task->delay_ticks -= skip;
-                }
+                } else task->delay_ticks -= skip;
             } else if (task->block_timeout > 0) {
                 if (task->block_timeout <= skip) {
                     task->block_timeout = 0;
                     os_wake_on_timeout_expiry(task);
                     woke = true;
-                } else {
-                    task->block_timeout -= skip;
-                }
+                } else task->block_timeout -= skip;
             }
         }
     }
     return woke;
 }
-#endif /* OS_TOOL_TICKLESS_IDLE */
+#endif
 
-/* ═══════════════ Utilities ═══════════════ */
 extern "C" uint32_t os_get_tick(void) { return tick_count; }
 extern "C" uint16_t os_get_task_count(void) { return task_count; }
-
-/* ═══════════════ Version ═══════════════ */
 extern "C" uint32_t os_get_version(void) { return OS_VERSION_PACKED; }
 extern "C" const char* os_get_version_string(void) { return OS_VERSION_STRING; }
 
-/* Opt6: os_get_us — LDREX snapshot (no critical section, ~30 cycles saved) */
 extern "C" uint32_t os_get_us(void) {
     uint32_t reload = os_syst_rvr_normal;
     if (reload == 0) return 0;
@@ -514,32 +530,21 @@ extern "C" uint32_t os_get_us(void) {
 
 extern "C" uint32_t os_get_ms(void) { return tick_count / OS_TICKS_PER_MS; }
 
-/* ═══════════════ SMP ═══════════════ */
 #if OS_SMP_CORES > 1
 static TCB* core_current_task[OS_SMP_MAX_CORES] = {nullptr};
 static volatile uint8_t os_core_count_active = 1;
-
 static inline uint8_t os_get_hw_core_id(void) {
     uint32_t cpuid = *((volatile uint32_t*)0xE000ED00UL);
     return (uint8_t)((cpuid >> 8) & 0xFF);
 }
-
-extern "C" uint8_t os_get_core_id(void) {
-    return os_get_hw_core_id();
-}
-
-extern "C" uint8_t os_get_core_count(void) {
-    return os_core_count_active;
-}
-
+extern "C" uint8_t os_get_core_id(void) { return os_get_hw_core_id(); }
+extern "C" uint8_t os_get_core_count(void) { return os_core_count_active; }
 extern "C" void os_task_set_core(void(*entry)(void), uint8_t core) {
     TCB* t = os_find_task_by_entry(entry);
-    if (!t) return;
-    if (core >= OS_SMP_CORES) return;
-    t->core_id = core + 1; /* 0=any, 1=core0, 2=core1 */
+    if (!t || core >= OS_SMP_CORES) return;
+    t->core_id = core + 1;
 }
-
 extern "C" void os_task_migrate(void(*entry)(void), uint8_t core) {
     os_task_set_core(entry, core);
 }
-#endif /* OS_SMP_CORES > 1 */
+#endif
