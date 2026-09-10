@@ -17,14 +17,16 @@ class ReleaseStructureTests(unittest.TestCase):
             self.assertTrue((ROOT / rel).is_file(), rel)
 
     def test_donation_content_is_preserved(self):
-        text = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("DonatR", text)
-        self.assertIn("donate-qr.png", text)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        guide = (ROOT / "docs/guide-html/guide.html").read_text(encoding="utf-8")
+        self.assertIn("donatr.ee/raymon-research-team", readme)
+        self.assertIn("donatr.ee/raymon-research-team", guide)
+        self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").is_file())
 
     def test_site_keeps_current_implementation_page(self):
         text = (ROOT / "docs/guide-html/current.html").read_text(encoding="utf-8")
         self.assertIn("Current Implementation", text)
-        self.assertIn("1.0.1", text) if "1.0.1" in text else None
+        self.assertIn("1.0.1", text)
 
 
 if __name__ == "__main__":
