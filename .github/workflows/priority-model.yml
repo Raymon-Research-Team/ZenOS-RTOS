@@ -5,9 +5,6 @@ on:
     branches: ["**"]
   pull_request:
 
-permissions:
-  contents: write
-
 jobs:
   priority-model:
     runs-on: ubuntu-latest
@@ -16,28 +13,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Fix release documentation syntax
-        if: github.ref == 'refs/heads/release/1.0.1'
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          files = [Path('docs/guide-html/guide.html'), Path('docs/README_FA.md'), Path('docs/API_TUTORIAL.md'), Path('docs/API_TUTORIAL_FA.md')]
-          for p in files:
-              s = p.read_text(encoding='utf-8')
-              s = s.replace('os_error_expect_begin() / os_error_expect_end() {', 'os_error_expect_begin();')
-              s = s.replace('    os_event_signal(-1);  // Deliberately invalid — expected error\n}', '    os_event_signal(-1);  // Deliberately invalid — expected error\n    os_error_expect_end();')
-              s = s.replace('تمام مکانیسم\\u200cها به طور <strong>پیش\\u200cفرض فعال</strong> هستند', 'مکانیسم‌های ایمنی قابل پیکربندی هستند و همه آن‌ها به طور پیش‌فرض فعال نیستند')
-              s = s.replace('تمام ویژگی‌های ایمنی به طور <strong>پیش\\u200cفرض فعال</strong> هستند', 'مکانیسم‌های ایمنی قابل پیکربندی هستند و همه آن‌ها به طور پیش‌فرض فعال نیستند')
-              s = s.replace('All safety features are <strong>enabled by default</strong>', 'Safety mechanisms are <strong>configurable and are not all enabled by default</strong>')
-              s = s.replace('all safety features are <strong>enabled by default</strong>', 'safety mechanisms are <strong>configurable and are not all enabled by default</strong>')
-              s = s.replace('All mechanisms are <strong>enabled by default</strong>', 'Safety mechanisms are <strong>configurable; they are not all enabled by default</strong>')
-              s = s.replace('RAM Test (C-)', 'RAM integrity test')
-              s = s.replace('Background March C-', 'Background SRAM integrity test')
-              p.write_text(s, encoding='utf-8')
-          PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/guide-html/guide.html docs/README_FA.md docs/API_TUTORIAL.md docs/API_TUTORIAL_FA.md
-          if ! git diff --cached --quiet; then git commit -m 'release101: fix documentation examples' && git push origin release/1.0.1; fi
       - name: Run repository tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
