@@ -1,0 +1,46 @@
+name: Prepare ZenOS 1.0.1 guide PR
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: ${{ !startsWith(github.event.head_commit.message, 'docs: prepare guide 1.0.1') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update guide
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('docs/guide-html/guide.html')
+          s=p.read_text(encoding='utf-8')
+          replacements=[
+            (r'\bO\(1\)\b','bounded priority-range scan'),
+            (r'Priority Inheritance','Priority Ceiling'),
+            (r'priority inheritance','priority ceiling'),
+            (r'March C-','bounded RAM integrity test'),
+            (r'32-level priority','32-default-slot priority configuration'),
+            (r'32 level priority','32-default-slot priority configuration'),
+            (r'32 priority levels','32 default priority slots (configurable from 2 to 256)'),
+            (r'32 priority level','32 default priority slots (configurable from 2 to 256)'),
+            (r'period 50ms release interval','recorded 50ms period; release gating is implementation-dependent'),
+          ]
+          for a,b in replacements: s=re.sub(a,b,s,flags=re.I)
+          notice='''\n<section id="release-101-notice" style="margin:20px 0;padding:18px 20px;border-left:5px solid #0277bd;background:#eef8ff;border-radius:8px;"><h2>ZenOS 1.0.1 — authoritative implementation note</h2><p><strong>32 priority slots by default</strong>, configurable from <strong>2 to 256</strong>; priority 0 is reserved for idle; at 256 slots application priorities are 1..255; higher numeric values mean higher priority; the scheduler uses a priority bitmap with per-priority ready queues and scans the configured priority range; default kernel tick is <strong>100 µs</strong> (100–1000 µs configurable); mutexes use an <strong>IPC priority-ceiling</strong> mechanism; safety mechanisms are configurable and most are disabled by default.</p><p>Safety configuration and target-profile checks are engineering mechanisms, not certification evidence. This guide does not claim IEC 62304/61508 certification or product compliance.</p><p>See <a href="current.html">Current Implementation — ZenOS 1.0.1</a> for maintained release-specific facts.</p></section>\n'''
+          if 'id="release-101-notice"' not in s: s=s.replace('<body>','<body>'+notice,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Create update branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b docs/guide-101-final
+          git add docs/guide-html/guide.html
+          git commit -m 'docs: prepare guide 1.0.1'
+          git push origin docs/guide-101-final
