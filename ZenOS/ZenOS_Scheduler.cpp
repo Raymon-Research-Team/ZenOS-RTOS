@@ -84,7 +84,15 @@ static inline uint8_t os_pq_highest_prio(void) {
 
 /* ═══════════════ Priority Queue Operations ═══════════════ */
 void os_pq_add(TCB* task) {
-    if (!task || !os_priority_valid(task->priority)) return;
+    if (!task) return;
+    /* os_init() resets task_count to zero before task creation. The first
+       task created after each init therefore provides a safe point to clear
+       any extension bitmap/queue state left by a previous lifecycle. */
+    if (task == &idle_tcb && task->priority == 0 && !os_started) {
+        os_priority_queues_init();
+        return;
+    }
+    if (!os_priority_valid(task->priority)) return;
     uint8_t p = task->priority;
     TCB* volatile* head = os_pq_head_for(p);
     if (!head) return;
@@ -377,6 +385,11 @@ extern "C" int8_t _os_task_create_internal(
     if (priority == 0) priority = 1;
     if (!os_priority_valid(priority)) return -1;
     if (stack_size < 64) stack_size = 64;
+
+    /* os_init() clears task_count. Reset scheduler storage before the first
+       task of a new lifecycle is inserted, so no stale >32-priority state
+       can survive a reinitialization. */
+    if (task_count == 0) os_priority_queues_init();
 
     task->id = task_count++;
     task->name = name;
