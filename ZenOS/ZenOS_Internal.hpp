@@ -57,6 +57,7 @@ extern int16_t           os_event_next_id;
 /* ═══════════════ Scheduler Functions ═══════════════ */
 void os_pq_add(TCB* task);
 void os_pq_remove(TCB* task);
+extern "C" void os_priority_queues_init(void);
 
 void os_stack_init(TCB* task);
 void os_reset_task_internal(TCB* task);
