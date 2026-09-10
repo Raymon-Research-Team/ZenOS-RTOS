@@ -35,6 +35,14 @@ class PriorityModelTests(unittest.TestCase):
         queue_insert = create_body.index("os_pq_add(task);")
         self.assertLess(validation, queue_insert)
 
+    def test_scheduler_reset_covers_extended_state(self):
+        self.assertIn('extern "C" void os_priority_queues_init(void)', SCHEDULER)
+        self.assertIn("os_ready_bitmap_ext[i] = 0;", SCHEDULER)
+        self.assertIn("os_rr_skip_ext[i] = 0;", SCHEDULER)
+        self.assertIn("os_pq_head_ext[i] = nullptr;", SCHEDULER)
+        self.assertIn("if (task_count == 0) os_priority_queues_init();", SCHEDULER)
+        self.assertIn("task == &idle_tcb && task->priority == 0 && !os_started", SCHEDULER)
+
     def test_supported_ranges(self):
         for count in (32, 64, 128, 256):
             valid = list(range(1, count))
