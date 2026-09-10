@@ -334,9 +334,6 @@
   <img src="https://img.shields.io/badge/100%C2%B5s%20Tick-00838f?style=flat" alt="100μs Tick" height="22">
   <img src="https://img.shields.io/badge/Zero%20Heap-546e7a?style=flat" alt="Zero Heap" height="22">
   <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap + Ready Queues" height="22">
-  <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="Safety Target Profiles" height="22">
-  <img src="https://img.shields.io/badge/IEC%2062304-c62828?style=flat" alt="IEC 62304" height="22">
-  <img src="https://img.shields.io/badge/IEC%2061508-ad1457?style=flat" alt="IEC 61508" height="22">
   <img src="https://img.shields.io/badge/Safety%20Mechanisms-0277bd?style=flat" alt="Safety Mechanisms" height="22">
 </div>
         <p data-lang="en" style="font-size:1.2em;color:var(--text-secondary);max-width:650px;margin:0 auto;">Real-Time operating system for ARM Cortex-M — written in C++11.</p>
@@ -869,7 +866,7 @@ CPU Usage: 45%
         <h1>🛡️ <span data-lang="en">Safety Features</span><span data-lang="fa">ویژگی‌های ایمنی</span></h1>
 
         <h2 id="safety-mechanisms">1. <span data-lang="en">Safety Mechanisms</span><span data-lang="fa">مکانیسم‌های ایمنی</span></h2>
-        <p><span data-lang="en">Safety mechanisms are <strong>configurable; they are not not all enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
+        <p><span data-lang="en">Safety mechanisms are <strong>configurable; they are not not not all enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
 
         <table>
             <tr><th><span data-lang="en">Mechanism</span><span data-lang="fa">مکانیسم</span></th><th><span data-lang="en">Config Macro</span><span data-lang="fa">ماکرو</span></th><th><span data-lang="en">What it does</span><span data-lang="fa">عملکرد</span></th></tr>
@@ -1262,7 +1259,7 @@ void task_shutdown_handler(void) {
             <tr><td><code>_OsSafeGuard</code></td><td><code>OS_SAFE { ... }</code></td><td><span data-lang="en">Interrupt-disable guard</span><span data-lang="fa">محافظ غیرفعال کردن وقفه</span></td></tr>
             <tr><td><code>_OsLockGuard</code></td><td><code>OS_LOCK(mtx) { ... }</code></td><td><span data-lang="en">Mutex lock guard</span><span data-lang="fa">محافظ قفل mutex</span></td></tr>
             <tr><td><code>OS_EVENT</code></td><td>—</td><td><span data-lang="en">Inter-task event signaling</span><span data-lang="fa">سیگنال‌دهی رویداد بین تسک‌ها</span></td></tr>
-            <tr><td><code>OS_MUTEX</code></td><td>—</td><td><span data-lang="en">Mutex with IPC priority ceiling</span><span data-lang="fa">Mutex با ارث بری اولویت</span></td></tr>
+            <tr><td><code>OS_MUTEX</code></td><td>—</td><td><span data-lang="en">Mutex with IPC priority ceiling</span><span data-lang="fa">Mutex با سقف اولویت IPC</span></td></tr>
             <tr><td><code>OS_QUEUE&lt;T,N&gt;</code></td><td>—</td><td><span data-lang="en">Bounded FIFO queue</span><span data-lang="fa">صف FIFO محدود</span></td></tr>
             <tr><td><code>OS_SEMAPHORE</code></td><td>—</td><td><span data-lang="en">Counting semaphore</span><span data-lang="fa">سمافور شمارشی</span></td></tr>
         </table>
@@ -1272,7 +1269,7 @@ void task_shutdown_handler(void) {
     <div class="card" id="config-guide">
         <h1>⚙️ <span data-lang="en">Configuration Guide</span><span data-lang="fa">راهنمای پیکربندی</span></h1>
 
-        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
+        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not not not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
 
         <h2>1. <span data-lang="en">What Do You Need?</span><span data-lang="fa">چه چیزی نیاز دارید؟</span></h2>
         <p><span data-lang="en">Answer these questions to determine your configuration:</span><span data-lang="fa">این سؤالات را پاسخ دهید تا پیکربندی خود را تعیین کنید:</span></p>
@@ -1299,7 +1296,7 @@ void task_shutdown_handler(void) {
 #define OS_TOOL_MUTEX              1         // Keep if using mutexes
 #define OS_TOOL_QUEUE              0         // Disable if not using queues
 #define OS_TOOL_SEMAPHORE          0         // Disable if not using semaphores
-#define OS_TOOL_TICKLESS_IDLE      0         // Disable for simpler timing
+#define OS_TOOL_TICKLESS_IDLE      1         // Disable for simpler timing
 
 #define OS_MONITOR_DEADLINE        0         // Disable if no deadlines needed
 #define OS_MONITOR_TCB_INTEGRITY   0         // Disable to save flash
@@ -1378,12 +1375,13 @@ void task_shutdown_handler(void) {
         </table>
 
         <h2 id="config-reference">5. <span data-lang="en">Complete Configuration Reference</span><span data-lang="fa">مرجع کامل پیکربندی</span></h2>
+<div class="note"><span data-lang="en"><strong>Priority configuration:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> defines the number of scheduler priority slots. The default is <strong>32</strong>; the supported range is <strong>2 to 256</strong>. Priority 0 is reserved for the idle task, so with 256 slots the application range is 1–255. Higher numeric values have higher scheduling priority.</span><span data-lang="fa"><strong>پیکربندی اولویت:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> تعداد اسلات‌های اولویت زمان‌بند را تعیین می‌کند. مقدار پیش‌فرض <strong>۳۲</strong> و محدوده پشتیبانی‌شده <strong>۲ تا ۲۵۶</strong> است. اولویت ۰ برای تسک idle رزرو شده است؛ بنابراین با ۲۵۶ اسلات، محدوده اولویت برنامه ۱ تا ۲۵۵ خواهد بود. عدد بزرگ‌تر یعنی اولویت زمان‌بندی بالاتر.</span></div><pre dir="ltr"><code class="language-cpp">#define OS_KERNEL_MAX_PRIORITIES 32   // default: 32 slots, range: 2..256</code></pre>
         <table>
             <tr><th><span data-lang="en">Constant</span><span data-lang="fa">ثابت</span></th><th><span data-lang="en">Default</span><span data-lang="fa">پیش‌فرض</span></th><th><span data-lang="en">Description</span><span data-lang="fa">توضیحات</span></th></tr>
             <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>100</td><td><span data-lang="en">Tick resolution in microseconds</span><span data-lang="fa">رزولوشن تیک (میکروثانیه)</span></td></tr>
             <tr><td><code>OS_KERNEL_STACK_SIZE</code></td><td>512</td><td><span data-lang="en">Default stack size in bytes</span><span data-lang="fa">اندازه پیش‌فرض پشته (بایت)</span></td></tr>
             <tr><td><code>OS_TOOL_EVENT</code></td><td>1</td><td><span data-lang="en">Enable event primitives</span><span data-lang="fa">فعال کردن رویدادها</span></td></tr>
-            <tr><td><code>OS_TOOL_MUTEX</code></td><td>1</td><td><span data-lang="en">Enable mutex with IPC priority ceiling</span><span data-lang="fa">فعال کردن mutex با ارث بری اولویت</span></td></tr>
+            <tr><td><code>OS_TOOL_MUTEX</code></td><td>1</td><td><span data-lang="en">Enable mutex with IPC priority ceiling</span><span data-lang="fa">فعال کردن mutex با سقف اولویت IPC</span></td></tr>
             <tr><td><code>OS_TOOL_QUEUE</code></td><td>1</td><td><span data-lang="en">Enable bounded FIFO queue</span><span data-lang="fa">فعال کردن صف FIFO</span></td></tr>
             <tr><td><code>OS_TOOL_SEMAPHORE</code></td><td>1</td><td><span data-lang="en">Enable counting semaphore</span><span data-lang="fa">فعال کردن سمافور شمارشی</span></td></tr>
             <tr><td><code>OS_TOOL_TICKLESS_IDLE</code></td><td>1</td><td><span data-lang="en">WFI-based idle when supported/enabled</span><span data-lang="fa">فعال کردن حالت idle برای صرفه‌جویی در مصرف</span></td></tr>
