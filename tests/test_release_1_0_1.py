@@ -45,25 +45,25 @@ class Release101ConsistencyTests(unittest.TestCase):
 
     def test_donation_page_is_preserved(self):
         readme = read("README.md")
-        legacy = read("docs/guide-html/guide-legacy.html")
+        guide = read("docs/guide-html/guide.html")
         donate = read("docs/guide-html/donate.html")
         self.assertIn("donatr.ee/raymon-research-team", readme)
-        self.assertIn("donatr.ee/raymon-research-team", legacy)
+        self.assertIn("donatr.ee/raymon-research-team", guide)
         self.assertIn("donatr.ee/raymon-research-team", donate)
         self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").exists())
 
     def test_authoritative_guide_facts(self):
         guide = read("docs/guide-html/guide.html")
-        self.assertIn("ZenOS 1.0.1", guide)
-        self.assertIn("Default priority slots", guide)
-        self.assertIn("Configurable from 2 to 256", guide)
-        self.assertIn("priority-ceiling", guide)
-        self.assertIn("priority-count-independent O(1)", guide)
+        self.assertIn("Version 1.0.1", guide)
+        self.assertIn("OS_KERNEL_MAX_PRIORITIES", guide)
+        self.assertIn("2 to 256", guide)
+        self.assertIn("32", guide)
+        self.assertIn("priority ceiling", guide.lower())
         self.assertNotIn("Priority Inheritance", guide)
+        self.assertNotIn("Version 1.0.0", guide)
         self.assertNotIn("32-level priority", guide)
+        self.assertNotIn("os_error_expect_begin", guide)
 
 
 if __name__ == "__main__":
     unittest.main()
-
-# Release 1.0.1 final validation trigger.
