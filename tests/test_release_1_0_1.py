@@ -45,10 +45,21 @@ class Release101ConsistencyTests(unittest.TestCase):
 
     def test_donation_page_is_preserved(self):
         readme = read("README.md")
-        guide = read("docs/guide-html/guide.html")
+        legacy = read("docs/guide-html/guide-legacy.html")
+        donate = read("docs/guide-html/donate.html")
         self.assertIn("donatr.ee/raymon-research-team", readme)
-        self.assertIn("donatr.ee/raymon-research-team", guide)
+        self.assertIn("donatr.ee/raymon-research-team", legacy)
+        self.assertIn("donatr.ee/raymon-research-team", donate)
         self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").exists())
+
+    def test_authoritative_guide_facts(self):
+        guide = read("docs/guide-html/guide.html")
+        self.assertIn("ZenOS 1.0.1", guide)
+        self.assertIn("Default priority slots", guide)
+        self.assertIn("Configurable from 2 to 256", guide)
+        self.assertIn("priority-ceiling", guide)
+        self.assertNotIn("O(1)", guide)
+        self.assertNotIn("Priority Inheritance", guide)
 
 
 if __name__ == "__main__":
