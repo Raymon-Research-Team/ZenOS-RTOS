@@ -58,7 +58,7 @@ It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes 
 | **IPC ceiling** | **Mutex IPC ceiling support** | Depends on configuration/API | Depends on configuration/API |
 | **C++** | **C++11 kernel API** | C/C++ APIs | C/C++ APIs |
 
-> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md)
+> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) · [Current implementation reference](docs/CURRENT_IMPLEMENTATION.md)
 
 ### 🖥️ Supported Families
 
@@ -159,6 +159,7 @@ For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنم
 | 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 | ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison and design characteristics |
 | ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Source-of-truth configuration header |
+| 🧭 [CURRENT_IMPLEMENTATION.md](docs/CURRENT_IMPLEMENTATION.md) | Current kernel behavior and configuration facts |
 
 ---
 
