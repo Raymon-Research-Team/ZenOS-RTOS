@@ -13,6 +13,8 @@ class ReleaseStructureTests(unittest.TestCase):
             "docs/SAFETY_MANUAL.md",
             "docs/guide-html/index.html",
             "docs/guide-html/current.html",
+            "docs/guide-html/donate.html",
+            "docs/guide-html/donate-qr.png",
         ]:
             self.assertTrue((ROOT / rel).is_file(), rel)
 
