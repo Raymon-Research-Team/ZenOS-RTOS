@@ -82,6 +82,45 @@ static inline uint8_t os_pq_highest_prio(void) {
     return 0;
 }
 
+/* ── Round-Robin Throttle ── */
+#if OS_MAX_PRIORITIES <= 32
+static uint32_t os_rr_skip = 0;
+#else
+static uint32_t os_rr_skip = 0;
+static uint32_t os_rr_skip_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
+#endif
+static uint32_t os_rr_skip_quota = 0;
+
+/* Reset all scheduler-owned priority state. Kept here so os_init() can reset
+   extension storage without exposing the static RR arrays as globals. */
+extern "C" void os_priority_queues_init(void) {
+    os_ready_bitmap = 0;
+    for (uint32_t i = 0; i < 32; ++i) os_pq_head[i] = nullptr;
+
+#if OS_MAX_PRIORITIES > 32
+    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i) {
+        os_ready_bitmap_ext[i] = 0;
+        os_rr_skip_ext[i] = 0;
+    }
+    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_COUNT; ++i)
+        os_pq_head_ext[i] = nullptr;
+#endif
+
+    os_rr_skip = 0;
+    os_rr_skip_quota = 0;
+}
+
+static inline bool os_rr_is_skipped(uint8_t prio) {
+    if (!os_priority_valid(prio)) return false;
+    if (prio < 32) return (os_rr_skip & (1UL << prio)) != 0;
+#if OS_MAX_PRIORITIES > 32
+    uint8_t p = (uint8_t)(prio - 32);
+    return (os_rr_skip_ext[p >> 5] & (1UL << (p & 31))) != 0;
+#else
+    return false;
+#endif
+}
+
 /* ═══════════════ Priority Queue Operations ═══════════════ */
 void os_pq_add(TCB* task) {
     if (!task || !os_priority_valid(task->priority)) return;
@@ -109,442 +148,3 @@ void os_pq_remove(TCB* task) {
     }
 }
 
-/* ── Round-Robin Throttle ── */
-#if OS_MAX_PRIORITIES <= 32
-static uint32_t os_rr_skip = 0;
-#else
-static uint32_t os_rr_skip = 0;
-static uint32_t os_rr_skip_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
-#endif
-static uint32_t os_rr_skip_quota = 0;
-
-static inline bool os_rr_is_skipped(uint8_t prio) {
-    if (!os_priority_valid(prio)) return false;
-    if (prio < 32) return (os_rr_skip & (1UL << prio)) != 0;
-#if OS_MAX_PRIORITIES > 32
-    uint8_t p = (uint8_t)(prio - 32);
-    return (os_rr_skip_ext[p >> 5] & (1UL << (p & 31))) != 0;
-#else
-    return false;
-#endif
-}
-
-static inline void os_rr_set_skip(uint8_t prio) {
-    if (prio < 32) os_rr_skip |= (1UL << prio);
-#if OS_MAX_PRIORITIES > 32
-    else if (prio < OS_MAX_PRIORITIES) {
-        uint8_t p = (uint8_t)(prio - 32);
-        os_rr_skip_ext[p >> 5] |= (1UL << (p & 31));
-    }
-#endif
-}
-
-static inline void os_rr_clear_all(void) {
-    os_rr_skip = 0;
-#if OS_MAX_PRIORITIES > 32
-    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
-        os_rr_skip_ext[i] = 0;
-#endif
-}
-
-static inline uint32_t os_ready_level_count(void) {
-    uint32_t count = (uint32_t)__builtin_popcount(os_ready_bitmap);
-#if OS_MAX_PRIORITIES > 32
-    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
-        count += (uint32_t)__builtin_popcount(os_ready_bitmap_ext[i]);
-#endif
-    return count;
-}
-
-extern "C" TCB* os_pq_next(void) {
-    if (os_rr_skip_quota > 0) {
-        --os_rr_skip_quota;
-        if (os_rr_skip_quota == 0) os_rr_clear_all();
-    }
-
-    if (os_pq_highest_prio() == 0) return nullptr;
-    const uint32_t now = tick_count;
-
-    for (int p = (int)OS_MAX_PRIORITIES - 1; p >= 1; --p) {
-        uint8_t prio = (uint8_t)p;
-        if (!os_pq_bit_is_set(prio) || os_rr_is_skipped(prio)) continue;
-        TCB* head = *os_pq_head_for(prio);
-        if (!head) {
-            os_pq_clear_bit(prio);
-            continue;
-        }
-
-        TCB* prev = nullptr;
-        TCB* selected = nullptr;
-        for (TCB* t = head; t; t = t->queue_next) {
-            bool eligible = (t->period_ticks == 0) ||
-                            ((int32_t)(now - t->next_run_time) >= 0);
-            if (eligible) {
-                selected = t;
-                break;
-            }
-            prev = t;
-        }
-        if (!selected) continue;
-
-        if (selected != head) {
-            prev->queue_next = selected->queue_next;
-            selected->queue_next = head;
-            *os_pq_head_for(prio) = selected;
-        }
-        return selected;
-    }
-    return nullptr;
-}
-
-extern "C" void os_pq_rotate(void) {
-    if (os_pq_highest_prio() == 0) return;
-    const uint32_t now = tick_count;
-    uint8_t p = 0xFF;
-
-    for (int prio = (int)OS_MAX_PRIORITIES - 1; prio >= 1; --prio) {
-        uint8_t candidate = (uint8_t)prio;
-        if (!os_pq_bit_is_set(candidate) || os_rr_is_skipped(candidate)) continue;
-        for (TCB* t = *os_pq_head_for(candidate); t; t = t->queue_next) {
-            if (t->period_ticks == 0 ||
-                ((int32_t)(now - t->next_run_time) >= 0)) {
-                p = candidate;
-                break;
-            }
-        }
-        if (p != 0xFF) break;
-    }
-    if (p == 0xFF) return;
-
-    TCB* volatile* head_ptr = os_pq_head_for(p);
-    TCB* head = *head_ptr;
-    if (!head) return;
-
-    if (!head->queue_next) {
-        os_rr_set_skip(p);
-        os_rr_skip_quota = os_ready_level_count();
-        if (os_rr_skip_quota == 0) os_rr_skip_quota = 1;
-        return;
-    }
-
-    *head_ptr = head->queue_next;
-    TCB* tail = *head_ptr;
-    while (tail->queue_next) tail = tail->queue_next;
-    tail->queue_next = head;
-    head->queue_next = nullptr;
-}
-
-/* ═══════════════ Stack Init ═══════════════ */
-void os_stack_init(TCB* task) {
-    uint32_t* base = task->stack_base;
-    uint32_t  size = task->stack_size;
-    for (uint32_t i = OS_STACK_CANARY_COUNT; i < size; i++)
-        base[i] = 0xA5A5A5A5UL;
-    for (uint32_t i = 0; i < OS_STACK_CANARY_COUNT; i++)
-        base[i] = OS_STACK_CANARY;
-
-    uint32_t* sp = base + size;
-    sp = (uint32_t*)((uint32_t)sp & ~0x7UL);
-    uint32_t ctx[16];
-    ctx[0]  = 0x01000000UL;
-    ctx[1]  = (uint32_t)task->entry;
-    ctx[2]  = (uint32_t)os_task_exit;
-    ctx[3]  = 0x0000000CUL;
-    ctx[4]  = 0x00000003UL; ctx[5] = 0x00000002UL;
-    ctx[6]  = 0x00000001UL; ctx[7] = 0x00000000UL;
-    ctx[8]  = 0x0000000BUL; ctx[9] = 0x0000000AUL;
-    ctx[10] = 0x00000009UL; ctx[11] = 0x00000008UL;
-    ctx[12] = 0x00000007UL; ctx[13] = 0x00000006UL;
-    ctx[14] = 0x00000005UL; ctx[15] = 0x00000004UL;
-    sp -= 16;
-    for (int i = 0; i < 16; i++) sp[i] = ctx[15-i];
-    task->stack_top = sp;
-}
-
-void os_reset_task_internal(TCB* task) {
-    os_stack_init(task);
-    os_pq_remove(task);
-    task->state = TaskState::READY;
-    task->delay_ticks = 0;
-    task->blocking_on = nullptr;
-    task->block_timeout = 0;
-    task->wait_result = 0;
-    task->next_run_time = tick_count;
-    task->last_yield_tick = tick_count;
-    task->priority = task->base_priority;
-    task->mutex_nesting = 0;
-    os_pq_add(task);
-}
-
-void os_task_exit(void) {
-    uint32_t cs = os_critical_enter();
-    if (current_task) current_task->state = TaskState::INACTIVE;
-    os_critical_exit(cs);
-    os_yield();
-    while (1) { __asm volatile("nop"); }
-}
-
-void os_wake_task(TCB* t, uint8_t result) {
-    t->wait_result = result;
-    t->state = TaskState::READY;
-    t->blocking_on = nullptr;
-    t->block_timeout = 0;
-    t->next_run_time = tick_count;
-    t->last_yield_tick = tick_count;
-    if (blocked_count > 0) {
-        uint32_t tmp, res;
-        __asm volatile(
-            "1: ldrex %0, [%2]\n"
-            "   cmp   %0, #0\n"
-            "   beq   2f\n"
-            "   subs  %0, %0, #1\n"
-            "   strex %1, %0, [%2]\n"
-            "   cmp   %1, #0\n"
-            "   bne   1b\n"
-            "2:\n"
-            : "=&r"(tmp), "=&r"(res)
-            : "r"(&blocked_count)
-            : "memory", "cc"
-        );
-    }
-    os_pq_add(t);
-}
-
-bool os_block_current(TaskState state, void* blocking_on,
-                      uint32_t block_timeout, uint32_t delay_ticks) {
-    if (!current_task) return false;
-    os_pq_remove(current_task);
-    current_task->state = state;
-    current_task->blocking_on = blocking_on;
-    current_task->block_timeout = block_timeout;
-    current_task->delay_ticks = delay_ticks;
-    current_task->wait_result = 0;
-    current_task->last_yield_tick = tick_count;
-    uint32_t tmp, res;
-    __asm volatile(
-        "1: ldrex %0, [%2]\n"
-        "   adds  %0, %0, #1\n"
-        "   strex %1, %0, [%2]\n"
-        "   cmp   %1, #0\n"
-        "   bne   1b\n"
-        : "=&r"(tmp), "=&r"(res)
-        : "r"(&blocked_count)
-        : "memory", "cc"
-    );
-    return true;
-}
-
-uint32_t os_ms_to_ticks(uint32_t ms) {
-    if (ms == OS_WAIT_FOREVER) return 0;
-    if (ms <= (0xFFFFFFFFUL / OS_TICKS_PER_MS)) {
-        uint32_t r = ms * OS_TICKS_PER_MS;
-        return r ? r : 1;
-    }
-    return 0xFFFFFFFEUL;
-}
-
-extern "C" int8_t _os_task_create_internal(
-    TCB* task,
-    uint32_t* stack_mem,
-    uint32_t stack_size,
-    const char* name,
-    void(*entry)(void),
-    uint8_t priority,
-    uint32_t period_ms)
-{
-    if (os_started) { os_report_error(OSError::TASK_AFTER_START); return -1; }
-    if (!task || !stack_mem || !entry) return -1;
-    if (os_find_task_by_entry(entry)) return -1;
-    if (priority == 0) priority = 1;
-    if (!os_priority_valid(priority)) return -1;
-    if (stack_size < 64) stack_size = 64;
-
-    task->id = task_count++;
-    task->name = name;
-    task->entry = entry;
-    task->priority = priority;
-    task->base_priority = priority;
-    task->mutex_nesting = 0;
-
-    uint64_t p64 = (uint64_t)period_ms * OS_TICKS_PER_MS;
-    task->period_ticks = (p64 > 0xFFFFFFFEULL) ? 0xFFFFFFFEUL : (uint32_t)p64;
-    task->next_run_time = 0;
-    task->state = TaskState::READY;
-    task->delay_ticks = 0;
-    task->blocking_on = nullptr;
-    task->block_timeout = 0;
-    task->wait_result = 0;
-    task->stack_size = stack_size;
-    task->last_yield_tick = tick_count;
-    task->wdg_retries = 0;
-    task->cpu_ticks = 0;
-#if OS_SMP_CORES > 1
-    task->core_id = 0;
-    task->_pad[0] = task->_pad[1] = task->_pad[2] = 0;
-#endif
-#if OS_MONITOR_ENABLED
-    task->peak_sp = task->stack_top;
-#endif
-#if OS_MONITOR_TCB_INTEGRITY
-    task->magic = OS_TCB_MAGIC;
-    task->overflow_count = 0;
-#endif
-#if OS_SAFETY_MPU
-    task->mpu_region_count = 0;
-#endif
-
-    uintptr_t addr = (uintptr_t)stack_mem;
-#if OS_SAFETY_MPU
-    addr = (addr + 31) & ~31;
-#else
-    addr = (addr + 7) & ~7;
-#endif
-    task->stack_base = (uint32_t*)addr;
-    os_stack_init(task);
-    task->next = task_list;
-    task_list = task;
-    os_pq_add(task);
-    return (int8_t)task->id;
-}
-
-TCB* os_find_task_by_entry(void(*entry)(void)) {
-    if (!entry) return nullptr;
-    for (TCB* t = task_list; t; t = t->next)
-        if (t->entry == entry) return t;
-    return nullptr;
-}
-
-TCB* os_find_task_by_id(uint8_t id) {
-    for (TCB* t = task_list; t; t = t->next)
-        if (t->id == id) return t;
-    return nullptr;
-}
-
-extern "C" void os_task_stop(void(*entry)(void)) {
-    uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
-    if (t && t != &idle_tcb) {
-        os_pq_remove(t);
-        if (t->state == TaskState::BLOCKED && blocked_count > 0) {
-            uint32_t tmp, res;
-            __asm volatile(
-                "1: ldrex %0, [%2]\n"
-                "   cmp   %0, #0\n"
-                "   beq   2f\n"
-                "   subs  %0, %0, #1\n"
-                "   strex %1, %0, [%2]\n"
-                "   cmp   %1, #0\n"
-                "   bne   1b\n"
-                "2:\n"
-                : "=&r"(tmp), "=&r"(res)
-                : "r"(&blocked_count)
-                : "memory", "cc"
-            );
-        }
-        t->state = TaskState::INACTIVE;
-        t->delay_ticks = 0;
-        t->blocking_on = nullptr;
-        t->block_timeout = 0;
-        if (t == current_task) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-    }
-    os_critical_exit(cs);
-}
-
-extern "C" void os_task_start(void(*entry)(void)) {
-    uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
-    if (t && t->state == TaskState::INACTIVE) {
-        os_reset_task_internal(t);
-        t->wdg_retries = 0;
-        OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-    }
-    os_critical_exit(cs);
-}
-
-#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
-extern "C" uint8_t os_task_get_state(void(*entry)(void)) {
-    uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
-    uint8_t result = t ? (uint8_t)t->state : 0xFF;
-    os_critical_exit(cs);
-    return result;
-}
-#endif
-
-extern "C" bool os_task_isActive(void(*entry)(void)) {
-    uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
-    uint8_t result = t ? (uint8_t)t->state : 0xFF;
-    os_critical_exit(cs);
-    return ((result != (uint8_t)TaskState::INACTIVE) ? true : false);
-}
-
-extern "C" uint8_t os_get_task_priority(void(*entry)(void)) {
-    uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
-    uint8_t result = t ? t->priority : 0;
-    os_critical_exit(cs);
-    return result;
-}
-
-#if OS_TOOL_TICKLESS_IDLE
-bool os_tickless_process(uint32_t skip) {
-    tick_count += skip;
-    bool woke = false;
-    if (blocked_count > 0) {
-        for (TCB* task = task_list; task; task = task->next) {
-            if (task->state != TaskState::BLOCKED) continue;
-            if (task->delay_ticks > 0) {
-                if (task->delay_ticks <= skip) {
-                    task->delay_ticks = 0;
-                    os_wake_on_delay_expiry(task);
-                    woke = true;
-                } else task->delay_ticks -= skip;
-            } else if (task->block_timeout > 0) {
-                if (task->block_timeout <= skip) {
-                    task->block_timeout = 0;
-                    os_wake_on_timeout_expiry(task);
-                    woke = true;
-                } else task->block_timeout -= skip;
-            }
-        }
-    }
-    return woke;
-}
-#endif
-
-extern "C" uint32_t os_get_tick(void) { return tick_count; }
-extern "C" uint16_t os_get_task_count(void) { return task_count; }
-extern "C" uint32_t os_get_version(void) { return OS_VERSION_PACKED; }
-extern "C" const char* os_get_version_string(void) { return OS_VERSION_STRING; }
-
-extern "C" uint32_t os_get_us(void) {
-    uint32_t reload = os_syst_rvr_normal;
-    if (reload == 0) return 0;
-    uint32_t t = tick_count;
-    uint32_t cvr = OS_SYST_CVR;
-    if (cvr > reload) cvr = reload;
-    uint32_t frac = ((reload - cvr) * OS_KERNEL_TICK_PERIOD_US) / (reload + 1);
-    return (uint32_t)((uint64_t)t * OS_KERNEL_TICK_PERIOD_US + frac);
-}
-
-extern "C" uint32_t os_get_ms(void) { return tick_count / OS_TICKS_PER_MS; }
-
-#if OS_SMP_CORES > 1
-static TCB* core_current_task[OS_SMP_MAX_CORES] = {nullptr};
-static volatile uint8_t os_core_count_active = 1;
-static inline uint8_t os_get_hw_core_id(void) {
-    uint32_t cpuid = *((volatile uint32_t*)0xE000ED00UL);
-    return (uint8_t)((cpuid >> 8) & 0xFF);
-}
-extern "C" uint8_t os_get_core_id(void) { return os_get_hw_core_id(); }
-extern "C" uint8_t os_get_core_count(void) { return os_core_count_active; }
-extern "C" void os_task_set_core(void(*entry)(void), uint8_t core) {
-    TCB* t = os_find_task_by_entry(entry);
-    if (!t || core >= OS_SMP_CORES) return;
-    t->core_id = core + 1;
-}
-extern "C" void os_task_migrate(void(*entry)(void), uint8_t core) {
-    os_task_set_core(entry, core);
-}
-#endif
