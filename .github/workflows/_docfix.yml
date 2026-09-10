@@ -1,0 +1,42 @@
+name: one-time guide alignment
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update guide
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('docs/guide-html/guide.html')
+          s=p.read_text()
+          s=s.replace('Priority-bitmap scheduler • 100μs tick • Zero heap • Built-in safety','Priority bitmap • 100μs default tick • Zero heap • Configurable safety')
+          s=s.replace('Priority Bitmap Scheduler','Priority Bitmap + Ready Queues')
+          s=s.replace('OS_TOOL_TICKLESS_IDLE      0','OS_TOOL_TICKLESS_IDLE      1')
+          s=s.replace('Priority Inheritance','Priority Ceiling').replace('priority inheritance','priority ceiling').replace('ارث بری اولویت','سقف اولویت IPC')
+          s=s.replace('Version 1.0.0','Version 1.0.1').replace('ZenOS 1.0.0','ZenOS 1.0.1')
+          s=s.replace('32 priority levels','2–256 configurable priority slots').replace('32 priority slots','32 default priority slots; 2–256 configurable').replace('32-level priority','2–256 configurable priority slots')
+          s=s.replace('full March C-','bounded SRAM integrity test; not a full March C- implementation').replace('March C-','bounded SRAM integrity test')
+          s=s.replace('all enabled by default','not all enabled by default').replace('everything enabled','optional mechanisms are not all enabled')
+          s=s.replace('This page is the release-specific source of truth.','This page is the authoritative guide for ZenOS 1.0.1.')
+          s=re.sub(r'\s*<img src="https://img\.shields\.io/badge/IEC%20Target%20Profiles[^>]+>', '', s)
+          s=re.sub(r'\s*<img src="https://img\.shields\.io/badge/IEC%2062304[^>]+>', '', s)
+          s=re.sub(r'\s*<img src="https://img\.shields\.io/badge/IEC%2061508[^>]+>', '', s)
+          marker='<h2 id="config-reference">5. <span data-lang="en">Complete Configuration Reference</span><span data-lang="fa">مرجع کامل پیکربندی</span></h2>'
+          priority='''<div class="note"><span data-lang="en"><strong>Priority configuration:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> defines the number of scheduler priority slots. The default is <strong>32</strong>; the supported range is <strong>2 to 256</strong>. Priority 0 is reserved for the idle task, so with 256 slots the application range is 1–255. Higher numeric values have higher scheduling priority.</span><span data-lang="fa"><strong>پیکربندی اولویت:</strong> <code>OS_KERNEL_MAX_PRIORITIES</code> تعداد اسلات‌های اولویت زمان‌بند را تعیین می‌کند. مقدار پیش‌فرض <strong>۳۲</strong> و محدوده پشتیبانی‌شده <strong>۲ تا ۲۵۶</strong> است. اولویت ۰ برای تسک idle رزرو شده است؛ بنابراین با ۲۵۶ اسلات، محدوده اولویت برنامه ۱ تا ۲۵۵ خواهد بود. عدد بزرگ‌تر یعنی اولویت زمان‌بندی بالاتر.</span></div><pre dir="ltr"><code class="language-cpp">#define OS_KERNEL_MAX_PRIORITIES 32   // default: 32 slots, range: 2..256</code></pre>'''
+          if marker in s and 'Priority configuration:' not in s:
+              s=s.replace(marker, marker+'\n'+priority,1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/guide-html/guide.html
+          git rm .github/workflows/_docfix.yml
+          git commit -m 'docs: align guide with ZenOS 1.0.1'
+          git push
