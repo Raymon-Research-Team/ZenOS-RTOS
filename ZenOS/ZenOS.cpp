@@ -147,39 +147,25 @@ extern "C" void os_yield(void) {
         : /* no outputs */
         : /* no inputs */
         : "r0", "r1", "r2", "cc", "memory"
-        /* The asm destroys r0/r1/r2 and the condition flags, and writes
-           current_task->last_yield_tick + SCB_ICSR.  Without this clobber
-           list GCC at -O2 keeps live values in these registers across the
-           asm and the scheduler state corrupts. */
     );
 }
 
 
 /* ═══════════════ Tick Handler ═══════════════ */
 extern "C" void os_tick(void) {
-
-    /* ═══════ C2 fix: one critical section for the whole tick path ═══════
-       os_tickless_process() and os_stack_check_all() mutate global
-       scheduler state (priority queues, bitmap, blocked_count). They must
-       run with interrupts disabled, otherwise a higher-priority ISR
-       (e.g. EXTI calling os_event_signal_from_isr) can corrupt that state
-       concurrently. */
     uint32_t cs = os_critical_enter();
-
     tick_count++;
 
     if (current_task == &idle_tcb) idle_ticks++;
     else if (current_task && current_task->state == TaskState::RUNNING) {
         current_task->cpu_ticks++;
 #if OS_MONITOR_ENABLED
-        /* Stack watermark: track lowest SP seen */
         if ((uint32_t)current_task->stack_top < (uint32_t)current_task->peak_sp)
             current_task->peak_sp = current_task->stack_top;
 #endif
     }
 
 #if OS_SAFETY_SOFT_WATCHDOG
-    /* Check every 1ms (OS_TICKS_PER_MS ticks) to reduce overhead */
     if ((tick_count % OS_TICKS_PER_MS) == 0 &&
         current_task && current_task != &idle_tcb &&
         current_task->state == TaskState::RUNNING) {
@@ -188,7 +174,6 @@ extern "C" void os_tick(void) {
         if (elapsed > max_ticks) {
             os_report_error(OSError::TASK_STUCK);
             wdg_reset_count++;
-            /* O(1) scheduler: remove from pq before reset */
             os_pq_remove(current_task);
             if (current_task->wdg_retries < OS_SAFETY_TASK_MAX_RECOVERY) {
                 current_task->wdg_retries++;
@@ -202,7 +187,6 @@ extern "C" void os_tick(void) {
 #endif
 
 #if OS_MONITOR_DEADLINE
-    /* Deadline monitoring — only flag the miss; PendSV handles action */
     if (current_task && current_task != &idle_tcb &&
         current_task->state == TaskState::RUNNING &&
         current_task->deadline_ticks > 0) {
@@ -210,9 +194,6 @@ extern "C" void os_tick(void) {
         if (elapsed > current_task->deadline_ticks) {
             current_task->deadline_miss_count++;
             os_report_error(OSError::DEADLINE_MISS);
-            /* Do NOT reset/disable task from ISR context —
-               only PendSV (lowest priority) should modify current_task.
-               The miss is recorded; higher-level code can react. */
         }
     }
 #endif
@@ -220,33 +201,19 @@ extern "C" void os_tick(void) {
     if (blocked_count > 0) {
         for (TCB* task = task_list; task; task = task->next) {
             if (task->state != TaskState::BLOCKED) continue;
-
             if (task->delay_ticks > 0) {
                 task->delay_ticks--;
-                if (task->delay_ticks == 0) {
-                    os_wake_on_delay_expiry(task);
-                }
+                if (task->delay_ticks == 0) os_wake_on_delay_expiry(task);
             } else if (task->block_timeout > 0) {
                 task->block_timeout--;
-                if (task->block_timeout == 0) {
-                    os_wake_on_timeout_expiry(task);
-                }
+                if (task->block_timeout == 0) os_wake_on_timeout_expiry(task);
             }
         }
     }
 
-    /* Stack check mutates the same scheduler structures, so it stays
-       inside the critical section too. */
     if ((tick_count & 0x0F) == 0) os_stack_check_all();
-
     os_critical_exit(cs);
-    /* ═══════ end C2 fix ═══════ */
-
-    /* DSB: all tick processing (task state changes, wakeups, stack checks)
-       must be visible in RAM before PendSV runs and reads them. */
     __asm volatile("dsb" ::: "memory");
-    /* Always fire PendSV — scheduler handles release-time gating,
-       priority selection, and round-robin rotation. */
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
 }
 
@@ -272,10 +239,8 @@ static bool os_idle_tickless(void) {
         if (blocked_count > 0) {
             for (TCB* t = task_list; t; t = t->next) {
                 if (t->state == TaskState::BLOCKED) {
-                    if (t->delay_ticks > 0 && t->delay_ticks < sleep)
-                        sleep = t->delay_ticks;
-                    if (t->block_timeout > 0 && t->block_timeout < sleep)
-                        sleep = t->block_timeout;
+                    if (t->delay_ticks > 0 && t->delay_ticks < sleep) sleep = t->delay_ticks;
+                    if (t->block_timeout > 0 && t->block_timeout < sleep) sleep = t->block_timeout;
                 }
             }
         }
@@ -316,54 +281,34 @@ static bool os_idle_tickless(void) {
         uint32_t cs = os_critical_enter();
         uint32_t cvr_val = OS_SYST_CVR;
         OS_SYST_CSR = 0;
-
-        /* Always derive the elapsed time from the hardware counter, not
-           COUNTFLAG. COUNTFLAG is sticky (stays set until CSR is read) and
-           can be stale when a higher-priority ISR preempts the SysTick ISR.
-           CVR reflects actual elapsed time regardless of ISR state. */
         if (cvr_val < hw_sleep) {
             uint32_t elapsed_hw = (hw_sleep - 1) - cvr_val;
             uint32_t skip = elapsed_hw / ticks_per_os_tick;
             if (skip > 0) {
-                /* C3 fix: apply the skipped time right now, inside the CS —
-                   forward tick_count and wake expired tasks. Deferring this
-                   to the next SysTick loses time whenever another IRQ (e.g.
-                   the HAL TIM1 time base) wakes us repeatedly before that
-                   SysTick fires, because tick_skip would be overwritten. */
                 idle_ticks += skip;
-                if (os_tickless_process(skip)) {
-                    /* A task expired while we slept — reschedule now */
-                    OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-                }
+                if (os_tickless_process(skip)) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
             }
         }
-        /* else: CVR >= hw_sleep means SysTick hasn't started counting
-           down yet (or counter just reloaded). No time elapsed. */
-
         OS_SYST_CVR = 0;
         OS_SYST_RVR = saved_rvr;
         OS_SYST_CSR = 0x07;
         os_critical_exit(cs);
     }
-
     return true;
 }
-#endif /* OS_TOOL_TICKLESS_IDLE */
+#endif
 
-/* Forward declaration for tickless processing (in ZenOS_Scheduler.cpp) */
 #if OS_TOOL_TICKLESS_IDLE
 extern bool os_tickless_process(uint32_t skip);
 #endif
 
-
-/* ═══════════════ Idle ═══════════════ */
 static void os_idle_task(void) {
     while (1) {
 #if OS_SAFETY_HW_WATCHDOG
-        os_hw_watchdog_check();  /* feed if healthy */
+        os_hw_watchdog_check();
 #endif
 #if OS_SAFETY_CRC_CHECK
-        os_crc_check_step();    /* check ROM in background */
+        os_crc_check_step();
 #endif
 #if OS_TOOL_TICKLESS_IDLE
         os_idle_tickless();
@@ -378,7 +323,6 @@ extern "C" void os_init(void) {
     task_list = nullptr; task_count = 0; current_task = nullptr;
     tick_count = 0; blocked_count = 0;
 
-    /* idle_tcb: safe defaults for fault recovery before os_start */
     idle_tcb.id = 255; idle_tcb.name = "idle"; idle_tcb.entry = nullptr;
     idle_tcb.priority = 0; idle_tcb.base_priority = 0;
     idle_tcb.state = TaskState::INACTIVE;
@@ -387,10 +331,7 @@ extern "C" void os_init(void) {
     error_expect_depth = 0; error_last = OSError::NONE;
     idle_ticks = 0; wdg_reset_count = 0; stack_recovery_count = 0;
     os_syst_rvr_normal = 0;
-    /* O(1) scheduler: initialize priority bitmap and queues */
-    os_ready_bitmap = 0;
-    for (uint32_t i = 0; i < 32; i++) os_pq_head[i] = nullptr;
-
+    os_priority_queues_init();
 
 #if OS_HAS_CYCLE_COUNTER
     OS_COREDEBUG_DEMCR |= OS_COREDEM_TRCENA;
@@ -415,194 +356,33 @@ extern "C" void os_start(void) {
     idle_tcb.next = task_list;
     task_list = &idle_tcb;
     os_stack_init(&idle_tcb);
-    /* O(1) scheduler: add idle to priority queue (prio=0) */
     os_pq_add(&idle_tcb);
-
 
     {
         uint32_t* fv = (uint32_t*)OS_SCB_VTOR;
-        for (uint32_t i = 0; i < OS_VECTOR_COUNT; i++)
-            ram_vectors[i] = fv[i];
-
-        ram_vectors[OS_PENDSV_VECTOR_INDEX]     = (uint32_t)OS_PendSV_Handler;
-        ram_vectors[OS_HARDFAULT_VECTOR_INDEX]  = (uint32_t)OS_Fault_Handler;
-        ram_vectors[OS_MEMMANAGE_VECTOR_INDEX]  = (uint32_t)OS_Fault_Handler;
-        ram_vectors[OS_BUSFAULT_VECTOR_INDEX]   = (uint32_t)OS_Fault_Handler;
+        for (uint32_t i = 0; i < OS_VECTOR_COUNT; i++) ram_vectors[i] = fv[i];
+        ram_vectors[OS_PENDSV_VECTOR_INDEX] = (uint32_t)OS_PendSV_Handler;
+        ram_vectors[OS_HARDFAULT_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
+        ram_vectors[OS_MEMMANAGE_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
+        ram_vectors[OS_BUSFAULT_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
         ram_vectors[OS_USAGEFAULT_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
+        ram_vectors[OS_SVC_VECTOR_INDEX] = (uint32_t)OS_SVC_Handler;
         OS_SCB_VTOR = (uint32_t)ram_vectors;
     }
 
-    OS_SYST_CSR = 0; OS_SYST_CVR = 0;
-    uint32_t reload = (SystemCoreClock / 1000000UL) * OS_KERNEL_TICK_PERIOD_US;
-    if (reload == 0) reload = 1;
-    if (reload > 0x00FFFFFFUL) reload = 0x00FFFFFFUL;
-    os_syst_rvr_normal = reload - 1;
-    OS_SYST_RVR = reload - 1;
-
-    OS_PENDSV_PRIO  = 0xFE;
-    OS_SYSTICK_PRIO = 0xFF;
-
-    /* PendSV at 0xFE is above all common IRQ priorities (0, 5, 0xFF)
-       No conflict check needed — PendSV always preempts them. */
-
-    {
-        uint32_t msp_val = (uint32_t)(fault_stack + 48);
-        msp_val &= ~7UL;
-        __asm volatile("msr msp, %0" :: "r"(msp_val));
-    }
-
-    __asm volatile("msr psp, %0" :: "r"(idle_tcb.stack_top));
-    __asm volatile("msr control, %0" :: "r"(0x02));
-    __asm volatile("isb");
-
-    OS_SYST_CSR = 0x07;
-    OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-    os_hw_enable_irq();
+    OS_SCB_SHPR3 = (OS_SCB_SHPR3 & ~(0xFFUL << 16)) | (0xFFUL << 16);
+    OS_SCB_SHPR2 = (OS_SCB_SHPR2 & ~(0xFFUL << 24)) | (0x00UL << 24);
     os_started = true;
+    OS_SYST_RVR = os_syst_rvr_normal;
+    OS_SYST_CVR = 0;
+    OS_SYST_CSR = 0x07;
 
-    while (1) __asm volatile("wfi");
-}
+    uint32_t cs = os_critical_enter();
+    current_task = os_pq_next();
+    if (current_task) current_task->state = TaskState::RUNNING;
+    os_critical_exit(cs);
 
-/* ═══════════════ PendSV Handler — Bitmap + Period Gate Scheduler ═══════════════
-   Uses the priority bitmap first, then checks periodic release eligibility
-   inside the selected priority queues. No fixed task-count limit is used. ═══════ */
-extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
-    __asm volatile(
-        ".syntax unified\n"
-        ".thumb\n"
-        "mrs r0, psp\n"
-        "ldr r1, =current_task\n"
-        "ldr r1, [r1]\n"
-        "cmp r1, #0\n"
-        "bne save_ctx\n"
-        "b first_run\n"
-
-        "save_ctx:\n"
-        "stmdb r0!, {r4-r11}\n"
-        "str r0, [r1, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
-
-        "ldrb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
-        "cmp r2, #2\n"
-        "bne skip_save\n"
-        "movs r2, #1\n"
-        "strb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
-        "skip_save:\n"
-
-        /* Load r8/r9 AFTER saving context so the interrupted task's
-           original register values are preserved on its stack. */
-        "ldr r8, =tick_count\n"
-        "ldr r9, =os_idle_tcb_ptr\n"
-
-        /* Scheduler: call os_pq_next() to get the highest-priority eligible task.
-           r8/r9 hold tick_count/os_idle_tcb_ptr addresses across the calls. */
-        "push {lr}\n"
-        "bl os_pq_next\n"
-        "mov r5, r0\n"
-        "bl os_pq_rotate\n"
-        "pop {lr}\n"
-
-        "cmp r5, #0\n"
-        "beq fallback_idle_sched\n"
-
-        "ldr r1, =current_task\n"
-        "str r5, [r1]\n"
-        "movs r6, #2\n"
-        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
-        "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
-        "cmp r7, #0\n"
-        "beq ts_no_period\n"
-        "ldr r6, [r8]\n"
-        "adds r6, r6, r7\n"
-        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "b ts_done\n"
-        "ts_no_period:\n"
-        "ldr r6, [r8]\n"
-        "adds r6, r6, #1\n"
-        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "ts_done:\n"
-        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
-        "b restore_ctx\n"
-
-        "fallback_idle_sched:\n"
-        "ldr r5, [r9]\n"
-        "ldr r1, =current_task\n"
-        "str r5, [r1]\n"
-        "movs r6, #2\n"
-        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
-        "ldr r6, [r8]\n"
-        "adds r6, r6, #1\n"
-        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
-        "b restore_ctx\n"
-
-        "first_run:\n"
-        "ldr r8, =tick_count\n"
-        "ldr r9, =os_idle_tcb_ptr\n"
-        "push {lr}\n"
-        "bl os_pq_next\n"
-        "mov r5, r0\n"
-        "bl os_pq_rotate\n"
-        "pop {lr}\n"
-
-        "cmp r5, #0\n"
-        "beq fallback_idle_first\n"
-        "ldr r1, =current_task\n"
-        "str r5, [r1]\n"
-        "movs r6, #2\n"
-        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
-        "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
-
-        "cmp r7, #0\n"
-        "beq first_ts_no_period\n"
-        "ldr r6, [r8]\n"
-        "adds r6, r6, r7\n"
-        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "b first_ts_done\n"
-        "first_ts_no_period:\n"
-        "ldr r6, [r8]\n"
-        "adds r6, r6, #1\n"
-        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "first_ts_done:\n"
-        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
-        "b restore_ctx\n"
-
-        "fallback_idle_first:\n"
-        "ldr r5, [r9]\n"
-        "ldr r1, =current_task\n"
-        "str r5, [r1]\n"
-        "movs r6, #2\n"
-        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
-        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
-#if OS_SAFETY_MPU
-        /* ── MPU per-task switch (next task in r5) ──
-           Tasks run unprivileged (CONTROL.nPRIV=1); the idle task stays
-           privileged so it can reach everything (watchdog, CRC, MPU). */
-        "ldr   r6, [r9]\n"
-        "cmp   r5, r6\n"
-        "beq   3f\n"
-        "mrs   r6, CONTROL\n"
-        "orr   r6, r6, #0x01\n"
-        "msr   CONTROL, r6\n"
-        "isb\n"
-        "push  {r0-r3, lr}\n"
-        "mov   r0, r5\n"
-        "bl    os_mpu_configure_task\n"
-        "pop   {r0-r3, lr}\n"
-        "b     4f\n"
-        "3:\n"
-        "mrs   r6, CONTROL\n"
-        "bic   r6, r6, #0x01\n"
-        "msr   CONTROL, r6\n"
-        "isb\n"
-        "4:\n"
-#endif
-
-        "restore_ctx:\n"
-        "ldmia r0!, {r4-r11}\n"
-        "msr psp, r0\n"
-        "isb\n"
-        "bx lr\n"
-        /* Flush literal pool here — keeps ldr rX,=sym offsets within ±4KB */
-        ".ltorg\n"
-    );
+    __asm volatile("dsb\n isb\n");
+    __asm volatile("svc 0");
+    while (1) { __asm volatile("wfi"); }
 }
