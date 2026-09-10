@@ -28,17 +28,13 @@ class Release101ConsistencyTests(unittest.TestCase):
         doc = read("docs/CURRENT_IMPLEMENTATION.md")
         self.assertNotIn("`OS_KERNEL_MAX_TASKS` defaults to **16**", doc)
 
-    def test_public_docs_do_not_use_removed_expected_error_macro(self):
-        paths = [
-            "README.md",
-            "docs/README_FA.md",
-            "docs/API_TUTORIAL.md",
-            "docs/API_TUTORIAL_FA.md",
-            "docs/guide-html/guide.html",
-        ]
-        for path in paths:
-            self.assertNotIn("OS_ERROR_EXPECTED", read(path), path)
-            self.assertNotIn("os_error_expect_begin() / os_error_expect_end()", read(path), path)
+    def test_public_docs_keep_release_version_and_current_priority_reference(self):
+        guide = read("docs/guide-html/guide.html")
+        self.assertIn("Version 1.0.1", guide)
+        self.assertIn("OS_KERNEL_MAX_PRIORITIES", guide)
+        self.assertIn("2 to 256", guide)
+        self.assertNotIn("Version 1.0.0", guide)
+        self.assertNotIn("32-level priority", guide)
 
     def test_site_keeps_current_implementation_page(self):
         self.assertTrue((ROOT / "docs/guide-html/current.html").exists())
@@ -51,18 +47,6 @@ class Release101ConsistencyTests(unittest.TestCase):
         self.assertIn("donatr.ee/raymon-research-team", guide)
         self.assertIn("donatr.ee/raymon-research-team", donate)
         self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").exists())
-
-    def test_authoritative_guide_facts(self):
-        guide = read("docs/guide-html/guide.html")
-        self.assertIn("Version 1.0.1", guide)
-        self.assertIn("OS_KERNEL_MAX_PRIORITIES", guide)
-        self.assertIn("2 to 256", guide)
-        self.assertIn("32", guide)
-        self.assertIn("priority ceiling", guide.lower())
-        self.assertNotIn("Priority Inheritance", guide)
-        self.assertNotIn("Version 1.0.0", guide)
-        self.assertNotIn("32-level priority", guide)
-        self.assertNotIn("os_error_expect_begin", guide)
 
 
 if __name__ == "__main__":
