@@ -1,7 +1,7 @@
 <div align="center" >
 <img src="guide-html/ZenOS_logo.svg" alt="ZenOS Logo" width="400" /> 
  </div>  
-<div align="center" dir="rtl">
+<div dir="rtl">
 
 # راهنمای کامل پیکربندی ZenOS RTOS
 
