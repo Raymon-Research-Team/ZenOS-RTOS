@@ -13,7 +13,6 @@ class ReleaseStructureTests(unittest.TestCase):
             "docs/SAFETY_MANUAL.md",
             "docs/guide-html/index.html",
             "docs/guide-html/guide.html",
-            "docs/guide-html/guide-legacy.html",
             "docs/guide-html/current.html",
             "docs/guide-html/donate.html",
             "docs/guide-html/donate-qr.png",
@@ -22,10 +21,10 @@ class ReleaseStructureTests(unittest.TestCase):
 
     def test_donation_content_is_preserved(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        legacy = (ROOT / "docs/guide-html/guide-legacy.html").read_text(encoding="utf-8")
+        guide = (ROOT / "docs/guide-html/guide.html").read_text(encoding="utf-8")
         donate = (ROOT / "docs/guide-html/donate.html").read_text(encoding="utf-8")
         self.assertIn("donatr.ee/raymon-research-team", readme)
-        self.assertIn("donatr.ee/raymon-research-team", legacy)
+        self.assertIn("donatr.ee/raymon-research-team", guide)
         self.assertIn("donatr.ee/raymon-research-team", donate)
         self.assertTrue((ROOT / "docs/guide-html/donate-qr.png").is_file())
 
@@ -36,13 +35,16 @@ class ReleaseStructureTests(unittest.TestCase):
 
     def test_guide_is_authoritative_for_101(self):
         guide = (ROOT / "docs/guide-html/guide.html").read_text(encoding="utf-8")
-        self.assertIn("ZenOS 1.0.1", guide)
-        self.assertIn("Default priority slots", guide)
+        self.assertIn("Version 1.0.1", guide)
+        self.assertIn("OS_KERNEL_MAX_PRIORITIES", guide)
         self.assertIn("2 to 256", guide)
-        self.assertIn("priority-ceiling", guide)
-        self.assertIn("priority-count-independent O(1)", guide)
+        self.assertIn("32", guide)
+        self.assertIn("priority ceiling", guide.lower())
         self.assertNotIn("Priority Inheritance", guide)
+        self.assertNotIn("Version 1.0.0", guide)
         self.assertNotIn("32-level priority", guide)
+        self.assertNotIn("priority-count-independent O(1)", guide)
+        self.assertNotIn("os_error_expect_begin", guide)
 
 
 if __name__ == "__main__":
