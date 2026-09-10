@@ -115,7 +115,7 @@ extern "C" TCB* os_pq_next(void) {
         if (!selected) continue;
 
         /* Put the selected task at the head so the existing rotation logic
-           rotates the same priority queue around the task we just ran. */
+           rotates the same priority queue around the task just ran. */
         if (selected != head) {
             prev->queue_next = selected->queue_next;
             selected->queue_next = head;
@@ -320,6 +320,10 @@ extern "C" int8_t _os_task_create_internal(
     if (!task || !stack_mem || !entry) return -1;
     /* Prevent duplicate entry functions — each task must have a unique entry */
     if (os_find_task_by_entry(entry)) return -1;
+    if (priority > 31) {
+        os_report_error(OSError::PRIORITY_CONFLICT);
+        return -1;
+    }
     if (priority == 0) priority = 1;
     if (stack_size < 64) stack_size = 64;
 
