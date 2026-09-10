@@ -2,25 +2,11 @@
 
 <img src="guide-html/ZenOS_logo.svg" alt="ZenOS Logo" width="400" />
 
-**سیستم‌عامل بلادرنگ برای ARM Cortex-M — نوشته‌شده با C++11.**
+**سیستم‌عامل بلادرنگ برای ARM Cortex-M — نوشته‌شده با C++11**
 
-### **سادگی — امنیت — سرعت**
+### **سادگی · امنیت · سرعت**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](../LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg?style=for-the-badge)]()
-[![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
-[![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
-[![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
-[![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
-
-<br>
-
-[**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](../README.md)
-
-📘 **[راهنمای ZenOS](https://raymon-research-team.github.io/ZenOS-RTOS/)**
-
-<br>
-
+[راهنمای ZenOS](https://raymon-research-team.github.io/ZenOS-RTOS/) · [مخزن GitHub](https://github.com/Raymon-Research-Team/ZenOS-RTOS)
 
 </div>
 
@@ -28,111 +14,56 @@
 
 <div dir="rtl">
 
-## 🧘 درباره پروژه
+# درباره ZenOS
 
+ZenOS یک سیستم‌عامل بلادرنگ سبک برای میکروکنترلرهای ARM Cortex-M است که تمرکز آن روی زمان‌بندی قابل پیش‌بینی، منابع ایستا، API ساده C++11 و مکانیسم‌های ایمنی قابل پیکربندی است.
 
-کلمه *Zen* به معنای شفافیت از طریق سادگی است — کنار گذاشتن زواید تا فقط آنچه اهمیت دارد باقی بماند. ایده پشت این سیستم‌عامل همین است.
+هسته امکاناتی مانند مدیریت تسک، زمان‌بندی اولویت‌محور، زمان‌بندی زمانی، event، mutex، صف FIFO محدود، semaphore، پایش مصرف پشته و CPU، ثبت خطا، watchdog، MPU، آزمون RAM و بررسی CRC را فراهم می‌کند.
 
-ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان‌بندی، همگام‌سازی، حفاظت حافظه، بازیابی خطا — را خودش انجام می‌دهد تا شما روی برنامه‌تان تمرکز کنید. چیزهایی که معمولاً ده‌ها خط کد راه‌اندازی می‌خواهند اینجا به یک فراخوانی تابع خلاصه شده‌اند. سیستم‌عامل خودش بقیه را مدیریت می‌کند.
+> **بدون Heap عمومی در مدل تسک‌های هسته؛ منابع ایستا و پیکربندی صریح.**
 
-برای ARM Cortex-M (M3، M4، M7) روی STM32 ساخته شده و مکانیسم‌های ایمنی متعددی به‌صورت پیش‌فرض دارد: بررسی پشته، محافظت MPU، تایمرها، تأیید CRC و پایش ددلاین. اگر محصول پزشکی یا صنعتی می‌سازید، می‌توانید بررسی‌های هدف IEC 62304 یا IEC 61508 را در زمان کامپایل فعال کنید — هسته در صورت فعال‌بودن پروفایل، برخی تنظیمات الزامی را با خطای کامپایل بررسی می‌کند.
+## اولویت‌ها
 
-> **بدون Heap. بدون تخصیص‌های پنهان. بدون سورپرایز.**
+اولویت `0` برای تسک idle رزرو شده است. اولویت‌های کاربردی در پیکربندی کامل عبارت‌اند از **`1..255`**؛ هرچه عدد بزرگ‌تر باشد، اولویت بالاتر است.
 
-</div>
-
-<div dir="rtl">
-
-### ✨ ویژگی‌ها
-
-
-| ویژگی | جزئیات |
-|:------|:-------|
-| 🧩 اصول IPC | تسک‌ها، قفل‌ها، eventها، صفوف، سیگنال‌ها — همه با حداقل کد اضافه |
-| ⬆️ سقف اولویت | پروتکل جلوگیری از وارونگی اولویت در سیستم‌های بلادرنگ |
-| 🏥 IEC 62304 | بررسی‌های هدف ایمنی در زمان کامپایل |
-| 🏭 IEC 61508 | بررسی‌های هدف ایمنی در زمان کامپایل |
-| 🧪 تست‌شده | روی سخت‌افزار واقعی (STM32F103C8T6) با بیش از 22 مجموعه تست |
-| 🔒 صفر هزینه | قالب‌های C++ و RAII — انتزاع بدون هزینه اجرا |
+ماکروی مربوط به تعداد اسلات‌های اولویت:
 
 </div>
 
-<div dir="rtl">
-
-### ⚡ چرا ZenOS؟
-
-
-| مزیت | ZenOS | FreeRTOS | Zephyr |
-|:-----|:------|:---------|:-------|
-| **تیک** | **100μs** (۱۰ برابر دقیق‌تر) | 1ms | 10ms |
-| **زمان‌بند** | **Bitmap + بررسی شرایط اجرا** | O(n) در بدترین حالت | O(n) در هر اولویت |
-| **Heap** | **هرگز (قطعی)** | موجود (پرخطر) | موجود |
-| **ایمنی** | **داخلی (canary، MPU، watchdog، RAM test، CRC)** | بسته جداگانه | بسته جداگانه |
-| **IEC 62304/61508** | **اجرا در زمان کامپایل** | بدون | بدون |
-| **تسک‌های دوره‌ای** | **گیت اجرای دوره‌ای در خود تسک** | از timer نرم‌افزاری | از timer نرم‌افزاری |
-| **سقف IPC** | **Immediate Priority Ceiling** | فقط Priority Inheritance | بدون |
-| **C++ RAII** | **پشتیبانی کامل** | بدون | جزئی |
-
-> 📖 [مقایسه فنی کامل → ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md)
-
-
-
-### 🖥️ خانواده‌های پشتیبانی‌شده
-
-</div>
-
-```
- STM32F1  STM32F2  STM32F4  STM32F7  STM32H7
-  M3        M3       M4       M7      Dual M7+M4
-
- STM32G0  STM32G4  STM32L0  STM32L4  STM32WB
-  M0+       M4       M0+       M4       M4
+```cpp
+#define OS_KERNEL_MAX_PRIORITIES 32
 ```
 
----
-
 <div dir="rtl">
 
-## 🚀 شروع سریع
+مقدار پیش‌فرض ۳۲ اسلات است و محدوده قابل استفاده در آن `1..31` است. هسته می‌تواند تا ۲۵۶ اسلات پیکربندی شود؛ در این حالت محدوده کاربردی `1..255` خواهد بود.
 
-یک برنامه کامل سیستم‌عامل بلادرنگ در کمتر از 10 خط:
+برای اولویت‌های بالاتر از ۳۱، حافظه اضافی موردنیاز bitmap و صف‌های اولویت به‌صورت خودکار از روی مقدار تنظیم‌شده محاسبه می‌شود و هسته به یک جدول ثابت ۲۵۶ تسکی نیاز ندارد.
 
-**قبل از کد، دو مرحله ضروری:**
+## ویژگی‌های اصلی
 
-> **⚠️ ۱. تایمر HAL را در CubeMX تنظیم کنید:**
-> ZenOS از `SysTick` برای تیک هسته خود استفاده می‌کند. اگر HAL هم از `SysTick` استفاده کند، تداخل ایجاد می‌شود. بنابراین باید در CubeMX یک تایمر جداگانه (مثلاً `TIM1`) به عنوان زمان‌بند (timebase) HAL انتخاب کنید. این کار را در مسیر **System Core** → **SYS** → **Timebase Source** = `TIM1` انجام دهید.
->
-> **⚠️ ۲. `os_tick()` را به `SysTick_Handler` اضافه کنید:**
-> فایل `Src/stm32f1xx_it.c` را باز کنید و `os_tick()` را داخل تابع `SysTick_Handler` فراخوانی کنید. این تنها راه دریافت وقفه تیک توسط ZenOS است:
-</div>
+| ویژگی | وضعیت فعلی |
+|---|---|
+| زمان‌بند | bitmap اولویت + صف مستقل برای هر سطح + بررسی eligibility |
+| اولویت کاربردی | **۱ تا ۲۵۵** در پیکربندی ۲۵۶ اسلاتی |
+| اسلات پیش‌فرض | ۳۲ سطح (`0..31`) |
+| تیک پیش‌فرض | ۱۰۰ میکروثانیه |
+| تخصیص منابع تسک | ایستا؛ بدون Heap عمومی |
+| IPC | event، mutex، queue، semaphore |
+| تسک دوره‌ای | `period_ms` به‌عنوان release gate در زمان‌بند اعمال می‌شود |
+| پایش | پشته، CPU، خطا و در صورت فعال‌سازی deadline |
+| ایمنی | canary، watchdog، MPU، RAM test، CRC و TCB integrity |
 
-<div dir="ltr">
-
->
-> ```c
-> #include "ZenOS.hpp"  // در بالای فایل
->
-> void SysTick_Handler(void) {
->     os_tick();
-> }
-> ```
-</div>
-
-<div dir="rtl">
-
->
-> **⚠️ ۳. تسک نمونه را مطابق کد زیر به فایل `Src/main.cpp` اضافه کنید:**
+## شروع سریع
 
 </div>
-
-<div dir="ltr">
 
 ```cpp
 #include "ZenOS.hpp"
 
 void task_blink(void) {
     while (1) {
-        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
         os_delay_ms(500);
     }
 }
@@ -143,227 +74,47 @@ int main(void) {
     MX_GPIO_Init();
 
     os_init();
-    os_task_create(task_blink); // Create task with priority 1
+    os_task_create(task_blink, 5);
     os_start();
 }
 ```
-</div>
 
 <div dir="rtl">
 
-> 💡 همین. زمان‌بند از `os_start()` کنترل را به دست می‌گیرد و هرگز برنمی‌گردد. تسک شما هر 500ms اجرا می‌شود، LED چشمک می‌زند، و شما حتی یک خط کد زمان‌بندی هم ننوشتید.
+در پروژه STM32CubeMX، HAL timebase را از SysTick جدا کنید و `os_tick()` را داخل `SysTick_Handler` فراخوانی کنید. فایل‌های ZenOS باید با ARM GCC و C++11 کامپایل شوند.
 
+## مستندات
 
-### 🏗️ معماری
+- [راهنمای تعاملی](https://raymon-research-team.github.io/ZenOS-RTOS/)
+- [راهنمای API](API_TUTORIAL_FA.md)
+- [راهنمای پیکربندی](CONFIG_GUIDE_FA.md)
+- [راهنمای ایمنی](SAFETY_MANUAL_FA.md)
+- [مقایسه فنی](ZENOS_ADVANTAGES.md)
+- [هدر پیکربندی هسته](../ZenOS/ZenOS_Config.hpp)
 
-</div>
+## ایمنی و استانداردها
 
-```
-┌───────────────────────────────────────────────────┐
-│                 تسک‌های برنامه                     │
-├───────────────────────────────────────────────────┤
-│             هسته ZenOS (C++11)                    │
-│  ┌────────────┬─────────────┬──────────────────┐  │
-│  │  زمان‌بند   │     IPC     │  لایه ایمنی       │  │
-│  │  Bitmap    │    event    │  canary پشته     │  │
-│  │  صف     │   قفل‌ها     │    محافظت MPU       │  │
-│  │  اولویت    │    صفوف     │     تایمر        │  │
-│  │            │    سیگنال‌ها  │     زمون RAM    │  │
-│  │            │             │   CRC بررسی      │  │
-│  │            │             │  پایش ددلاین      │  │
-│  └────────────┴─────────────┴──────────────────┘  │
-├───────────────────────────────────────────────────┤
-│            HAL STM32 (تولیدشده توسط CubeMX)       │
-├───────────────────────────────────────────────────┤
-│         سخت‌افزار ARM Cortex-M (M3/M4/M7)          │
-└───────────────────────────────────────────────────┘
-```
+ZenOS مکانیسم‌های قابل پیکربندی برای توسعه سیستم‌های حساس ارائه می‌دهد. پروفایل‌های کامپایل‌زمان برای IEC 62304 و IEC 61508 تنظیمات الزامی ZenOS را کنترل می‌کنند، اما به‌تنهایی به معنی گواهی یا انطباق محصول نیستند.
 
-<div dir="rtl">
+مسئولیت تحلیل ریسک، نیازمندی‌ها، ردیابی، Verification، Validation و فرایند گواهی محصول بر عهده یکپارچه‌ساز است.
 
-راهنمای کامل API → [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | [English](API_TUTORIAL.md)
+## حمایت از پروژه
+
+برای حمایت از توسعه و نگهداری ZenOS می‌توانید از صفحه حمایت پروژه استفاده کنید:
+
+**[Support ZenOS](https://donatr.ee/raymon-research-team/)**
+
+## تماس
+
+**Raymon Research Team — رحمان حیدری**  
+[rahman.h22@gmail.com](mailto:rahman.h22@gmail.com)
 
 </div>
 
----
+<div align="center">
 
-<div dir="rtl">
+**ZenOS — سادگی · امنیت · سرعت**
 
-## 📚 مستندات
-
-
-| سند | محتوا |
-|:----|:------|
-| 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | راهنمای تعاملی کامل (HTML) |
-| 📖 [SAFETY_MANUAL_FA.md](SAFETY_MANUAL_FA.md) | معماری ایمنی، محدودیت‌ها، جزئیات انطباق با استانداردها |
-| ⚙️ [CONFIG_GUIDE_FA.md](CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی — همه گزینه‌ها، پیش‌فرض‌ها، پروفایل‌ها، اجرای IEC (فارسی) |
-| ⚙️ [CONFIG_GUIDE.md](CONFIG_GUIDE.md) | Complete configuration guide (English) |
-| 📘 [API_TUTORIAL_FA.md](API_TUTORIAL_FA.md) | راهنمای کامل API با مثال‌ها (فارسی) |
-| 📗 [API_TUTORIAL.md](API_TUTORIAL.md) | راهنمای کامل API با مثال‌ها (انگلیسی) |
-| ⚡ [ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md) | مقایسه فنی با FreeRTOS، Zephyr، RT-Thread |
-| ⚙️ [ZenOS_Config.hpp](../ZenOS/ZenOS_Config.hpp) | هر گزینه پیکربندی با یادداشت‌های ایمنی |
-
-</div>
-
----
-
-<div dir="rtl">
-
-## 🛡️ ویژگی‌های ایمنی
-
-
-تمام مکانیسم‌ها به‌صورت **پیش‌فرض فعال** هستند و در `ZenOS_Config.hpp` قابل تنظیم‌اند.
-
-| مکانیسم | ماکرو پیکربندی | عملکرد |
-|:--------|:---------------|:-------|
-| 🔍 canary پشته | `OS_SAFETY_SOFT_WATCHDOG` | بررسی canary + محدوده SP برای هر تسک |
-| 🔐 یکپارچگی TCB | `OS_MONITOR_TCB_INTEGRITY` | اعتبارسنجی عدد جادو برای خرابی حافظه |
-| ⏱️ پایش ددلاین | `OS_MONITOR_DEADLINE` | تشخیص و واکنش به تأخیر ددلاین تسک‌ها |
-| 📋 ثبت خطا | `OS_MONITOR_ERROR_LOG` | بافر حلقه‌ای با زمان، شناسه تسک و شدت |
-| 🐕 تایمر سخت‌افزاری | `OS_SAFETY_HW_WATCHDOG` | ادغام IWDG STM32 با تغذیه مشروط |
-| 💤 تایمر نرم‌افزاری | `OS_SAFETY_SOFT_WATCHDOG` | تشخیص تسک‌های گیر کرده در مهلت پیکربندی |
-| 🧪 آزمون RAM | `OS_SAFETY_RAM_TEST` | March C- پس‌زمینه برای یکپارچگی SRAM |
-| ✅ بررسی CRC | `OS_SAFETY_CRC_CHECK` | یکپارچگی فلش از طریق مدها CRC STM32 |
-| 🛡️ MPU | `OS_SAFETY_MPU` | حفاظت حافظه هر تسک (Cortex-M3+) |
-
-</div>
-
----
-
-<div dir="rtl">
-
-## 💰 حمایت از ZenOS
-
-
-این یک پروژه تک‌نفره است. من آن را می‌سازم، تست می‌کنم، مستندات می‌نویسم و نگهداری می‌کنم — همه در اوقات فراغت، بدون بودجه.
-
-> **📝 توجه:** ZenOS بر اساس استانداردهای IEC 62304 (پزشکی) و IEC 61508 (صنعتی) نوشته شده و مکانیسم‌های ایمنی آن مطابق این استانداردها طراحی شده‌اند. اما به دلیل هزینه‌های بسیار بالای دریافت گواهینامه و ایزو (ممیزی رسمی، مستندات ردیابی، تست‌های اعتبارسنجی و ...)، در حال حاضر امکان دریافت گواهینامه رسمی وجود نداشته است.
-
-اگر ZenOS برایتان مفید بوده، چه برای یادگیری، چه نمونه‌سازی و چه تولید محصول، از حمایت مالی استقبال می‌کنم.
-
-
-### 🎯 پول به کجا می‌رود
-
-</div>
-
-<table>
-<tr>
-<td align="center" width="25%" dir="rtl">
-
-### 🏥 گواهینامه
-انطباق IEC 62304 و IEC 61508 ارزان نیست. مستندات رسمی، ردیابی، ممیزی — همه هزینه دارند.
-
-</td>
-<td align="center" width="25%" dir="rtl">
-
-### 🔧 سخت‌افزار
-بردهای STM32 جدید، تحلیل‌گرهای منطقی، پروب‌های JTAG — هر خانواده به تجهیزات تست خودش نیاز دارد.
-
-</td>
-<td align="center" width="25%" dir="rtl">
-
-### ☁️ زیرساخت
-خطوط CI، کلاود‌بیلدها، اجرای خودکار تست‌ها. نگهداری همه اینها منابع می‌خواهد.
-
-</td>
-<td align="center" width="25%" dir="rtl">
-
-### 📖 مستندات و جامعه
-نوشتن مستندات خوب زمان‌بر است. پاسخ به Issues زمان‌بر است. هر دو مهم هستند.
-
-</td>
-</tr>
-</table>
-
-<div dir="rtl">
-
-## 💸 کمک مالی
-
-
-حمایت مالی شما مستقیماً توسعه، تست، گواهینامه و مستندات را تأمین می‌کند.
-
-> 💡 **برای کپی کردن آدرس کیف پول، روی خودِ آدرس کلیک کنید. برای باز شدن تصویر QR در تب جدید، روی تصویر کلیک کنید.**
-
-</div>
-
-<br>
-
-<table>
-<tr>
-<td align="center" width="50%" dir="rtl">
-
-🟠 **بیت‌کوین (BTC)**
-
-[`bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650`](bitcoin:bc1qd39vgmnweuzh5hp2cqm4cnh782xga6wph3v650)
-
-</td>
-<td rowspan="2" align="center" width="50%">
-
-<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="donate-qr.png" alt="Donate QR Code" width="180" /></a>
-
-</td>
-</tr>
-<tr>
-<td align="center" width="50%" dir="rtl">
-
-🔵 **اتریوم (ETH) / تتر (USDT - ERC-20)**
-
-[`0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C`](ethereum:0x1C21c39324F65a38Fb8de9ccB92aB01FdeD1534C)
-
-</td>
-</tr>
-</table>
-
-
-<div dir="rtl">
-
-> 📩 **پس از انجام پرداخت، لطفاً آدرس ایمیل یا شناسه تراکنش خود را به [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com) ارسال کنید تا شخصاً از شما قدردانی شود.** 
-
-
-### 🌟 راه‌های دیگر کمک
-
-</div>
-
-<table>
-
-<tr>
-
-<td align="center" width="25%" dir="rtl">⭐<br><b>ستاره</b><br>بدهید</td>
-<td align="center" width="25%" dir="rtl">🐛<br><b>باگ</b><br>گزارش کنید</td>
-<td align="center" width="25%" dir="rtl">📝<br><b>آموزش</b><br>بنویسید</td>
-<td align="center" width="25%" dir="rtl">🗣️<br><b>معرفی</b><br>کنید</td>
-
-</tr>
-
-</table>
-
----
-
-<div dir="rtl">
-
-## 📬 ارتباط با ما
-
-
-**تیم تحقیقاتی رایمون** — Rahman Heidari
-
-📧 ایمیل: [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com)
-
-برای سؤالات، پیشنهادات یا فرصت‌های همکاری، با ما در تماس باشید.
-
-</div>
-
----
-
-<div align="center" dir="rtl">
-
-<br>
-
-**با ❤️ برای جامعه تعبیه‌شده ساخته شده**
-
-[![GitHub stars](https://img.shields.io/github/stars/Raymon-Research-Team/ZenOS-RTOS?style=social)]()
-
-<br>
-
-*ZenOS — (سادگی — امنیت — سرعت)*
+MIT License · Raymon Research Team
 
 </div>
