@@ -267,7 +267,7 @@
         <img src="./ZenOS_logo.svg" alt="ZenOS">
         <h3 data-lang="en">Real-Time Operating System for ARM Cortex-M</h3>
         <h3 data-lang="fa">سیستم‌عامل بلادرنگ برای ARM Cortex-M</h3>
-        <p data-lang="en">Priority-bitmap scheduler • 100μs tick • Zero heap • Built-in safety</p>
+        <p data-lang="en">Priority bitmap • 100μs default tick • Zero heap • Configurable safety</p>
         <p data-lang="fa">زمان‌بند bitmap اولویت • تیک 100μs • بدون حافظه پویا • ایمنی داخلی</p>
     </div>
     <nav class="sidebar-nav">
@@ -301,7 +301,7 @@
         <div class="nav-divider"></div>
         <div class="nav-section">🛡️ <span data-lang="en">Safety</span><span data-lang="fa">ایمنی</span></div>
         <a href="#safety-mechanisms"><span data-lang="en">Mechanisms</span><span data-lang="fa">مکانیسم‌ها</span></a>
-        <a href="#iec"><span data-lang="en">IEC Target Profiles</span><span data-lang="fa">پروفایل‌های هدف IEC</span></a>
+        <a href="#iec"><span data-lang="en">Safety Target Profiles</span><span data-lang="fa">پروفایل‌های هدف IEC</span></a>
 
         <div class="nav-divider"></div>
         <div class="nav-section">⚙️ <span data-lang="en">Configuration</span><span data-lang="fa">پیکربندی</span></div>
@@ -333,8 +333,8 @@
   <img src="https://img.shields.io/badge/C%2B%2B11-6a1b9a?style=flat" alt="C++11" height="22">
   <img src="https://img.shields.io/badge/100%C2%B5s%20Tick-00838f?style=flat" alt="100μs Tick" height="22">
   <img src="https://img.shields.io/badge/Zero%20Heap-546e7a?style=flat" alt="Zero Heap" height="22">
-  <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap Scheduler" height="22">
-  <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="IEC Target Profiles" height="22">
+  <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap + Ready Queues" height="22">
+  <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="Safety Target Profiles" height="22">
   <img src="https://img.shields.io/badge/IEC%2062304-c62828?style=flat" alt="IEC 62304" height="22">
   <img src="https://img.shields.io/badge/IEC%2061508-ad1457?style=flat" alt="IEC 61508" height="22">
   <img src="https://img.shields.io/badge/Safety%20Mechanisms-0277bd?style=flat" alt="Safety Mechanisms" height="22">
@@ -549,14 +549,14 @@ bool running = os_task_isActive(task_function);       // Check state</code></pre
         <h2 id="timing">2. <span data-lang="en">Timing & Delays</span><span data-lang="fa">زمان‌بندی و تاخیرها</span></h2>
         <p><span data-lang="en"><strong>What is Timing?</strong> Timing is how ZenOS keeps track of time and manages task execution intervals. The kernel tick (default 100μs) is the heartbeat of the system — every tick, the scheduler checks which tasks should run. Delays allow tasks to sleep for a specified time, giving other tasks a chance to execute.</span><span data-lang="fa"><strong>زمان‌بندی چیست؟</strong> زمان‌بندی نحوه ردیابی زمان و مدیریت فواصل اجرای تسک توسط ZenOS است. تیک هسته (پیش‌فرض ۱۰۰ میکروثانیه) ضربان قلب سیستم است — در هر تیک، زمان‌بند بررسی می‌کند کدام تسک‌ها باید اجرا شوند. تاخیرها به تسک‌ها اجازه می‌دهند برای مدت زمان مشخصی بخوابند و به تسک‌های دیگر فرصت اجرا بدهند.</span></p>
         <pre dir="ltr"><code class="language-cpp">os_delay_ms(100);  // Sleep ~100ms, yield CPU to other tasks
-os_delay_ms(0);    // Immediate yield (gives other tasks a chance)
+os_delay_ms(0);    // No implicit yield; use os_yield() to yield
 
 os_delay_us(10);   // Busy-wait ~10µs (blocks CPU — no other task runs!)
 
 uint32_t ms = os_get_ms();    // Milliseconds since boot
 uint32_t us = os_get_us();    // Microseconds since boot (DWT counter)
 uint32_t tick = os_get_tick(); // Raw tick count</code></pre>
-        <p><span data-lang="en"><strong>What happens:</strong> <code>os_delay_ms(100)</code> puts the current task to sleep for 100ms. During this time, the scheduler runs other ready tasks. When 100ms passes, the task wakes up and continues. <code>os_delay_ms(0)</code> immediately yields — useful when you want to give other tasks a chance to run without actually sleeping. <code>os_delay_us(10)</code> busy-waits for 10μs — the CPU does nothing else during this time (use only for sub-millisecond delays).</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_delay_ms(100)</code> تسک فعلی را به مدت ۱۰۰ میلی‌ثانیه می‌خواباند. در این مدت، زمان‌بند تسک‌های آماده دیگر را اجرا می‌کند. وقتی ۱۰۰ میلی‌ثانیه بگذرد، تسک بیدار شده و ادامه می‌دهد. <code>os_delay_ms(0)</code> فوراً واگذاری می‌کند — مفید وقتی می‌خواهید به تسک‌های دیگر فرصت اجرا بدهید بدون اینکه واقعاً بخوابید. <code>os_delay_us(10)</code> به مدت ۱۰ میکروثانیه انتظار مشغول می‌کشد — CPU در این مدت کار دیگری انجام نمی‌دهد (فقط برای تاخیرهای زیر میلی‌ثانیه استفاده کنید).</span></p>
+        <p><span data-lang="en"><strong>What happens:</strong> <code>os_delay_ms(100)</code> puts the current task to sleep for 100ms. During this time, the scheduler runs other ready tasks. When 100ms passes, the task wakes up and continues. <code><code>os_delay_ms(0)</code> does not yield; use <code>os_yield()</code> — useful when you want to give other tasks a chance to run without actually sleeping. <code>os_delay_us(10)</code> busy-waits for 10μs — the CPU does nothing else during this time (use only for sub-millisecond delays).</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> <code>os_delay_ms(100)</code> تسک فعلی را به مدت ۱۰۰ میلی‌ثانیه می‌خواباند. در این مدت، زمان‌بند تسک‌های آماده دیگر را اجرا می‌کند. وقتی ۱۰۰ میلی‌ثانیه بگذرد، تسک بیدار شده و ادامه می‌دهد. <code>os_delay_ms(0)</code> فوراً واگذاری می‌کند — مفید وقتی می‌خواهید به تسک‌های دیگر فرصت اجرا بدهید بدون اینکه واقعاً بخوابید. <code>os_delay_us(10)</code> به مدت ۱۰ میکروثانیه انتظار مشغول می‌کشد — CPU در این مدت کار دیگری انجام نمی‌دهد (فقط برای تاخیرهای زیر میلی‌ثانیه استفاده کنید).</span></p>
 
         <div class="warning"><span data-lang="en"><code>os_delay_us()</code> uses DWT cycle counter for busy-waiting. It does NOT yield the CPU. Use only for very short delays (&lt;1ms).</span><span data-lang="fa"><code>os_delay_us()</code> از شمارنده DWT برای انتظار مشغول استفاده می‌کند و CPU را واگذار نمی‌کند. فقط برای تاخیرهای بسیار کوتاه استفاده کنید.</span></div>
 
@@ -619,7 +619,7 @@ evt.wait();    // returns 0 (timeout — count was already 0)</code></pre>
 
         <!-- Mutexes -->
         <h2 id="mutexes">5. <span data-lang="en">Mutexes (OS_MUTEX)</span><span data-lang="fa">قفل‌ها (OS_MUTEX)</span></h2>
-        <p><span data-lang="en"><strong>What is a Mutex?</strong> A mutex (mutual exclusion) is a lock that ensures only one task can access a shared resource at a time. Think of it as a key to a room — only the task holding the key (locked mutex) can enter the room (use the resource). When the task leaves, it returns the key (unlocks), allowing another task to enter. ZenOS mutexes support recursive locking (same task can lock multiple times) and IPC ceiling (prevents priority inversion).</span><span data-lang="fa"><strong>Mutex چیست؟</strong> mutex (حذف متقابل) یک قفل است که تضمین می‌کند فقط یک تسک در هر زمان بتواند به یک منبع مشترک دسترسی داشته باشد. آن را به عنوان کلید یک اتاق در نظر بگیرید — فقط تسکی که کلید (قفل mutex) را در اختیار دارد می‌تواند وارد اتاق (منبع را استفاده کند) شود. وقتی تسک خارج می‌شود، کلید را برمی‌گرداند (قفل را باز می‌کند) و به تسک دیگری اجازه ورود می‌دهد. mutex‌های ZenOS از قفل بازگشتی (همین تسک می‌تواند چندین بار قفل کند) و سقف IPC (جلوگیری از وارونگی اولویت) پشتیبانی می‌کنند.</span></p>
+        <p><span data-lang="en"><strong>What is a Mutex?</strong> A mutex (mutual exclusion) is a lock that ensures only one task can access a shared resource at a time. Think of it as a key to a room — only the task holding the key (locked mutex) can enter the room (use the resource). When the task leaves, it returns the key (unlocks), allowing another task to enter. ZenOS mutexes support recursive locking (same task can lock multiple times) and IPC priority ceiling (prevents priority inversion).</span><span data-lang="fa"><strong>Mutex چیست؟</strong> mutex (حذف متقابل) یک قفل است که تضمین می‌کند فقط یک تسک در هر زمان بتواند به یک منبع مشترک دسترسی داشته باشد. آن را به عنوان کلید یک اتاق در نظر بگیرید — فقط تسکی که کلید (قفل mutex) را در اختیار دارد می‌تواند وارد اتاق (منبع را استفاده کند) شود. وقتی تسک خارج می‌شود، کلید را برمی‌گرداند (قفل را باز می‌کند) و به تسک دیگری اجازه ورود می‌دهد. mutex‌های ZenOS از قفل بازگشتی (همین تسک می‌تواند چندین بار قفل کند) و سقف IPC (جلوگیری از وارونگی اولویت) پشتیبانی می‌کنند.</span></p>
         <pre dir="ltr"><code class="language-cpp">OS_MUTEX uart_mtx;  // Create a mutex for UART
 
 // RAII lock guard (auto-unlocked when block ends)
@@ -633,7 +633,7 @@ if (mtx.lock(1000)) {  // Wait up to 1000ms
     mtx.unlock();
 }
 
-// With IPC ceiling (IPC priority ceiling)
+// With IPC priority ceiling (IPC priority ceiling)
 OS_MUTEX shared_data_mtx(8);  // Ceiling priority = 8</code></pre>
         <p><span data-lang="en"><strong>What happens:</strong> When Task A enters <code>OS_LOCK(uart_mtx)</code>, it acquires the mutex. If Task B tries to enter while Task A holds it, Task B blocks until Task A exits. <code>OS_LOCK</code> is an RAII guard — it automatically releases the mutex when the block ends. <strong>IPC Ceiling:</strong> When you pass a ceiling priority (e.g., <code>OS_MUTEX mtx(8)</code>), the task's priority is temporarily boosted to that level while holding the mutex, preventing priority inversion.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> وقتی تسک A وارد <code>OS_LOCK(uart_mtx)</code> می‌شود، mutex را به دست می‌آورد. اگر تسک B سعی کند وارد شود در حالی که تسک A آن را نگه داشته، تسک B بلاک می‌شود تا تسک A خارج شود. <code>OS_LOCK</code> یک محافظ RAII است — به طور خودکار mutex را آزاد می‌کند. <strong>سقف IPC:</strong> اولویت تسک به طور موقت به سطح سقف افزایش می‌یابد و از وارونگی اولویت جلوگیری می‌کند.</span></p>
 
@@ -869,7 +869,7 @@ CPU Usage: 45%
         <h1>🛡️ <span data-lang="en">Safety Features</span><span data-lang="fa">ویژگی‌های ایمنی</span></h1>
 
         <h2 id="safety-mechanisms">1. <span data-lang="en">Safety Mechanisms</span><span data-lang="fa">مکانیسم‌های ایمنی</span></h2>
-        <p><span data-lang="en">Safety mechanisms are <strong>configurable; they are not all enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
+        <p><span data-lang="en">Safety mechanisms are <strong>configurable; they are not not all enabled by default</strong> and can be individually toggled in <code>ZenOS_Config.hpp</code>.</span><span data-lang="fa">تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند و در <code>ZenOS_Config.hpp</code> قابل تنظیم‌اند.</span></p>
 
         <table>
             <tr><th><span data-lang="en">Mechanism</span><span data-lang="fa">مکانیسم</span></th><th><span data-lang="en">Config Macro</span><span data-lang="fa">ماکرو</span></th><th><span data-lang="en">What it does</span><span data-lang="fa">عملکرد</span></th></tr>
@@ -1272,7 +1272,7 @@ void task_shutdown_handler(void) {
     <div class="card" id="config-guide">
         <h1>⚙️ <span data-lang="en">Configuration Guide</span><span data-lang="fa">راهنمای پیکربندی</span></h1>
 
-        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
+        <p><span data-lang="en">ZenOS is configured via <code>ZenOS_Config.hpp</code>. Safety mechanisms are <strong>configurable and are not not all enabled by default</strong>. This guide helps you decide what to enable based on your application needs.</span><span data-lang="fa">ZenOS از طریق <code>ZenOS_Config.hpp</code> پیکربندی می‌شود. تمام ویژگی‌های ایمنی به طور <strong>پیش‌فرض فعال</strong> هستند. این راهنما به شما کمک می‌کند بر اساس نیازهای برنامه‌تان تصمیم بگیرید چه چیزی را فعال کنید.</span></p>
 
         <h2>1. <span data-lang="en">What Do You Need?</span><span data-lang="fa">چه چیزی نیاز دارید؟</span></h2>
         <p><span data-lang="en">Answer these questions to determine your configuration:</span><span data-lang="fa">این سؤالات را پاسخ دهید تا پیکربندی خود را تعیین کنید:</span></p>
@@ -1319,7 +1319,7 @@ void task_shutdown_handler(void) {
 
         <h3>2.3 <span data-lang="en">Medical Device Configuration (IEC 62304 Class B)</span><span data-lang="fa">پیکربندی دستگاه پزشکی (کلاس B)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Medical Class B
-// Keep ALL defaults (everything enabled)
+// Keep ALL defaults (optional mechanisms are not all enabled)
 // Then add to compiler flags: -DOS_TARGET_MEDICAL=2
 
 // This enables compile-time enforcement:
@@ -1330,7 +1330,7 @@ void task_shutdown_handler(void) {
 
         <h3>2.4 <span data-lang="en">Medical Device Configuration (IEC 62304 Class C)</span><span data-lang="fa">پیکربندی دستگاه پزشکی (کلاس C)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Medical Class C (life-critical)
-// Keep ALL defaults (everything enabled)
+// Keep ALL defaults (optional mechanisms are not all enabled)
 // Then add to compiler flags: -DOS_TARGET_MEDICAL=3
 
 // This enables compile-time enforcement for ALL features:
@@ -1345,7 +1345,7 @@ void task_shutdown_handler(void) {
 
         <h3>2.5 <span data-lang="en">Industrial Configuration (IEC 61508 SIL 2)</span><span data-lang="fa">پیکربندی صنعتی (SIL 2)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Industrial SIL 2
-// Keep ALL defaults (everything enabled)
+// Keep ALL defaults (optional mechanisms are not all enabled)
 // Then add to compiler flags: -DOS_TARGET_INDUSTRIAL=2
 
 // Required features:
@@ -1386,7 +1386,7 @@ void task_shutdown_handler(void) {
             <tr><td><code>OS_TOOL_MUTEX</code></td><td>1</td><td><span data-lang="en">Enable mutex with IPC priority ceiling</span><span data-lang="fa">فعال کردن mutex با ارث بری اولویت</span></td></tr>
             <tr><td><code>OS_TOOL_QUEUE</code></td><td>1</td><td><span data-lang="en">Enable bounded FIFO queue</span><span data-lang="fa">فعال کردن صف FIFO</span></td></tr>
             <tr><td><code>OS_TOOL_SEMAPHORE</code></td><td>1</td><td><span data-lang="en">Enable counting semaphore</span><span data-lang="fa">فعال کردن سمافور شمارشی</span></td></tr>
-            <tr><td><code>OS_TOOL_TICKLESS_IDLE</code></td><td>1</td><td><span data-lang="en">Enable WFI-based idle for power savings</span><span data-lang="fa">فعال کردن حالت idle برای صرفه‌جویی در مصرف</span></td></tr>
+            <tr><td><code>OS_TOOL_TICKLESS_IDLE</code></td><td>1</td><td><span data-lang="en">WFI-based idle when supported/enabled</span><span data-lang="fa">فعال کردن حالت idle برای صرفه‌جویی در مصرف</span></td></tr>
             <tr><td><code>OS_MONITOR_DEADLINE</code></td><td>0</td><td><span data-lang="en">Enable deadline monitoring (disabled by default)</span><span data-lang="fa">فعال کردن پایش ددلاین (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_MONITOR_TCB_INTEGRITY</code></td><td>0</td><td><span data-lang="en">Enable TCB magic-number check (disabled by default)</span><span data-lang="fa">فعال کردن بررسی عدد جادوی TCB (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_MONITOR_ERROR_LOG</code></td><td>1</td><td><span data-lang="en">Enable error log ring buffer</span><span data-lang="fa">فعال کردن بافر حلقه‌ای ثبت خطا</span></td></tr>
@@ -1414,8 +1414,8 @@ void task_shutdown_handler(void) {
             <tr><td><span data-lang="en"><strong>Safety</strong></span><span data-lang="fa"><strong>ایمنی</strong></span></td><td><strong>Built-in</strong></td><td>Optional</td><td>Optional</td></tr>
             <tr><td><span data-lang="en"><strong>IEC 62304/61508</strong></span><span data-lang="fa"><strong>IEC 62304/61508</strong></span></td><td><strong>Compile-time</strong></td><td>None</td><td>None</td></tr>
             <tr><td><span data-lang="en"><strong>C++ RAII</strong></span><span data-lang="fa"><strong>C++ RAII</strong></span></td><td><strong>Full</strong></td><td>None</td><td>Partial</td></tr>
-            <tr><td><span data-lang="en"><strong>Periodic tasks</strong></span><span data-lang="fa"><strong>تسک‌های دوره‌ای</strong></span></td><td><strong>Task release gate</strong></td><td>Timers</td><td>Timers</td></tr>
-            <tr><td><span data-lang="en"><strong>IPC ceiling</strong></span><span data-lang="fa"><strong>سقف IPC</strong></span></td><td><strong>Immediate</strong></td><td>Inheritance</td><td>None</td></tr>
+            <tr><td><span data-lang="en"><strong>Periodic tasks</strong></span><span data-lang="fa"><strong>تسک‌های دوره‌ای</strong></span></td><td><strong>Period information is recorded; verify scheduler behavior</strong></td><td>Timers</td><td>Timers</td></tr>
+            <tr><td><span data-lang="en"><strong>IPC priority ceiling</strong></span><span data-lang="fa"><strong>سقف IPC</strong></span></td><td><strong>Immediate</strong></td><td>Inheritance</td><td>None</td></tr>
         </table>
 
         <h2>🏗️ <span data-lang="en">Architecture</span><span data-lang="fa">معماری</span></h2>
@@ -1467,7 +1467,7 @@ void task_shutdown_handler(void) {
             <tr><td><span data-lang="en">Stack overflow detected</span><span data-lang="fa">سرریز پشته تشخیص داده شده</span></td><td><span data-lang="en">Increase stack size, use os_get_stack_usage()</span><span data-lang="fa">اندازه پشته را افزایش دهید</span></td></tr>
             <tr><td><span data-lang="en">Watchdog reset</span><span data-lang="fa">ریست تایمر</span></td><td><span data-lang="en">Add os_delay_ms() or os_yield()</span><span data-lang="fa">os_delay_ms() یا os_yield() اضافه کنید</span></td></tr>
             <tr><td><span data-lang="en">Compilation error about C++</span><span data-lang="fa">خطای کامپایل مربوط به C++</span></td><td>Add <code>-std=c++11</code> to compiler flags</td></tr>
-            <tr><td><span data-lang="en">Priority inversion</span><span data-lang="fa">وارونگی اولویت</span></td><td><span data-lang="en">Set correct IPC ceiling priority</span><span data-lang="fa">اولویت سقف IPC را درست تنظیم کنید</span></td></tr>
+            <tr><td><span data-lang="en">Priority inversion</span><span data-lang="fa">وارونگی اولویت</span></td><td><span data-lang="en">Set correct IPC priority ceiling priority</span><span data-lang="fa">اولویت سقف IPC را درست تنظیم کنید</span></td></tr>
         </table>
     </div>
 
