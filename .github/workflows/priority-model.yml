@@ -1,0 +1,30 @@
+name: Priority Model Tests
+
+on:
+  push:
+    paths:
+      - 'ZenOS/ZenOS_Scheduler.cpp'
+      - 'ZenOS/ZenOS_Internal.hpp'
+      - 'docs/PRIORITY_MODEL.md'
+      - 'docs/PRIORITY_MODEL_FA.md'
+      - 'tests/test_priority_model.py'
+      - '.github/workflows/priority-model.yml'
+  pull_request:
+    paths:
+      - 'ZenOS/ZenOS_Scheduler.cpp'
+      - 'ZenOS/ZenOS_Internal.hpp'
+      - 'docs/PRIORITY_MODEL.md'
+      - 'docs/PRIORITY_MODEL_FA.md'
+      - 'tests/test_priority_model.py'
+      - '.github/workflows/priority-model.yml'
+
+jobs:
+  priority-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Run priority model tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
