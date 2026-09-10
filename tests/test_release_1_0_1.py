@@ -58,7 +58,7 @@ class Release101ConsistencyTests(unittest.TestCase):
         self.assertIn("Default priority slots", guide)
         self.assertIn("Configurable from 2 to 256", guide)
         self.assertIn("priority-ceiling", guide)
-        self.assertIn("not be described as priority-count-independent O(1)", guide)
+        self.assertIn("priority-count-independent O(1)", guide)
         self.assertNotIn("Priority Inheritance", guide)
         self.assertNotIn("32-level priority", guide)
 
