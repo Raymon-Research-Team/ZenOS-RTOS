@@ -74,7 +74,7 @@ It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes 
 
 ## 🚀 Quick Start
 
-A complete RTOS application in under 10 lines:
+A minimal RTOS application:
 
 **Two steps before the code:**
 
@@ -169,7 +169,7 @@ Safety and monitoring mechanisms are **configurable** in `ZenOS_Config.hpp`; the
 
 | Mechanism | Config Macro | What it does |
 |:----------|:-------------|:-------------|
-| 🔍 Stack Canary | `OS_SAFETY_STACK_CHECK` | Stack canary / bounds diagnostics when enabled |
+| 🔍 Stack Canary | stack canary and stack-pointer checks (implemented by the safety layer) | Stack canary / bounds diagnostics when enabled |
 | 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Detects TCB corruption when enabled |
 | ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects deadline misses when enabled |
 | 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Records kernel error diagnostics |

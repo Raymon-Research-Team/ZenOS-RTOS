@@ -57,7 +57,7 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ### RAM test
 
-`OS_SAFETY_RAM_TEST` آزمون تدریجی March C- را از طریق `os_ram_test_step()` فراهم می‌کند. اجرای آن باید با توجه به DMA و دسترسی همزمان به RAM طراحی شود.
+`OS_SAFETY_RAM_TEST` آزمون تدریجی incremental SRAM integrity routine را از طریق `os_ram_test_step()` فراهم می‌کند. اجرای آن باید با توجه به DMA و دسترسی همزمان به RAM طراحی شود.
 
 ### CRC
 

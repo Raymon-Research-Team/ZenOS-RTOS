@@ -24,7 +24,7 @@
 - There is **no fixed `OS_KERNEL_MAX_TASKS=16` limit in the current task-creation implementation**; task storage is supplied statically by each task-creation template instance.
 - Task/TCB resources are statically sized; ZenOS does not require a general-purpose heap for its kernel task model.
 - `os_task_create_st()` allows an explicitly supplied stack size.
-- Application priority `0` is invalid/reserved; the idle task owns priority `0`.
+- The idle task owns priority `0`; the current task-creation API normalizes an application priority of `0` to `1`.
 
 ## Periodic execution
 
@@ -42,7 +42,7 @@ ZenOS provides configurable IPC mechanisms including:
 - counting semaphores
 - ISR-safe variants where provided by the API
 
-Do not describe ZenOS mutexes as generic priority inheritance; the current implementation exposes an IPC priority-ceiling mechanism.
+Do not describe ZenOS mutexes as generic IPC priority ceiling; the current implementation exposes an IPC priority-ceiling mechanism.
 
 ## Monitoring and diagnostics
 
@@ -64,7 +64,7 @@ Safety-related mechanisms are **configuration-dependent**, not universally enabl
 | Hardware watchdog | `0` |
 | Deadline action | `1` |
 
-The RAM test is an incremental SRAM integrity routine implemented in the current source; documentation should not call it a full normative March C- implementation without a separate verification basis.
+The RAM test is an incremental SRAM integrity routine implemented in the current source; documentation should not call it a full normative incremental SRAM integrity routine implementation without a separate verification basis.
 
 ZenOS also contains compile-time target-profile checks for IEC 62304- and IEC 61508-oriented configuration requirements. These checks do **not** constitute certification of the OS, application, firmware, or final product.
 

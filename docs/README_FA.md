@@ -70,7 +70,7 @@ ZenOS کارهای سخت سیستم‌های تعبیه‌شده — زمان�
 | **ایمنی** | **داخلی (canary، MPU، watchdog، RAM test، CRC)** | بسته جداگانه | بسته جداگانه |
 | **IEC 62304/61508** | **اجرا در زمان کامپایل** | بدون | بدون |
 | **تسک‌های دوره‌ای** | **گیت اجرای دوره‌ای در خود تسک** | از timer نرم‌افزاری | از timer نرم‌افزاری |
-| **سقف IPC** | **Immediate Priority Ceiling** | فقط Priority Inheritance | بدون |
+| **سقف IPC** | **Immediate Priority Ceiling** | فقط IPC Priority Ceiling | بدون |
 | **C++ RAII** | **پشتیبانی کامل** | بدون | جزئی |
 
 > 📖 [مقایسه فنی کامل → ZENOS_ADVANTAGES.md](ZENOS_ADVANTAGES.md)
@@ -222,7 +222,7 @@ int main(void) {
 | 📋 ثبت خطا | `OS_MONITOR_ERROR_LOG` | بافر حلقه‌ای با زمان، شناسه تسک و شدت |
 | 🐕 تایمر سخت‌افزاری | `OS_SAFETY_HW_WATCHDOG` | ادغام IWDG STM32 با تغذیه مشروط |
 | 💤 تایمر نرم‌افزاری | `OS_SAFETY_SOFT_WATCHDOG` | تشخیص تسک‌های گیر کرده در مهلت پیکربندی |
-| 🧪 آزمون RAM | `OS_SAFETY_RAM_TEST` | March C- پس‌زمینه برای یکپارچگی SRAM |
+| 🧪 آزمون RAM | `OS_SAFETY_RAM_TEST` | incremental SRAM integrity routine پس‌زمینه برای یکپارچگی SRAM |
 | ✅ بررسی CRC | `OS_SAFETY_CRC_CHECK` | یکپارچگی فلش از طریق مدها CRC STM32 |
 | 🛡️ MPU | `OS_SAFETY_MPU` | حفاظت حافظه هر تسک (Cortex-M3+) |
 

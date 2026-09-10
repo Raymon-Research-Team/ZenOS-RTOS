@@ -75,7 +75,7 @@ The watchdog timeout and feed policy must be designed against the application's 
 
 ### 4.7 RAM test
 
-`OS_SAFETY_RAM_TEST` provides incremental March C- testing through `os_ram_test_step()`.
+`OS_SAFETY_RAM_TEST` provides incremental incremental SRAM integrity routine testing through `os_ram_test_step()`.
 
 The test is intended for background execution. The integrator must account for the tested RAM range and for possible interaction with DMA or other software accessing the same memory.
 

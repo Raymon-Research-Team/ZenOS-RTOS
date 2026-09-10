@@ -12,6 +12,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 #include "ZenOS_Config.hpp"
 #include "ZenOS_Port.hpp"
 
@@ -486,9 +489,11 @@ template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>
 inline int8_t _os_task_create_impl(const char* name,
     uint8_t priority = 1, uint32_t period_ms = 0)
 {
+    static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");
+    static_assert((StackBytes % 4) == 0, "ZenOS task stack size must be a multiple of 4 bytes");
 #if OS_SAFETY_MPU
-	/* MPU stack region needs a 32B-aligned base (see os_mpu_configure_task) */
-	static uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(32)));
+    static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");
+    static uint32_t stack_raw[StackBytes / 4] __attribute__((aligned(StackBytes)));
 #else
 	static uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(8)));
 #endif
@@ -498,7 +503,11 @@ inline int8_t _os_task_create_impl(const char* name,
     created = true;
 
     uintptr_t addr = (uintptr_t)stack_raw;
+#if OS_SAFETY_MPU
+    addr = (addr + StackBytes - 1UL) & ~(StackBytes - 1UL);
+#else
     addr = (addr + 7UL) & ~7UL;
+#endif
     uint32_t* aligned_stack = (uint32_t*)addr;
     uint32_t aligned_size =
         (uint32_t)(((uintptr_t)stack_raw + sizeof(stack_raw) - addr) / 4UL);
