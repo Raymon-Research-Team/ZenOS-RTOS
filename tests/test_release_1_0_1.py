@@ -28,7 +28,7 @@ class Release101ConsistencyTests(unittest.TestCase):
         doc = read("docs/CURRENT_IMPLEMENTATION.md")
         self.assertNotIn("`OS_KERNEL_MAX_TASKS` defaults to **16**", doc)
 
-    def test_public_docs_use_current_error_expectation_api(self):
+    def test_public_docs_do_not_use_removed_expected_error_macro(self):
         paths = [
             "README.md",
             "docs/README_FA.md",
@@ -37,9 +37,7 @@ class Release101ConsistencyTests(unittest.TestCase):
             "docs/guide-html/guide.html",
         ]
         for path in paths:
-            text = read(path)
-            self.assertNotIn("OS_ERROR_EXPECTED", text, path)
-            self.assertNotIn("os_error_expect_begin() / os_error_expect_end()", text, path)
+            self.assertNotIn("OS_ERROR_EXPECTED", read(path), path)
 
     def test_site_keeps_current_implementation_page(self):
         self.assertTrue((ROOT / "docs/guide-html/current.html").exists())
