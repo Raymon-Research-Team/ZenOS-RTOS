@@ -20,7 +20,6 @@
 
 <br>
 
-
 </div>
 
 ---
@@ -31,7 +30,7 @@ The word *Zen* means clarity through simplicity — stripping away the unnecessa
 
 ZenOS handles the hard parts of embedded systems — scheduling, synchronization, memory protection, fault recovery — so you can focus on your actual application. Most things that would normally take dozens of lines of setup code are reduced to a single function call. The kernel figures out the rest.
 
-It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safety mechanisms out of the box: stack checking, MPU protection, watchdogs, CRC verification, and deadline monitoring. If you're targeting medical or industrial products, you can enable IEC 62304 or IEC 61508 target-profile checks at compile time. These checks validate required ZenOS configuration; they do not by themselves certify the OS or the application.
+It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes configurable safety mechanisms such as stack checking, MPU protection, watchdogs, CRC verification, TCB integrity checks, and optional deadline monitoring. IEC 62304 and IEC 61508 target-profile checks can be enabled at compile time; these checks validate required ZenOS configuration and do not by themselves certify the OS, application, or final product.
 
 > **No heap. No hidden allocations. No surprises.**
 
@@ -40,24 +39,24 @@ It's built for ARM Cortex-M (M3, M4, M7) on STM32, and it carries a set of safet
 | Feature | Details |
 |:--------|:--------|
 | 🧩 IPC Primitives | Tasks, mutexes, events, queues, semaphores — all with minimal boilerplate |
-| ⬆️ Priority Ceiling | Protocol to prevent priority inversion in real-time systems |
-| 🏥 IEC 62304 | Compile-time target-profile checks |
-| 🏭 IEC 61508 | Compile-time target-profile checks |
-| 🧪 Tested | On real hardware (STM32F103C8T6) with 22+ test suites |
-| 🔒 Zero Overhead | C++ templates and RAII — abstraction without runtime cost |
+| ⬆️ Priority Ceiling | IPC mutex ceiling support for controlling priority inversion |
+| 🏥 IEC 62304 | Compile-time target-profile configuration checks |
+| 🏭 IEC 61508 | Compile-time target-profile configuration checks |
+| 🔒 Static resources | Kernel/task resources are statically sized; no general-purpose heap in the task model |
+| ⚡ Fast selection | Priority bitmap + per-priority ready queues with eligibility checks |
 
 ### ⚡ Why ZenOS?
 
 | Advantage | ZenOS | FreeRTOS | Zephyr |
 |:----------|:------|:---------|:-------|
-| **Tick resolution** | **100μs** (10× finer) | 1ms | 10ms |
-| **Scheduler** | **Priority bitmap + eligibility scan** | O(n) worst case | O(n) within priority |
-| **Heap allocation** | **Never (deterministic)** | Available (risky) | Available |
-| **Safety built-in** | **Yes (canary, MPU, watchdog, RAM test, CRC)** | Optional package | Optional package |
-| **IEC 62304/61508** | **Compile-time target checks** | None | None |
-| **Periodic tasks** | **Task release gate** | Use software timers | Use software timers |
-| **IPC ceiling** | **Immediate Priority Ceiling** | Priority inheritance only | None |
-| **C++ RAII** | **Full support** | None | Partial |
+| **Tick resolution** | **100μs default; configurable 100–1000μs** | Configurable | Configurable |
+| **Scheduler** | **Priority bitmap + per-priority ready queues + eligibility checks** | Priority-based scheduler | Priority-based scheduler |
+| **Heap allocation** | **No general-purpose heap in the kernel task model** | Configurable | Configurable |
+| **Safety mechanisms** | **Configurable canary, MPU, watchdog, RAM, CRC, TCB checks** | Configurable | Configurable |
+| **IEC 62304/61508** | **Compile-time target-profile checks** | — | — |
+| **Periodic tasks** | **Scheduler release gate** | Application/timer mechanisms | Application/timer mechanisms |
+| **IPC ceiling** | **Mutex IPC ceiling support** | Depends on configuration/API | Depends on configuration/API |
+| **C++** | **C++11 kernel API** | C/C++ APIs | C/C++ APIs |
 
 > 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md)
 
@@ -83,10 +82,10 @@ A complete RTOS application in under 10 lines:
 > ZenOS uses `SysTick` for its kernel tick. If HAL also uses `SysTick`, they will conflict. In CubeMX, go to **System Core** → **SYS** → **Timebase Source** and set it to `TIM1`. This gives HAL its own 1ms timebase on TIM1 while SysTick stays free for ZenOS.
 >
 > **⚠️ 2. Add `os_tick()` to `SysTick_Handler`:**
-> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`. This is how ZenOS receives its tick interrupt:
+> Open `Src/stm32fxxx_it.c` and call `os_tick()` inside `SysTick_Handler`:
 >
 > ```c
-> #include "ZenOS.hpp"  // Add at top of file
+> #include "ZenOS.hpp"
 >
 > void SysTick_Handler(void) {
 >     os_tick();
@@ -111,7 +110,7 @@ int main(void) {
     MX_GPIO_Init();
 
     os_init();
-    os_task_create(task_blink); // Create task with priority 1
+    os_task_create(task_blink, 5);
     os_start();
 }
 ```
@@ -130,14 +129,14 @@ int main(void) {
 │  │  Bitmap    │  Events     │  Stack Canary    │  │
 │  │  priority  │  Mutexes    │  MPU Protection  │  │
 │  │  queue     │  Queues     │  HW/SW Watchdog  │  │
-│  │            │  Semaphores │  RAM Test (C-)   │  │
-│  │            │             │  CRC ROM Check   │  │
+│  │            │  Semaphores │  RAM Test        │  │
+│  │            │             │  CRC Check       │  │
 │  │            │             │  Deadline Mon.   │  │
 │  └────────────┴─────────────┴──────────────────┘  │
 ├───────────────────────────────────────────────────┤
 │           STM32 HAL (CubeMX-generated)            │
 ├───────────────────────────────────────────────────┤
-│        ARM Cortex-M Hardware (M3/M4/M7)           │
+│             ARM Cortex-M Hardware                 │
 └───────────────────────────────────────────────────┘
 ```
 
@@ -152,32 +151,32 @@ For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنم
 | Document | What's in it |
 |:---------|:-------------|
 | 🌐 [guide.html](https://raymon-research-team.github.io/ZenOS-RTOS/) | Complete interactive guide (HTML) |
-| 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, IEC compliance details |
-| ⚙️ [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) | Complete configuration guide — every option, defaults, profiles, IEC enforcement (English) |
+| 📖 [SAFETY_MANUAL.md](docs/SAFETY_MANUAL.md) | Safety architecture, limitations, target-profile details |
+| ⚙️ [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) | Complete configuration guide — every option, defaults, profiles, target checks |
 | ⚙️ [CONFIG_GUIDE_FA.md](docs/CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی (فارسی) |
 | 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
 | 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
 | 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison with FreeRTOS, Zephyr, RT-Thread |
-| ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Every config option with safety annotations |
+| ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison and design characteristics |
+| ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Source-of-truth configuration header |
 
 ---
 
 ## 🛡️ Safety Features
 
-All mechanisms are **enabled by default** and can be individually toggled in `ZenOS_Config.hpp`.
+Safety and monitoring mechanisms are **configurable** in `ZenOS_Config.hpp`; they are not all enabled by default.
 
 | Mechanism | Config Macro | What it does |
 |:----------|:-------------|:-------------|
-| 🔍 Stack Canary | `OS_SAFETY_SOFT_WATCHDOG` | Canary + SP bounds checking per task |
-| 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Magic number validation for memory corruption |
-| ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects and reacts to task deadline misses |
-| 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Ring buffer with timestamp, task ID, severity |
-| 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG` | STM32 IWDG integration with conditional feed |
-| 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG` | Detects stuck tasks within configurable timeout |
-| 🧪 RAM Test | `OS_SAFETY_RAM_TEST` | Background March C- for SRAM integrity |
-| ✅ CRC Check | `OS_SAFETY_CRC_CHECK` | Flash integrity via STM32 CRC peripheral |
-| 🛡️ MPU | `OS_SAFETY_MPU` | Per-task memory protection (Cortex-M3+) |
+| 🔍 Stack Canary | `OS_SAFETY_STACK_CHECK` | Stack canary / bounds diagnostics when enabled |
+| 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Detects TCB corruption when enabled |
+| ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects deadline misses when enabled |
+| 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Records kernel error diagnostics |
+| 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG` | Hardware watchdog integration when enabled |
+| 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG` | Software watchdog monitoring when enabled |
+| 🧪 RAM Test | `OS_SAFETY_RAM_TEST` | RAM integrity testing when enabled |
+| ✅ CRC Check | `OS_SAFETY_CRC_CHECK` | Flash/integrity checking when enabled |
+| 🛡️ MPU | `OS_SAFETY_MPU` | Memory protection when supported and enabled |
 
 ---
 
@@ -185,7 +184,7 @@ All mechanisms are **enabled by default** and can be individually toggled in `Ze
 
 This is a solo project. I build it, test it, write the docs, and maintain it — all in my spare time, without funding.
 
-> **📝 Note:** ZenOS is designed and written in accordance with IEC 62304 (medical) and IEC 61508 (industrial) standards, and its safety mechanisms follow these standards. However, due to the very high costs of obtaining official certification and ISO (formal audits, traceability documentation, validation testing, etc.), official certification has not been possible so far.
+> **📝 Note:** ZenOS provides compile-time target profiles for IEC 62304 (medical) and IEC 61508 (industrial) configuration requirements. These profiles and safety mechanisms do not constitute official certification; formal product-level verification, validation, traceability, audits, and certification remain the responsibility of the project/product owner.
 
 If you find ZenOS useful, whether for learning, prototyping, or shipping a product, consider supporting its continued development.
 
@@ -196,7 +195,7 @@ If you find ZenOS useful, whether for learning, prototyping, or shipping a produ
 <td align="center" width="25%">
 
 ### 🏥 Certification
-IEC 62304 and IEC 61508 compliance isn't cheap. Formal documentation, traceability, audits — it all costs real money.
+Formal safety documentation, traceability, audits, verification and certification activities require significant resources.
 
 </td>
 <td align="center" width="25%">
@@ -226,7 +225,6 @@ Your donation directly funds development, testing, certification, and documentat
 
 > 💡 **Click a wallet address to copy it into your wallet app. Click the QR code to open it in a new tab.**
 
-
 <table>
 <tr>
 <td align="center" width="50%">
@@ -253,14 +251,14 @@ Your donation directly funds development, testing, certification, and documentat
 </tr>
 </table>
 
-> ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with the certification paperwork.
+> ☕ Even a few dollars helps. If everyone who cloned this repo bought me a coffee, I could afford a proper test bench for every STM32 family and hire someone to help with certification paperwork.
 
-> 📩 **After making a donation, please send an email to [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com) with your transaction ID or wallet address so I can personally thank you.** 
+> 📩 **After making a donation, please send an email to [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com) with your transaction ID or wallet address so I can personally thank you.**
 
 ### 🌟 Other ways to help
 
 <td align="center" width="100%">
-<table> 
+<table>
 <tr>
 <td align="center" width="25%" >⭐<br><b>Star</b><br>the repo</td>
 <td align="center" width="25%" >🐛<br><b>Report</b><br>a bug</td>
