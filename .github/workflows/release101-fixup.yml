@@ -2,7 +2,8 @@ name: Release 1.0.1 fixup
 
 on:
   push:
-    branches: ["release/1.0.1"]
+    branches:
+      - release/1.0.1
 
 permissions:
   contents: write
@@ -15,12 +16,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: release/1.0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
       - name: Apply release consistency fixes
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
-          import re
-
           def edit(path, replacements):
               p = Path(path)
               s = p.read_text(encoding='utf-8')
@@ -29,15 +31,12 @@ jobs:
                   s = s.replace(a, b)
               if s != old:
                   p.write_text(s, encoding='utf-8')
-
           edit('ZenOS/ZenOS_Scheduler.cpp', [
               ('O(1) bitmap scheduler', 'bitmap-assisted priority scheduler'),
               ('/* O(1) scheduler:', '/* Bitmap-assisted scheduler:'),
               ('if (priority == 0) priority = 1;\n    if (!os_priority_valid(priority)) return -1;', 'if (!os_priority_valid(priority)) return -1;'),
               ('if (stack_size < 64) stack_size = 64;', 'if (stack_size < 64) return -1;'),
-              ('/* ── Round-Robin Throttle ── */', '/* ── Round-Robin Throttle ── */'),
           ])
-
           edit('ZenOS/ZenOS.cpp', [
               ('ZenOS_Scheduler.cpp — O(1) bitmap scheduler, task create/control/lookup', 'ZenOS_Scheduler.cpp — bitmap-assisted priority scheduler, task create/control/lookup'),
               ('            /* O(1) scheduler: remove from pq before reset */', '            /* Remove from the ready queue before reset. */'),
@@ -45,25 +44,14 @@ jobs:
               ('    /* O(1) scheduler: initialize priority bitmap and queues */', '    /* Initialize priority bitmap and ready queues. */'),
               ('    /* O(1) scheduler: add idle to priority queue (prio=0) */', '    /* Add idle to the scheduler state. */'),
           ])
-
           edit('ZenOS/ZenOS.hpp', [
               ('#include <stddef.h>\n#include "ZenOS_Config.hpp"', '#include <stddef.h>\n#ifndef __cplusplus\n#include <stdbool.h>\n#endif\n#include "ZenOS_Config.hpp"'),
               (' *  OS_MUTEX   — mutual exclusion with priority inheritance', ' *  OS_MUTEX   — mutual exclusion with IPC priority ceiling'),
-              ('template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>\ninline int8_t _os_task_create_impl', 'template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>\ninline int8_t _os_task_create_impl'),
-              ('{\n#if OS_SAFETY_MPU\n\t/* MPU stack region needs a 32B-aligned base (see os_mpu_configure_task) */\n\tstatic uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(32)));\n#else', '{\n    static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");\n    static_assert((StackBytes % 4) == 0, "ZenOS task stack size must be a multiple of 4 bytes");\n#if OS_SAFETY_MPU\n    static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");\n    /* MPU region size and base must satisfy the ARM MPU alignment rule. */\n    static uint32_t stack_raw[StackBytes / 4] __attribute__((aligned(StackBytes)));\n#else'),
-              ('    static uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(8)));', '    static uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(8)));'),
+              ('{\n#if OS_SAFETY_MPU\n\t/* MPU stack region needs a 32B-aligned base (see os_mpu_configure_task) */\n\tstatic uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(32)));\n#else', '{\n    static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");\n    static_assert((StackBytes % 4) == 0, "ZenOS task stack size must be a multiple of 4 bytes");\n#if OS_SAFETY_MPU\n    static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");\n    static uint32_t stack_raw[StackBytes / 4] __attribute__((aligned(StackBytes)));\n#else'),
               ('    uintptr_t addr = (uintptr_t)stack_raw;\n    addr = (addr + 7UL) & ~7UL;', '    uintptr_t addr = (uintptr_t)stack_raw;\n#if OS_SAFETY_MPU\n    addr = (addr + StackBytes - 1UL) & ~(StackBytes - 1UL);\n#else\n    addr = (addr + 7UL) & ~7UL;\n#endif'),
           ])
-
-          edit('ZenOS/ZenOS_Internal.hpp', [
-              ('/* ═══════════════ Scheduler Functions ═══════════════ */', '/* ═══════════════ Scheduler Functions ═══════════════ */'),
-          ])
-
-          # Current docs/site corrections without replacing the rich pages.
           for p in Path('.').rglob('*'):
-              if not p.is_file() or p.parts[0] in {'.git'}:
-                  continue
-              if p.suffix.lower() not in {'.md', '.html', '.hpp', '.cpp', '.h'}:
+              if not p.is_file() or '.git' in p.parts or p.suffix.lower() not in {'.md', '.html', '.hpp', '.cpp', '.h'}:
                   continue
               try:
                   s = p.read_text(encoding='utf-8')
@@ -71,36 +59,22 @@ jobs:
                   continue
               old = s
               s = s.replace('OS_ERROR_EXPECTED', 'os_error_expect_begin() / os_error_expect_end()')
-              s = s.replace('priority inheritance', 'IPC priority ceiling')
-              s = s.replace('Priority Inheritance', 'IPC Priority Ceiling')
-              s = s.replace('priority-inheritance', 'priority-ceiling')
-              s = s.replace('Priority Inheritance', 'IPC Priority Ceiling')
-              s = s.replace('Background March C-', 'Background SRAM integrity test')
-              s = s.replace('March C- algorithm', 'incremental SRAM integrity routine')
-              s = s.replace('March C-', 'incremental SRAM integrity routine')
+              s = s.replace('priority inheritance', 'IPC priority ceiling').replace('Priority Inheritance', 'IPC Priority Ceiling')
+              s = s.replace('Background March C-', 'Background SRAM integrity test').replace('March C-', 'incremental SRAM integrity routine')
               s = s.replace('all safety features are <strong>enabled by default</strong>', 'safety mechanisms are <strong>configurable and are not all enabled by default</strong>')
               s = s.replace('All mechanisms are <strong>enabled by default</strong>', 'Safety mechanisms are <strong>configurable; they are not all enabled by default</strong>')
-              s = s.replace('تمام مکانیسم‌ها به طور <strong>پیش‌فرض فعال</strong> هستند', 'مکانیسم‌های ایمنی <strong>قابل تنظیم هستند و همه به‌طور پیش‌فرض فعال نیستند</strong>')
-              s = s.replace('everything is already enabled!', 'features are enabled or disabled according to the defaults in ZenOS_Config.hpp.')
-              s = s.replace('all features enabled. Best for most applications:', 'the repository defaults; enable additional mechanisms according to application requirements:')
-              s = s.replace('all defaults (everything enabled)', 'the repository defaults; do not assume optional safety mechanisms are enabled')
+              s = s.replace('everything is already enabled!', 'features follow the defaults in ZenOS_Config.hpp.')
               s = s.replace('Default settings — all features enabled.', 'Repository defaults — optional mechanisms are not all enabled.')
-              s = s.replace('Default stack size in bytes</span>', 'Default stack size in bytes</span>')
-              s = s.replace('Version 1.0.0', 'Version 1.0.1')
               if s != old:
                   p.write_text(s, encoding='utf-8')
-
-          # Correct the known stack-canary documentation macro name.
           edit('README.md', [('`OS_SAFETY_STACK_CHECK`', 'stack canary and stack-pointer checks (implemented by the safety layer)')])
           edit('docs/README_FA.md', [('OS_SAFETY_STACK_CHECK', 'بررسی canary و SP در لایه ایمنی')])
-
-          # Correct the current reference document if an older copy survives in the working tree.
           edit('docs/CURRENT_IMPLEMENTATION.md', [('`OS_KERNEL_MAX_TASKS` defaults to **16**.', 'There is no fixed `OS_KERNEL_MAX_TASKS=16` limit in the current task-creation implementation.')])
-
+          PY
       - name: Commit fixup
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --quiet || git commit -m "release101: automated fixup"
+          git diff --cached --quiet || git commit -m 'release101: automated fixup'
           git push origin release/1.0.1
