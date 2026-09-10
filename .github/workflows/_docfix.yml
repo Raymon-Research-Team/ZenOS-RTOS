@@ -1,10 +1,12 @@
 name: documentation fix
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 permissions:
   contents: write
 jobs:
   fix:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,19 +42,15 @@ jobs:
             'everything enabled':'optional mechanisms are not all enabled',
           }
           for a,b in replacements.items(): s=s.replace(a,b)
-          # Remove misleading legacy/duplicate authority language if present.
           s=s.replace('The previous rich guide is preserved below as <code>guide-legacy.html</code>.','This page is the single authoritative guide for ZenOS 1.0.1.')
           s=s.replace('Open the full historical/graphical guide →','')
           s=s.replace('guide-legacy.html','guide.html')
           p.write_text(s)
           PY
-      - name: Remove obsolete legacy guide
-        run: rm -f docs/guide-html/guide-legacy.html
-      - name: Commit documentation correction
-        run: |
+          rm -f docs/guide-html/guide-legacy.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/guide-html/guide.html docs/guide-html/guide-legacy.html
-          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m 'docs: align main guide with ZenOS 1.0.1'
           git push
