@@ -268,6 +268,14 @@
 # undef OS_SAFETY_CRC_CHECK
 # define OS_SAFETY_CRC_CHECK 0
 #endif
+
+/* The original handler in ZenOS.cpp is retained as a legacy implementation
+   while the architecture-specific handler below provides the corrected
+   context-save ABI. Only internal translation units see this alias. */
+#if defined(OS_BUILD)
+# define OS_PendSV_Handler OS_PendSV_Handler_legacy
+#endif
+
 #if !OS_HAS_PENDSV
 # error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M/SysTick port."
 #endif
