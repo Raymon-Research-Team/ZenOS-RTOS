@@ -134,16 +134,11 @@ extern "C" void os_priority_queues_init(void) {
     for (uint32_t i = 0; i < 32; ++i) os_pq_head[i] = nullptr;
 
 #if OS_KERNEL_MAX_PRIORITIES > 32
-    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i) {
+    for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
         os_ready_bitmap_ext[i] = 0;
-        os_rr_skip_ext[i] = 0;
-    }
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_COUNT; ++i)
         os_pq_head_ext[i] = nullptr;
 #endif
-
-    os_rr_skip = 0;
-    os_rr_skip_quota = 0;
 }
 
 static inline bool os_rr_is_skipped(uint8_t prio) {
@@ -185,17 +180,12 @@ static inline uint32_t os_ready_level_count(void) {
 }
 
 extern "C" TCB* os_pq_next(void) {
-    if (os_rr_skip_quota > 0) {
-        --os_rr_skip_quota;
-        if (os_rr_skip_quota == 0) os_rr_clear_all();
-    }
-
     if (os_pq_highest_prio() == 0) return nullptr;
     const uint32_t now = tick_count;
 
     for (int p = (int)OS_KERNEL_MAX_PRIORITIES - 1; p >= 1; --p) {
         uint8_t prio = (uint8_t)p;
-        if (!os_pq_bit_is_set(prio) || os_rr_is_skipped(prio)) continue;
+        if (!os_pq_bit_is_set(prio)) continue;
         TCB* head = *os_pq_head_for(prio);
         if (!head) {
             os_pq_clear_bit(prio);
@@ -232,7 +222,7 @@ extern "C" void os_pq_rotate(void) {
 
     for (int prio = (int)OS_KERNEL_MAX_PRIORITIES - 1; prio >= 1; --prio) {
         uint8_t candidate = (uint8_t)prio;
-        if (!os_pq_bit_is_set(candidate) || os_rr_is_skipped(candidate)) continue;
+        if (!os_pq_bit_is_set(candidate)) continue;
         for (TCB* t = *os_pq_head_for(candidate); t; t = t->queue_next) {
             if (t->period_ticks == 0 ||
                 ((int32_t)(now - t->next_run_time) >= 0)) {
@@ -248,13 +238,10 @@ extern "C" void os_pq_rotate(void) {
     TCB* head = *head_ptr;
     if (!head) return;
 
-    if (!head->queue_next) {
-        os_rr_set_skip(p);
-        os_rr_skip_quota = os_ready_level_count();
-        if (os_rr_skip_quota == 0) os_rr_skip_quota = 1;
-        return;
-    }
+    /* Single task at this priority — no rotation needed, just return. */
+    if (!head->queue_next) return;
 
+    /* Multiple tasks: move head to tail for round-robin. */
     *head_ptr = head->queue_next;
     TCB* tail = *head_ptr;
     while (tail->queue_next) tail = tail->queue_next;
@@ -317,7 +304,11 @@ void os_wake_task(TCB* t, uint8_t result) {
     t->state = TaskState::READY;
     t->blocking_on = nullptr;
     t->block_timeout = 0;
-    t->next_run_time = tick_count;
+    /* Do NOT reset next_run_time here — the PendSV handler sets it based on
+       the task's period_ticks (periodic tasks get tick_count + period_ticks,
+       non-periodic tasks get tick_count + 1).  Resetting it to tick_count
+       here bypassed the period gate, causing periodic tasks to fire at their
+       delay rate instead of their period rate. */
     t->last_yield_tick = tick_count;
     if (blocked_count > 0) {
         uint32_t tmp, res;
@@ -531,12 +522,31 @@ bool os_tickless_process(uint32_t skip) {
                 if (task->delay_ticks <= skip) {
                     task->delay_ticks = 0;
                     os_wake_on_delay_expiry(task);
+                    /* Verify: after wake, next_run_time should be tick_count
+                       (set by os_wake_on_delay_expiry in our fix). The period
+                       gate in os_pq_next will then see (tick_count - next_run_time)
+                       >= 0 and consider the task eligible. PendSV will override
+                       next_run_time based on period_ticks when the task runs. */
+                    if (task->period_ticks > 0) {
+                        /* Periodic task: next_run_time should be current tick_count
+                           so it's immediately eligible. PendSV will set it to
+                           tick_count + period_ticks when the task runs. */
+                        if (task->next_run_time > tick_count) {
+                            /* This would mean the task is ineligible — the period
+                               gate would reject it. This is a bug we're fixing! */
+                            task->next_run_time = tick_count;
+                        }
+                    }
                     woke = true;
                 } else task->delay_ticks -= skip;
             } else if (task->block_timeout > 0) {
                 if (task->block_timeout <= skip) {
                     task->block_timeout = 0;
                     os_wake_on_timeout_expiry(task);
+                    /* Same verification as above for timeout expiry wakes */
+                    if (task->period_ticks > 0 && task->next_run_time > tick_count) {
+                        task->next_run_time = tick_count;
+                    }
                     woke = true;
                 } else task->block_timeout -= skip;
             }

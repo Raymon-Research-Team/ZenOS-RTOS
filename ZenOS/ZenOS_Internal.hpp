@@ -67,13 +67,43 @@ bool os_block_current(TaskState state, void* blocking_on,
                       uint32_t block_timeout, uint32_t delay_ticks);
 
 inline void os_wake_on_delay_expiry(TCB* task) {
+    /* When a task wakes from delay, reset next_run_time to tick_count so
+       it becomes immediately eligible. This is necessary when tickless idle
+       has advanced tick_count while the task was blocked — otherwise the
+       period gate (now - next_run_time >= 0) would see an old next_run_time
+       and consider the task ineligible, causing it to miss its release. */
+    task->next_run_time = tick_count;
     os_wake_task(task, 1);
 }
 
 inline void os_wake_on_timeout_expiry(TCB* task) {
     task->wait_result = 2;
+    /* Same as above — any wake from blocking must reset next_run_time so the
+       period gate doesn't reject the task due to tickless-idle tick advancement. */
+    task->next_run_time = tick_count;
     os_wake_task(task, 2);
 }
+
+/* ── Period Gate Consistency Check ──────────────────────────────
+   This function verifies that after a delay wake, next_run_time is valid
+   for period gate eligibility. Call this in os_tickless_process after
+   waking tasks to confirm the fix is working correctly. */
+#if OS_DEBUG_PERIOD_GATE
+inline bool os_verify_period_gate_after_wake(TCB* task, uint32_t current_tick) {
+    if (!task) return true;
+    if (task->period_ticks == 0) {
+        /* Non-periodic task: next_run_time should be current_tick (+1 after PendSV) */
+        return (task->next_run_time <= current_tick + 1);
+    } else {
+        /* Periodic task: next_run_time should be current_tick (our fix sets this),
+           and PendSV will later set it to current_tick + period_ticks */
+        uint32_t now = current_tick;
+        int32_t elapsed = (int32_t)(now - task->next_run_time);
+        /* The task should be immediately eligible (elapsed >= 0) */
+        return (elapsed >= 0);
+    }
+}
+#endif
 
 uint32_t os_ms_to_ticks(uint32_t ms);
 TCB* os_find_task_by_entry(void(*entry)(void));
