@@ -1,0 +1,100 @@
+name: ZenOS Cortex-M Port Compile Matrix
+
+on:
+  push:
+    branches: ["main", "fix/cortex-m-portability-and-kernel-safety"]
+  pull_request:
+
+jobs:
+  compile-port:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: cortex-m3
+            cpu: cortex-m3
+            family: STM32F1xx
+            fpu: ""
+            float_abi: soft
+            arch_define: ""
+          - name: cortex-m4
+            cpu: cortex-m4
+            family: STM32F4xx
+            fpu: fpv4-sp-d16
+            float_abi: softfp
+            arch_define: ""
+          - name: cortex-m7
+            cpu: cortex-m7
+            family: STM32H7xx
+            fpu: fpv5-d16
+            float_abi: softfp
+            arch_define: ""
+          - name: cortex-m23
+            cpu: cortex-m23
+            family: STM32U0xx
+            fpu: ""
+            float_abi: soft
+            arch_define: __ARM_ARCH_8M_BASE__
+          - name: cortex-m33
+            cpu: cortex-m33
+            family: STM32H5xx
+            fpu: fpv5-sp-d16
+            float_abi: softfp
+            arch_define: __ARM_ARCH_8M_MAIN__
+
+    runs-on: ubuntu-24.04
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Arm GNU toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-arm-none-eabi g++-arm-none-eabi binutils-arm-none-eabi
+
+      - name: Compile ZenOS core port
+        shell: bash
+        run: |
+          set -euo pipefail
+          CXXFLAGS=(
+            -std=c++17 -ffreestanding -fno-exceptions -fno-rtti
+            -mcpu=${{ matrix.cpu }} -mthumb
+            -I ZenOS
+            -D${{ matrix.family }}
+            -D__MPU_PRESENT=0
+            -D__VTOR_PRESENT=1
+            -D__FPU_PRESENT=0
+            -Werror -Wall -Wextra
+          )
+          if [[ -n "${{ matrix.fpu }}" ]]; then
+            CXXFLAGS+=( -D__FPU_PRESENT=1 -mfpu=${{ matrix.fpu }} -mfloat-abi=${{ matrix.float_abi }} )
+          else
+            CXXFLAGS+=( -mfloat-abi=${{ matrix.float_abi }} )
+          fi
+          if [[ -n "${{ matrix.arch_define }}" ]]; then
+            CXXFLAGS+=( -D${{ matrix.arch_define }}=1 )
+          fi
+
+          mkdir -p build/port
+          for src in \
+            ZenOS/ZenOS_Scheduler.cpp \
+            ZenOS/ZenOS_Scheduler_Select.cpp \
+            ZenOS/ZenOS_LayoutChecks.cpp \
+            ZenOS/ZenOS_MPU.cpp \
+            ZenOS/ZenOS_PendSV.cpp \
+            ZenOS/ZenOS_Safety.cpp \
+            ZenOS/ZenOS_Monitor.cpp \
+            ZenOS/ZenOS_IPC.cpp \
+            ZenOS/ZenOS_SelfTest.cpp; do
+            out="build/port/$(basename "${src%.cpp}").o"
+            echo "Compiling $src"
+            arm-none-eabi-g++ "${CXXFLAGS[@]}" -c "$src" -o "$out"
+          done
+
+      - name: Verify no forbidden application changes
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -Eq '(^|/)main\.cpp$'; then
+            echo "main.cpp must remain untouched by the kernel portability work"
+            exit 1
+          fi
