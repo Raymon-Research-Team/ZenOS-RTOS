@@ -51,7 +51,7 @@ jobs:
       - name: Install Arm GNU toolchain
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-arm-none-eabi g++-arm-none-eabi binutils-arm-none-eabi
+          sudo apt-get install -y -qq gcc-arm-none-eabi binutils-arm-none-eabi
 
       - name: Compile ZenOS core port
         shell: bash
@@ -64,13 +64,12 @@ jobs:
             -D${{ matrix.family }}
             -D__MPU_PRESENT=0
             -D__VTOR_PRESENT=1
-            -D__FPU_PRESENT=0
             -Werror -Wall -Wextra
           )
           if [[ -n "${{ matrix.fpu }}" ]]; then
             CXXFLAGS+=( -D__FPU_PRESENT=1 -mfpu=${{ matrix.fpu }} -mfloat-abi=${{ matrix.float_abi }} )
           else
-            CXXFLAGS+=( -mfloat-abi=${{ matrix.float_abi }} )
+            CXXFLAGS+=( -D__FPU_PRESENT=0 -mfloat-abi=${{ matrix.float_abi }} )
           fi
           if [[ -n "${{ matrix.arch_define }}" ]]; then
             CXXFLAGS+=( -D${{ matrix.arch_define }}=1 )
