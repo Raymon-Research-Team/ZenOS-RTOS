@@ -1,8 +1,5 @@
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
-
-/* The legacy definition in ZenOS.cpp is renamed by ZenOS_Port.hpp for internal
-   translation units. This file is the sole exported PendSV implementation. */
 #undef OS_PendSV_Handler
 
 extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
@@ -10,9 +7,6 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "mrs r0, psp                         \n"
         "isb                                \n"
 #if OS_HAS_FPU
-        /* Lazy FP stacking makes LR[4] the authoritative indication of
-           whether the hardware created an extended frame. S16-S31 are the
-           callee-saved FP registers and must be carried by the RTOS. */
         "tst lr, #0x10                       \n"
         "it eq                               \n"
         "vstmdbeq r0!, {s16-s31}              \n"
@@ -24,44 +18,52 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r2, [r1]                         \n"
         "cmp r2, #0                            \n"
         "beq 1f                               \n"
-        "str r0, [r2, #0]                     \n"
+        "str r0, [r2, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
         "1:                                   \n"
-        /* Keep the selector and current-task pointer safe across C calls.
-           Four pushed registers preserve the required 8-byte MSP alignment. */
         "push {r1, r2, r3, lr}                \n"
         "bl os_pendsv_select_task              \n"
         "mov r4, r0                            \n"
         "mov r0, r4                            \n"
         "bl os_pendsv_activate_task            \n"
+        /* Preserve the old periodic-release semantic in the new handler. */
+        "ldr r1, =tick_count                   \n"
+        "ldr r2, [r1]                          \n"
+        "ldr r3, [r4, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
+        "cmp r3, #0                            \n"
+        "beq 2f                               \n"
+        "adds r2, r2, r3                       \n"
+        "b 3f                                \n"
+        "2:                                   \n"
+        "adds r2, r2, #1                       \n"
+        "3:                                   \n"
+        "str r2, [r4, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
 #if OS_SAFETY_MPU
         "mov r0, r4                            \n"
         "bl os_mpu_configure_task              \n"
 #endif
         "pop {r1, r2, r3, lr}                 \n"
-        "ldr r0, [r4, #0]                     \n"
+        "ldr r0, [r4, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
 #if OS_HAS_FPU
-        /* Normal saved-FP context contains EXC_RETURN immediately after
-           R4-R11. A never-run task still has the original 16-word frame from
-           os_stack_init(), so its next word is xPSR rather than EXC_RETURN. */
         "ldmia r0!, {r4-r11}                  \n"
         "ldr r3, [r0, #0]                     \n"
         "lsrs r3, r3, #28                     \n"
         "cmp r3, #0xF                         \n"
-        "bne 2f                               \n"
+        "bne 4f                               \n"
         "ldr lr, [r0, #0]                     \n"
-        "adds r0, r0, #4                     \n"
-        "tst lr, #0x10                       \n"
-        "it eq                               \n"
+        "adds r0, r0, #4                      \n"
+        "tst lr, #0x10                        \n"
+        "it eq                                \n"
         "vldmiaeq r0!, {s16-s31}              \n"
-        "b 3f                                \n"
-        "2:                                   \n"
+        "b 5f                                \n"
+        "4:                                   \n"
         "ldr lr, =0xFFFFFFFD                 \n"
-        "3:                                   \n"
+        "5:                                   \n"
 #else
         "ldmia r0!, {r4-r11}                  \n"
 #endif
         "msr psp, r0                          \n"
         "isb                                  \n"
         "bx lr                                \n"
+        ".ltorg                               \n"
     );
 }
