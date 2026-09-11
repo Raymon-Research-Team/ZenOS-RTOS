@@ -85,13 +85,14 @@ static inline uint8_t os_pq_highest_prio(void) {
 /* ═══════════════ Priority Queue Operations ═══════════════ */
 void os_pq_add(TCB* task) {
     if (!task) return;
-    /* os_init() resets task_count to zero before task creation. The first
-       task created after each init therefore provides a safe point to clear
-       any extension bitmap/queue state left by a previous lifecycle. */
-    if (task == &idle_tcb && task->priority == 0 && !os_started) {
-        os_priority_queues_init();
-        return;
-    }
+    /* Priority 0 is reserved: the idle task is NEVER enqueued and must not
+       touch scheduler storage.  os_start() calls this with &idle_tcb AFTER
+       all application tasks are queued — resetting the queues here (the old
+       lifecycle-reset behavior) unlinked every READY task and stalled the
+       scheduler at boot.  Queue reset belongs to os_init() and to
+       _os_task_create_internal() when task_count == 0, which cover the
+       previous-lifecycle cleanup this used to guard. */
+    if (task == &idle_tcb) return;
     if (!os_priority_valid(task->priority)) return;
     uint8_t p = task->priority;
     TCB* volatile* head = os_pq_head_for(p);

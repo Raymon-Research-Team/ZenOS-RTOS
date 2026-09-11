@@ -479,7 +479,9 @@ extern "C" void os_start(void) {
     idle_tcb.next = task_list;
     task_list = &idle_tcb;
     os_stack_init(&idle_tcb);
-    /* O(1) scheduler: add idle to priority queue (prio=0) */
+    /* Priority 0 is reserved: idle is never enqueued.  PendSV falls back to
+       os_idle_tcb_ptr when no priority queue has an eligible task.  This call
+       is a no-op guard — it must NOT reset scheduler state. */
     os_pq_add(&idle_tcb);
 
 
