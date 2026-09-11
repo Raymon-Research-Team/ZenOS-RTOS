@@ -1,10 +1,8 @@
 #pragma once
 /** Cortex-M capability, memory-map and platform boundary layer. */
-
 #define OS_NAKED  __attribute__((naked))
 #define OS_USED   __attribute__((used))
 #define OS_ALIGNED(n) __attribute__((aligned(n)))
-
 #if defined(__ARM_ARCH_6M__)
 # define OS_ARCH_ARMV6M 1
 #else
@@ -35,16 +33,11 @@
 #else
 # define OS_ARCH_ARMV81MML 0
 #endif
-
-/* Armv6-M has no PendSV.  The current public ZenOS contract deliberately
-   does not rewrite the application's SysTick handler, so an M0/M0+ image is
-   rejected rather than silently lacking a context-switch mechanism. */
 #if OS_ARCH_ARMV6M
 # define OS_HAS_PENDSV 0
 #else
 # define OS_HAS_PENDSV 1
 #endif
-
 #if defined(__MPU_PRESENT)
 # define OS_HAS_MPU ((__MPU_PRESENT) != 0U)
 #else
@@ -104,7 +97,6 @@
 #else
 # define OS_FAMILY_NAME "Generic Cortex-M"
 #endif
-
 #ifndef OS_SMP_CORES
 # define OS_SMP_CORES 1
 #endif
@@ -156,8 +148,6 @@
 #  define OS_RAM_SIZE 0x5000UL
 # endif
 #endif
-
-/* Exact vector-table length is a startup-file/device property. */
 #ifndef OS_VECTOR_COUNT
 # if defined(STM32F1xx)
 #  define OS_VECTOR_COUNT 68
@@ -185,8 +175,6 @@
 #  define OS_VECTOR_COUNT 16
 # endif
 #endif
-
-/* A destructive RAM test is valid only on a linker-reserved scratch range. */
 #ifndef OS_RAM_TEST_START
 # define OS_RAM_TEST_START 0UL
 #endif
@@ -198,7 +186,6 @@
 #else
 # define OS_RAM_TEST_REGION_VALID 0
 #endif
-
 #if defined(__MPU_REGION_COUNT)
 # define OS_MPU_MAX_REGIONS (__MPU_REGION_COUNT)
 #elif OS_ARCH_ARMV8MML || OS_ARCH_ARMV81MML
@@ -206,20 +193,14 @@
 #else
 # define OS_MPU_MAX_REGIONS 8
 #endif
-
 #if !OS_HAS_MPU
 # undef OS_SAFETY_MPU
 # define OS_SAFETY_MPU 0
 #endif
-
-/* FPU context switches need materially more stack. Arm CMSIS documents about
-   200 bytes of local context for M4/M7 with FP; keep the low-RAM 128-byte
-   default on integer-only targets and raise only FPU targets. */
 #if OS_HAS_FPU && (OS_KERNEL_STACK_SIZE < 320)
 # undef OS_KERNEL_STACK_SIZE
 # define OS_KERNEL_STACK_SIZE 320
 #endif
-
 #define OS_STACK_CANARY 0xDEADBEEFUL
 #define OS_STACK_CANARY_COUNT 8
 #define OS_TCB_MAGIC 0x54434200UL
@@ -229,7 +210,6 @@
 #define OS_USAGEFAULT_VECTOR_INDEX 6
 #define OS_PENDSV_VECTOR_INDEX 14
 #define OS_SYSTICK_VECTOR_INDEX 15
-
 #if defined(__NVIC_PRIO_BITS)
 # define OS_PENDSV_PRIORITY ((1UL << __NVIC_PRIO_BITS) - 1UL)
 # define OS_SYSTICK_PRIORITY ((1UL << __NVIC_PRIO_BITS) - 1UL)
@@ -237,18 +217,16 @@
 # define OS_PENDSV_PRIORITY 0xFFUL
 # define OS_SYSTICK_PRIORITY 0xFFUL
 #endif
-
 #define OS_SCB_BASE 0xE000ED00UL
 #define OS_SCB_ICSR (*((volatile uint32_t*)(OS_SCB_BASE + 0x04UL)))
 #if OS_HAS_VTOR
 # define OS_SCB_VTOR (*((volatile uint32_t*)(OS_SCB_BASE + 0x08UL)))
 #endif
-#define OS_SCB_SHPR2 (*((volatile uint32_t*)(OS_SCB_BASE + 0x1CUL)))
-#define OS_SCB_SHPR3 (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)))
+#define OS_SCB_SHPR2 (*((volatile uint32_t*)(OS_SCB_BASE + 0x1CUL)) )
+#define OS_SCB_SHPR3 (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)) )
 #define OS_PENDSV_PRIO (*((volatile uint8_t*)(OS_SCB_BASE + 0x22UL)))
 #define OS_SYSTICK_PRIO (*((volatile uint8_t*)(OS_SCB_BASE + 0x23UL)))
 #define OS_ICSR_PENDSVSET_Msk (1UL << 28)
-
 #define OS_SYST_BASE 0xE000E010UL
 #define OS_SYST_CSR (*((volatile uint32_t*)(OS_SYST_BASE + 0x00UL)))
 #define OS_SYST_RVR (*((volatile uint32_t*)(OS_SYST_BASE + 0x04UL)))
@@ -256,7 +234,6 @@
 #define OS_SYST_CSR_ENABLE_Msk (1UL << 0)
 #define OS_SYST_CSR_TICKINT_Msk (1UL << 1)
 #define OS_SYST_CSR_COUNTFLAG_Msk (1UL << 16)
-
 #define OS_DWT_BASE 0xE0001000UL
 #define OS_DWT_CTRL (*((volatile uint32_t*)(OS_DWT_BASE + 0x00UL)))
 #define OS_DWT_CYCCNT (*((volatile uint32_t*)(OS_DWT_BASE + 0x04UL)))
@@ -269,9 +246,6 @@
 #define OS_COREDEBUG_DEMCR (*(volatile uint32_t*)0xE000EDFCUL)
 #define OS_COREDEM_TRCENA (1UL << 24)
 #define OS_DWT_CYCCNTENA (1UL << 0)
-
-/* Hardware safety peripherals are opt-in: address maps and reset flags are
-   vendor/device specific and must not be guessed for arbitrary Cortex-M. */
 #ifndef OS_PLATFORM_WATCHDOG
 # if defined(STM32F1xx) || defined(STM32F2xx) || defined(STM32F3xx) || defined(STM32F4xx) || defined(STM32F7xx) || defined(STM32G0xx) || defined(STM32G4xx) || defined(STM32L0xx) || defined(STM32L1xx) || defined(STM32L4xx) || defined(STM32WBxx) || defined(STM32WLxx)
 #  define OS_PLATFORM_WATCHDOG 1
@@ -282,6 +256,10 @@
 #ifndef OS_PLATFORM_CRC
 # define OS_PLATFORM_CRC 0
 #endif
+#if !OS_PLATFORM_WATCHDOG
+# undef OS_SAFETY_HW_WATCHDOG
+# define OS_SAFETY_HW_WATCHDOG 0
+#endif
 #if !OS_RAM_TEST_REGION_VALID
 # undef OS_SAFETY_RAM_TEST
 # define OS_SAFETY_RAM_TEST 0
@@ -290,16 +268,14 @@
 # undef OS_SAFETY_CRC_CHECK
 # define OS_SAFETY_CRC_CHECK 0
 #endif
-
 #if !OS_HAS_PENDSV
 # error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M/SysTick port."
 #endif
-
 #if defined(__ARM_FEATURE_CMSE) && (__ARM_FEATURE_CMSE == 3U)
 # define OS_TRUSTZONE_BUILD 1
 #else
 # define OS_TRUSTZONE_BUILD 0
 #endif
 #if OS_TRUSTZONE_BUILD
-# warning "ZenOS standard port is single-domain; a TrustZone-aware port must preserve secure/non-secure EXC_RETURN and stack state."
+# warning "ZenOS standard port is single-domain; use a TrustZone-aware context-switch port before enabling secure/non-secure execution."
 #endif
