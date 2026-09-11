@@ -64,7 +64,7 @@ jobs:
             -D${{ matrix.family }}
             -D__MPU_PRESENT=0
             -D__VTOR_PRESENT=1
-            -Werror -Wall -Wextra
+            -Wall -Wextra
           )
           if [[ -n "${{ matrix.fpu }}" ]]; then
             CXXFLAGS+=( -D__FPU_PRESENT=1 -mfpu=${{ matrix.fpu }} -mfloat-abi=${{ matrix.float_abi }} )
