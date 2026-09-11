@@ -101,7 +101,6 @@
 # define OS_SMP_CORES 1
 #endif
 #define OS_SMP_MAX_CORES 1
-
 #ifndef OS_FLASH_START
 # define OS_FLASH_START 0x08000000UL
 #endif
@@ -197,6 +196,12 @@
 # undef OS_SAFETY_MPU
 # define OS_SAFETY_MPU 0
 #endif
+/* The existing safety implementation programs the Armv7-M RBAR/RASR model.
+   Armv8-M Mainline uses PMSAv8 RBAR/RLAR and must not enter the old path. */
+#if OS_MPU_PMSA_V8
+# undef OS_SAFETY_MPU
+# define OS_SAFETY_MPU 0
+#endif
 #if OS_HAS_FPU && (OS_KERNEL_STACK_SIZE < 320)
 # undef OS_KERNEL_STACK_SIZE
 # define OS_KERNEL_STACK_SIZE 320
@@ -222,8 +227,8 @@
 #if OS_HAS_VTOR
 # define OS_SCB_VTOR (*((volatile uint32_t*)(OS_SCB_BASE + 0x08UL)))
 #endif
-#define OS_SCB_SHPR2 (*((volatile uint32_t*)(OS_SCB_BASE + 0x1CUL)) )
-#define OS_SCB_SHPR3 (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)) )
+#define OS_SCB_SHPR2 (*((volatile uint32_t*)(OS_SCB_BASE + 0x1CUL)))
+#define OS_SCB_SHPR3 (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)))
 #define OS_PENDSV_PRIO (*((volatile uint8_t*)(OS_SCB_BASE + 0x22UL)))
 #define OS_SYSTICK_PRIO (*((volatile uint8_t*)(OS_SCB_BASE + 0x23UL)))
 #define OS_ICSR_PENDSVSET_Msk (1UL << 28)
@@ -268,14 +273,9 @@
 # undef OS_SAFETY_CRC_CHECK
 # define OS_SAFETY_CRC_CHECK 0
 #endif
-
-/* The original handler in ZenOS.cpp is retained as a legacy implementation
-   while the architecture-specific handler below provides the corrected
-   context-save ABI. Only internal translation units see this alias. */
 #if defined(OS_BUILD)
 # define OS_PendSV_Handler OS_PendSV_Handler_legacy
 #endif
-
 #if !OS_HAS_PENDSV
 # error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M/SysTick port."
 #endif
