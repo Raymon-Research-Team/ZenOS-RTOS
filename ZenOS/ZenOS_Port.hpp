@@ -1,5 +1,4 @@
 #pragma once
-/** Cortex-M capability, memory-map and platform boundary layer. */
 #define OS_NAKED  __attribute__((naked))
 #define OS_USED   __attribute__((used))
 #define OS_ALIGNED(n) __attribute__((aligned(n)))
@@ -65,7 +64,6 @@
 #else
 # define OS_MPU_PMSA_V8 0
 #endif
-
 #if defined(STM32F1xx)
 # define OS_FAMILY_NAME "STM32F1"
 #elif defined(STM32F2xx)
@@ -196,8 +194,6 @@
 # undef OS_SAFETY_MPU
 # define OS_SAFETY_MPU 0
 #endif
-/* The existing safety implementation programs the Armv7-M RBAR/RASR model.
-   Armv8-M Mainline uses PMSAv8 RBAR/RLAR and must not enter the old path. */
 #if OS_MPU_PMSA_V8
 # undef OS_SAFETY_MPU
 # define OS_SAFETY_MPU 0
@@ -226,6 +222,11 @@
 #define OS_SCB_ICSR (*((volatile uint32_t*)(OS_SCB_BASE + 0x04UL)))
 #if OS_HAS_VTOR
 # define OS_SCB_VTOR (*((volatile uint32_t*)(OS_SCB_BASE + 0x08UL)))
+#else
+/* Shadow only: devices without VTOR cannot be made relocatable by writing the
+   SCB address. The application/startup vector must provide the handlers. */
+static volatile uint32_t os_scb_vtor_shadow = 0UL;
+# define OS_SCB_VTOR os_scb_vtor_shadow
 #endif
 #define OS_SCB_SHPR2 (*((volatile uint32_t*)(OS_SCB_BASE + 0x1CUL)))
 #define OS_SCB_SHPR3 (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)))
