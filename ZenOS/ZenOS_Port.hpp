@@ -1,11 +1,5 @@
 #pragma once
-/**
- * @file    ZenOS_Port.hpp
- * @brief   Cortex-M capability and memory-map layer.
- *
- * Device-header capability macros are authoritative. Board-specific memory
- * sizes and optional safety peripherals may be supplied by the build system.
- */
+/** Cortex-M capability, memory-map and platform boundary layer. */
 
 #define OS_NAKED  __attribute__((naked))
 #define OS_USED   __attribute__((used))
@@ -42,10 +36,9 @@
 # define OS_ARCH_ARMV81MML 0
 #endif
 
-/* Armv6-M does not implement PendSV. ZenOS therefore fails closed on M0/M0+
-   instead of building a scheduler that can never perform its context switch.
-   A dedicated M0 port must integrate the switch with the application's tick
-   path; the existing user SysTick handler is intentionally left untouched. */
+/* Armv6-M has no PendSV.  The current public ZenOS contract deliberately
+   does not rewrite the application's SysTick handler, so an M0/M0+ image is
+   rejected rather than silently lacking a context-switch mechanism. */
 #if OS_ARCH_ARMV6M
 # define OS_HAS_PENDSV 0
 #else
@@ -80,7 +73,6 @@
 # define OS_MPU_PMSA_V8 0
 #endif
 
-/* Target family name */
 #if defined(STM32F1xx)
 # define OS_FAMILY_NAME "STM32F1"
 #elif defined(STM32F2xx)
@@ -118,8 +110,6 @@
 #endif
 #define OS_SMP_MAX_CORES 1
 
-/* Memory map: explicit build overrides win; otherwise use CMSIS STM32 size
-   macros where available, with conservative legacy fallbacks. */
 #ifndef OS_FLASH_START
 # define OS_FLASH_START 0x08000000UL
 #endif
@@ -167,8 +157,7 @@
 # endif
 #endif
 
-/* Vector count is startup-file specific. Keep known STM32 family defaults,
-   but permit an exact device override with -DOS_VECTOR_COUNT=... . */
+/* Exact vector-table length is a startup-file/device property. */
 #ifndef OS_VECTOR_COUNT
 # if defined(STM32F1xx)
 #  define OS_VECTOR_COUNT 68
@@ -197,8 +186,7 @@
 # endif
 #endif
 
-/* Never perform a background destructive RAM test unless the application
-   supplies a dedicated unused/linker-reserved interval. */
+/* A destructive RAM test is valid only on a linker-reserved scratch range. */
 #ifndef OS_RAM_TEST_START
 # define OS_RAM_TEST_START 0UL
 #endif
@@ -224,6 +212,17 @@
 # define OS_SAFETY_MPU 0
 #endif
 
+/* FPU context switches need materially more stack. Arm CMSIS documents about
+   200 bytes of local context for M4/M7 with FP; keep the low-RAM 128-byte
+   default on integer-only targets and raise only FPU targets. */
+#if OS_HAS_FPU && (OS_KERNEL_STACK_SIZE < 320)
+# undef OS_KERNEL_STACK_SIZE
+# define OS_KERNEL_STACK_SIZE 320
+#endif
+
+#define OS_STACK_CANARY 0xDEADBEEFUL
+#define OS_STACK_CANARY_COUNT 8
+#define OS_TCB_MAGIC 0x54434200UL
 #define OS_HARDFAULT_VECTOR_INDEX 3
 #define OS_MEMMANAGE_VECTOR_INDEX 4
 #define OS_BUSFAULT_VECTOR_INDEX 5
@@ -271,7 +270,8 @@
 #define OS_COREDEM_TRCENA (1UL << 24)
 #define OS_DWT_CYCCNTENA (1UL << 0)
 
-/* Platform safety peripherals are opt-in. */
+/* Hardware safety peripherals are opt-in: address maps and reset flags are
+   vendor/device specific and must not be guessed for arbitrary Cortex-M. */
 #ifndef OS_PLATFORM_WATCHDOG
 # if defined(STM32F1xx) || defined(STM32F2xx) || defined(STM32F3xx) || defined(STM32F4xx) || defined(STM32F7xx) || defined(STM32G0xx) || defined(STM32G4xx) || defined(STM32L0xx) || defined(STM32L1xx) || defined(STM32L4xx) || defined(STM32WBxx) || defined(STM32WLxx)
 #  define OS_PLATFORM_WATCHDOG 1
@@ -282,7 +282,6 @@
 #ifndef OS_PLATFORM_CRC
 # define OS_PLATFORM_CRC 0
 #endif
-
 #if !OS_RAM_TEST_REGION_VALID
 # undef OS_SAFETY_RAM_TEST
 # define OS_SAFETY_RAM_TEST 0
@@ -293,7 +292,7 @@
 #endif
 
 #if !OS_HAS_PENDSV
-# error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M port/SysTick integration."
+# error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M/SysTick port."
 #endif
 
 #if defined(__ARM_FEATURE_CMSE) && (__ARM_FEATURE_CMSE == 3U)
@@ -301,7 +300,6 @@
 #else
 # define OS_TRUSTZONE_BUILD 0
 #endif
-
 #if OS_TRUSTZONE_BUILD
-# warning "ZenOS standard port is single-domain. A TrustZone-aware port must preserve secure/non-secure EXC_RETURN and stack state."
+# warning "ZenOS standard port is single-domain; a TrustZone-aware port must preserve secure/non-secure EXC_RETURN and stack state."
 #endif
