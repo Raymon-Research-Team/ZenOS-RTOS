@@ -19,13 +19,21 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "cmp r2, #0                            \n"
         "beq 1f                               \n"
         "str r0, [r2, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+        /* A voluntary/preemptive switch leaves RUNNING -> READY. A task that
+           explicitly blocked/stopped itself has already changed state and
+           must remain BLOCKED/INACTIVE. The existing queue node is retained,
+           so changing only the state preserves O(1) queue membership. */
+        "ldrb r3, [r2, #" OS_STR(OS_OFF_STATE) "]\n"
+        "cmp r3, #2                            \n"
+        "bne 1f                               \n"
+        "movs r3, #1                           \n"
+        "strb r3, [r2, #" OS_STR(OS_OFF_STATE) "]\n"
         "1:                                   \n"
         "push {r1, r2, r3, lr}                \n"
         "bl os_pendsv_select_task              \n"
         "mov r4, r0                            \n"
         "mov r0, r4                            \n"
         "bl os_pendsv_activate_task            \n"
-        /* Preserve the old periodic-release semantic in the new handler. */
         "ldr r1, =tick_count                   \n"
         "ldr r2, [r1]                          \n"
         "ldr r3, [r4, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
