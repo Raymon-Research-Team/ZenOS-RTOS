@@ -223,8 +223,6 @@
 #if OS_HAS_VTOR
 # define OS_SCB_VTOR (*((volatile uint32_t*)(OS_SCB_BASE + 0x08UL)))
 #else
-/* Shadow only: devices without VTOR cannot be made relocatable by writing the
-   SCB address. The application/startup vector must provide the handlers. */
 static volatile uint32_t os_scb_vtor_shadow = 0UL;
 # define OS_SCB_VTOR os_scb_vtor_shadow
 #endif
@@ -276,6 +274,13 @@ static volatile uint32_t os_scb_vtor_shadow = 0UL;
 #endif
 #if defined(OS_BUILD)
 # define OS_PendSV_Handler OS_PendSV_Handler_legacy
+# if OS_SAFETY_MPU
+#  define os_mpu_init os_mpu_init_legacy
+#  define os_mpu_configure_task os_mpu_configure_task_legacy
+#  define os_mpu_add_region os_mpu_add_region_legacy
+#  define os_mpu_disable os_mpu_disable_legacy
+#  define os_mpu_enable os_mpu_enable_legacy
+# endif
 #endif
 #if !OS_HAS_PENDSV
 # error "ZenOS requires PendSV. Cortex-M0/M0+ (Armv6-M) has no PendSV; use a dedicated Armv6-M/SysTick port."
