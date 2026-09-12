@@ -82,10 +82,17 @@
  * Compile-time scheduler priority configuration
  *
  * OS_KERNEL_MAX_PRIORITIES is the number of scheduler priority slots.
- * Priority 0 is reserved; usable priorities are 1..OS_KERNEL_MAX_PRIORITIES-1.
+ * Priority 0 is reserved for the idle task and is the LOWEST priority.
+ * Usable priorities are 1..OS_KERNEL_MAX_PRIORITIES-1.
  *
- * Default: 32 slots (priorities 1..31).
- * Maximum: 256 slots (priorities 1..255).
+ * PRIORITY CONVENTION (matches CMSIS-RTOS2, FreeRTOS, ThreadX):
+ *   A LARGER number means a HIGHER priority.
+ *   OS_KERNEL_MAX_PRIORITIES-1 is the highest usable priority.
+ *   Priority 1 is the lowest usable (user) priority.
+ *   Priority 0 is the idle task and never runs while any user task is ready.
+ *
+ * Default: 32 slots (priorities 1..31, where 31 is highest).
+ * Maximum: 256 slots (priorities 1..255, where 255 is highest).
  */
 
 #ifndef OS_KERNEL_MAX_PRIORITIES
@@ -180,7 +187,7 @@
  *          NOTE: The ring buffer is RAM-only and lost on reset.
  *          Persist logs to non-volatile storage for production use. */
 #ifndef OS_MONITOR_ERROR_LOG
-#define OS_MONITOR_ERROR_LOG   1 // Default=0
+#define OS_MONITOR_ERROR_LOG   1 // Default=1
 #endif
 
 /* Error log capacity (number of entries)

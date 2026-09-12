@@ -3,8 +3,11 @@
  * @brief   ZenOS RTOS — Configurable priority bitmap scheduler & task management
  *
  * Extracted from ZenOS.cpp as part of the modular split.
- * Priority slots are configured by OS_KERNEL_MAX_PRIORITIES (2..256), with
- * priority 0 reserved and usable priorities 1..OS_KERNEL_MAX_PRIORITIES-1.
+ * Priority slots are configured by OS_KERNEL_MAX_PRIORITIES (2..256).
+ * PRIORITY CONVENTION (CMSIS-RTOS2 / FreeRTOS / ThreadX): a LARGER number
+ * means a HIGHER priority.  Priority 0 is the idle task (lowest); usable
+ * priorities are 1..OS_KERNEL_MAX_PRIORITIES-1, and
+ * OS_KERNEL_MAX_PRIORITIES-1 is the highest priority.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
  * @version 1.0.1
@@ -125,8 +128,6 @@ static uint32_t os_rr_skip = 0;
 static uint32_t os_rr_skip = 0;
 static uint32_t os_rr_skip_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
 #endif
-static uint32_t os_rr_skip_quota = 0;
-
 /* Reset all scheduler-owned priority state. Kept here so os_init() can reset
    extension storage without exposing the static RR arrays as globals. */
 extern "C" void os_priority_queues_init(void) {
@@ -444,42 +445,73 @@ TCB* os_find_task_by_id(uint8_t id) {
     return nullptr;
 }
 
+/* Stop a task: revoke its eligibility to run without destroying it.
+ *
+ * Semantics (matching CMSIS-RTOS2 osThreadSuspend / FreeRTOS vTaskSuspend):
+ *   - The TCB, stack and all scheduling state are preserved.
+ *   - When os_task_start() is called the task continues from exactly the
+ *     point where it stopped; its BLOCKED-wait state is preserved too, so
+ *     a task suspended while waiting on an event resumes waiting on that
+ *     same event rather than restarting from its entry point.
+ *
+ * Preconditions:
+ *   - t must not be the idle task (the kernel needs idle to run).
+ *   - A READY/RUNNING task is removed from the ready set and marked
+ *     SUSPENDED; if it is the current task a context switch is forced so
+ *     it stops immediately.  A BLOCKED task is marked SUSPENDED in place
+ *     so the wakeup path (event signal / timeout) does not silently make
+ *     it READY again while stopped. */
 extern "C" void os_task_stop(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = os_find_task_by_entry(entry);
     if (t && t != &idle_tcb) {
-        os_pq_remove(t);
-        if (t->state == TaskState::BLOCKED && blocked_count > 0) {
-            uint32_t tmp, res;
-            __asm volatile(
-                "1: ldrex %0, [%2]\n"
-                "   cmp   %0, #0\n"
-                "   beq   2f\n"
-                "   subs  %0, %0, #1\n"
-                "   strex %1, %0, [%2]\n"
-                "   cmp   %1, #0\n"
-                "   bne   1b\n"
-                "2:\n"
-                : "=&r"(tmp), "=&r"(res)
-                : "r"(&blocked_count)
-                : "memory", "cc"
-            );
+        TaskState st = t->state;
+        if (st == TaskState::READY || st == TaskState::RUNNING) {
+            os_pq_remove(t);
+            t->state = TaskState::SUSPENDED;
+            if (t == current_task) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
+        } else if (st == TaskState::BLOCKED) {
+            /* Keep blocking_on/block_timeout intact so start() can resume
+               the same wait; just revoke eligibility. */
+            t->state = TaskState::SUSPENDED;
         }
-        t->state = TaskState::INACTIVE;
-        t->delay_ticks = 0;
-        t->blocking_on = nullptr;
-        t->block_timeout = 0;
-        if (t == current_task) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
     }
     os_critical_exit(cs);
 }
 
+/* Start (resume) a task previously stopped with os_task_stop().
+ *
+ * Semantics:
+ *   - Re-queues the task at its current (possibly PI-boosted) priority and
+ *     refreshes next_run_time so the period gate accepts it at once.
+ *   - If the task was stopped while BLOCKED, it returns to BLOCKED and keeps
+ *     waiting on the same object with its remaining timeout rather than
+ *     being made READY prematurely.
+ *   - A no-op for tasks that are not SUSPENDED, so start() cannot
+ *     double-queue a task.  A task that was never stopped is untouched.
+ *   - Also revives a task whose entry function returned / that was left
+ *     INACTIVE, by re-initialising its stack (first start or restart). */
 extern "C" void os_task_start(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = os_find_task_by_entry(entry);
-    if (t && t->state == TaskState::INACTIVE) {
-        os_reset_task_internal(t);
-        t->wdg_retries = 0;
+    if (t && t != &idle_tcb) {
+        if (t->state == TaskState::SUSPENDED) {
+            if (t->blocking_on != nullptr) {
+                /* Was blocked when stopped — restore the wait.  The
+                   timeout still counts down via block_timeout. */
+                t->state = TaskState::BLOCKED;
+            } else {
+                t->state = TaskState::READY;
+                t->next_run_time = tick_count;
+                t->last_yield_tick = tick_count;
+                os_pq_add(t);
+            }
+        } else if (t->state == TaskState::INACTIVE) {
+            /* First start, or restart after the entry function returned /
+               the task was killed.  Reset stack + scheduling state. */
+            os_reset_task_internal(t);
+            t->wdg_retries = 0;
+        }
         OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
     }
     os_critical_exit(cs);

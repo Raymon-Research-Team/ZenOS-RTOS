@@ -73,6 +73,31 @@
 #define OS_TICKS_PER_MS   (1000UL / OS_KERNEL_TICK_PERIOD_US)
 #define OS_WAIT_FOREVER   0xFFFFFFFFUL
 
+/* Forward declarations required by the deadline helpers below.  The real
+ * definitions live in ZenOS.cpp / ZenOS_Scheduler.cpp; only the
+ * declarations must be visible here so the inline helpers compile. */
+extern volatile uint32_t tick_count;
+uint32_t os_ms_to_ticks(uint32_t ms);
+
+/* Absolute-deadline wait helper for the OS_QUEUE / OS_SEMAPHORE retry loops.
+ * A naive "while (...) wait(timeout_ms)" restarts the full timeout on every
+ * iteration, so a contended object can block for N x timeout_ms.  Convert
+ * once to an absolute tick deadline (wrap-safe signed compare) and derive
+ * the remaining ms each iteration instead.  Defined here (not in
+ * ZenOS_Internal.hpp) because the OS_QUEUE/OS_SEMAPHORE templates below need
+ * the declaration at parse time. */
+inline uint32_t os_deadline_from_ms(uint32_t timeout_ms) {
+    if (timeout_ms == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
+    return tick_count + os_ms_to_ticks(timeout_ms);
+}
+
+inline uint32_t os_deadline_remaining_ms(uint32_t deadline_tick) {
+    if (deadline_tick == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
+    int32_t remain = (int32_t)(deadline_tick - tick_count);
+    if (remain <= 0) return 0;
+    return (uint32_t)remain / OS_TICKS_PER_MS + 1;
+}
+
 
 /* ============================================================================
  *  Interrupt Helpers (inline — zero overhead)
@@ -122,7 +147,10 @@ void os_delay_ms(uint32_t ms);
 void os_delay_us(uint32_t us);
 void os_yield(void);
 
-/* Task Management */
+/* Task Management — stop/start are non-destructive suspend/resume.
+ * os_task_stop() revokes eligibility to run but preserves the TCB, stack
+ * and any in-progress wait; os_task_start() resumes from that exact point.
+ * Equivalent to CMSIS-RTOS2 osThreadSuspend/osThreadResume. */
 void os_task_stop(void(*entry)(void));
 void os_task_start(void(*entry)(void));
 uint16_t os_get_task_count(void);
@@ -186,13 +214,29 @@ enum class OSError : uint8_t {
 };
 
 
-/* ── Task State ── */
-
+/* ── Task State ──
+ *
+ * IMPORTANT: the numeric values of READY (1) and RUNNING (2) are
+ * hard-coded in the naked PendSV context-switch assembly
+ * ("cmp r2, #2" tests RUNNING, "movs r2, #1" writes READY).
+ * Do NOT reorder or renumber INACTIVE..BLOCKED.  SUSPENDED and DELETED
+ * are appended AFTER BLOCKED so the assembly offsets stay valid.
+ *
+ * Kernel invariants (see docs/ARCHITECTURE.md):
+ *   - At most ONE task may be RUNNING at any time (current_task).
+ *   - A DELETED or INACTIVE task must not be linked in any priority queue.
+ *   - A BLOCKED task never consumes CPU and is never in a priority queue.
+ *   - A READY task appears in exactly one priority queue, once.
+ *   - A SUSPENDED task appears in no queue; os_task_start() returns it to
+ *     READY (or back to BLOCKED if it was blocked when stopped).
+ */
 enum class TaskState : uint8_t {
-    INACTIVE = 0,
-    READY,
-    RUNNING,
-    BLOCKED
+    INACTIVE  = 0,   /* not yet started, or restartable via os_task_start  */
+    READY     = 1,   /* in a priority queue, eligible to run               */
+    RUNNING   = 2,   /* currently executing on the CPU (current_task)      */
+    BLOCKED   = 3,   /* waiting on an event/mutex/timeout; not queued      */
+    SUSPENDED = 4,   /* stopped via os_task_stop(); not eligible until start*/
+    DELETED   = 5    /* terminated; never scheduled again until recreated   */
 };
 
 
@@ -666,6 +710,11 @@ public:
     bool put(const T& item) { return put(item, OS_WAIT_FOREVER); }
 
     bool put(const T& item, uint32_t timeout_ms) {
+        /* Absolute deadline: a naive per-iteration wait(timeout_ms) restarts
+           the full timeout on every wakeup, so under contention the call can
+           block for N x timeout_ms.  Convert once, then pass only the
+           remaining time to each wait(). */
+        uint32_t deadline = os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count < Capacity) {
@@ -676,7 +725,9 @@ public:
                     return true;
                 }
             }
-            if (!not_full.wait(timeout_ms)) return false;
+            uint32_t remain = os_deadline_remaining_ms(deadline);
+            if (remain == 0) return false;
+            if (!not_full.wait(remain)) return false;
         }
     }
 
@@ -694,6 +745,7 @@ public:
     bool get(T& item) { return get(item, OS_WAIT_FOREVER); }
 
     bool get(T& item, uint32_t timeout_ms) {
+        uint32_t deadline = os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count > 0) {
@@ -704,7 +756,9 @@ public:
                     return true;
                 }
             }
-            if (!not_empty.wait(timeout_ms)) return false;
+            uint32_t remain = os_deadline_remaining_ms(deadline);
+            if (remain == 0) return false;
+            if (!not_empty.wait(remain)) return false;
         }
     }
 
@@ -741,14 +795,17 @@ public:
         : count(initial), max_count(max ? max : 0xFFFFFFFFUL) {}
     ~OS_SEMAPHORE() {} // OS_EVENT destructor auto-destroys event
 
-    bool wait() { return wait(OS_WAIT_FOREVER); }
-
-    bool wait(uint32_t timeout_ms) {
+    bool wait(uint32_t timeout_ms = OS_WAIT_FOREVER) {
+        /* Absolute deadline so a contended semaphore cannot extend the
+           total wait to N x timeout_ms across loop iterations. */
+        uint32_t deadline = os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count > 0) { count--; return true; }
             }
-            if (!has_count.wait(timeout_ms)) return false;
+            uint32_t remain = os_deadline_remaining_ms(deadline);
+            if (remain == 0) return false;
+            if (!has_count.wait(remain)) return false;
         }
     }
 

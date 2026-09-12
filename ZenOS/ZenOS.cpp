@@ -156,7 +156,7 @@ extern "C" void os_yield(void) {
         "beq   1f\n"
         "ldr   r2, =tick_count\n"
         "ldr   r2, [r2]\n"
-        "str   r2, [r1, #48]\n"
+        "str   r2, [r1, #" OS_STR(OS_OFF_LAST_YIELD_TICK) "]\n"
         "1:\n"
         "msr   PRIMASK, r0\n"
         "ldr   r0, =0xE000ED04\n"
@@ -426,6 +426,13 @@ extern "C" void os_init(void) {
 #if OS_SAFETY_MPU
     os_mpu_init();
 #endif
+#if OS_SAFETY_CRC_CHECK
+    /* Capture the expected code-image CRC at boot so os_crc_check_step()
+       (called from the idle task) has a valid reference.  Without this
+       call the checker compared against a zero baseline and reported a
+       false CRC fault on the first idle iteration. */
+    os_crc_init();
+#endif
 }
 
 
@@ -470,7 +477,11 @@ void os_time_sample(void) {
 extern "C" void os_start(void) {
     idle_tcb.id = 255; idle_tcb.name = "idle"; idle_tcb.entry = os_idle_task;
     idle_tcb.priority = 0; idle_tcb.state = TaskState::READY;
-    idle_tcb.stack_base = idle_stack; idle_tcb.stack_size = 64;
+    /* Use the configured idle stack size, NOT a hardcoded 64, so that
+       changing OS_IDLE_STACK_WORDS in ZenOS_Config.hpp/Port.hpp actually
+       takes effect.  A mismatch here would make os_stack_check_all()
+       report the idle task as overflowing (or under-check it). */
+    idle_tcb.stack_base = idle_stack; idle_tcb.stack_size = OS_IDLE_STACK_WORDS;
     idle_tcb.period_ticks = 0; idle_tcb.next_run_time = 0;
     idle_tcb.delay_ticks = 0; idle_tcb.blocking_on = nullptr;
     idle_tcb.block_timeout = 0; idle_tcb.wait_result = 0;
@@ -698,11 +709,16 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         /* FPU restore: check EXC_RETURN bit 4 for new task */
         "tst lr, #0x10\n"
         "bne 10f\n"
-        /* r0 = &s16.  FPSCR is at r0+68 (after 16 FP regs = 64 bytes + 4).
-           Load FPSCR first, then S16-S31, then skip FPSCR word. */
-        "mov  r2, r0\n"
-        "ldr  r2, [r2, #68]\n"
+        /* r0 = &s16.  The save side pushed S16-S31 first, then FPSCR
+           ("str r2, [r0, #-4]!"), so the stack image low->high is
+           [s16..s31][fpscr].  FPSCR therefore sits at r0+64, NOT r0+68.
+           Reading r0+68 would load 4 bytes past the saved FPSCR into
+           S16's slot (garbage) and restore a corrupted FPSCR. */
+        "ldr  r2, [r0, #64]\n"
         "vmsr fpscr, r2\n"
+        /* ISB: FPSCR writes affect subsequent FP instruction behavior and
+           must complete before S16-S31 are reloaded / task resumes. */
+        "isb\n"
         "vldmia r0!, {s16-s31}\n"
         "add  r0, r0, #4\n"  /* skip past the saved fpscr word */
         "10:\n"

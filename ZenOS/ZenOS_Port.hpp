@@ -64,7 +64,7 @@
     #define OS_NVIC_PRIO_BITS   2
     #define OS_CRC_BASE_ADDR    0x40023000UL
     #define OS_IWDG_BASE_ADDR   0x40003000UL
-    #define OS_RCC_CSR_ADDR     0x40021000UL /* G0 uses CR/CSR/BDCR */
+    #define OS_RCC_CSR_ADDR     0x40021094UL /* G0 RCC_CSR @ base 0x40021000 + 0x94 */
 
 /* ── Cortex-M3 (ARMv7-M) ──────────────────────────────
  * No FPU, optional MPU (M3), Thumb-2, BASEPRI available. */
@@ -182,7 +182,7 @@
     #define OS_HAS_FPU_HW       1   /* H743/H750 have double-precision FPU */
     #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x200000UL   /* 2MB (H743) */
-    #define OS_RAM_SIZE         0x40000UL    /* 1MB total DTCM+AXI */
+    #define OS_RAM_SIZE         0x40000UL    /* 256KB typical (H743 = 1MB across DTCM+AXI+SRAM1-4) */
     #define OS_NVIC_PRIO_BITS   4
     #define OS_CRC_BASE_ADDR    0x58024C00UL /* H7 uses AHB4 bus */
     #define OS_IWDG_BASE_ADDR   0x58004800UL /* H7 uses APB4 bus */
@@ -278,6 +278,25 @@
 #endif
 
 #define OS_SMP_MAX_CORES 2
+
+/* ═══════════════ RCC Reset-Flag Bit Positions ═══════════════
+ * os_get_hw_wdg_reset_count() must read the IWDG reset flag and clear
+ * all reset flags using the RCC_CSR layout of the *current* family.  The
+ * bit positions are NOT identical across STM32 series:
+ *
+ *   Family group          IWDGRSTF  RMVF
+ *   F0/F1/F2/F3/F4/F7/L0/L1/L4/L5/U5/WB/WBA/G4   29   24
+ *   G0/L5(alt)/U5(alt)    — see RM (G0 CSR @ +0x94, bits differ)
+ *   H7                    — RCC_CSR layout differs (bit 29 still IWDGRSTF)
+ *
+ * Default to the classic 29/24 pair (correct for the vast majority of
+ * families) and allow a project to override with -D. */
+#ifndef OS_RCC_IWDGRSTF_BIT
+    #define OS_RCC_IWDGRSTF_BIT   29U
+#endif
+#ifndef OS_RCC_RMVF_BIT
+    #define OS_RCC_RMVF_BIT       24U
+#endif
 
 /* ═══════════════ Architecture Constants ═══════════════ */
 #define OS_STACK_CANARY      0xDEADBEEFUL
@@ -393,10 +412,12 @@
     /* No CMSIS header: fall back to family-level default */
 #endif
 
-/* VTOR: present on all ARMv7-M+ (Cortex-M3+), absent on ARMv6-M (M0/M0+) */
+/* VTOR: present on all ARMv7-M+ (Cortex-M3+), absent on ARMv6-M (M0/M0+).
+ * __VTOR_PRESENT from the CMSIS device header is authoritative when present.
+ * ARMv8-M Baseline (Cortex-M23) DOES have VTOR, so only ARMv6-M lacks it. */
 #if defined(__VTOR_PRESENT)
     #define OS_HAS_VTOR ((__VTOR_PRESENT) != 0U)
-#elif defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_BASE__)
+#elif defined(__ARM_ARCH_6M__)
     #define OS_HAS_VTOR 0
 #else
     #define OS_HAS_VTOR 1
@@ -500,29 +521,37 @@
  * The MPU implementation in ZenOS_Safety.cpp uses the ARMv7-M layout
  * by default.  When targeting ARMv8-M (M23/M33), enable OS_MPU_PMSAv8
  * in your project defines or let the architecture detection set it. */
+/* Authoritative layout follows ARM CMSIS (core_cm3.h / core_cm23.h /
+ * core_cm33.h).  EVERY MPU block begins with the read-only TYPE register
+ * at offset 0x00; CTRL is therefore at 0x04, RNR at 0x08, RBAR at 0x0C
+ * and RASR/RLAR at 0x10.  Omitting TYPE shifts every member down by 4
+ * bytes, so OS_MPU_BASE->CTRL would read MPU_TYPE and any write intended
+ * for a later register lands in reserved SCS space (0xE000EDF8) — an
+ * imprecise buffered write that escalates to a HardFault on every core.
+ *
+ * PMSAv8 has NO SFSR/SFAR inside the MPU; those registers belong to the
+ * Security Attribution Unit (SAU) at SCS_BASE + 0x0DD0, not the MPU. */
 #if defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
     #define OS_MPU_PMSAv8  1
     #define OS_MPU_PMSAv7  0
-    /* PMSAv8 MPU register layout */
+    /* PMSAv8 MPU register layout (ARMv8-M, Cortex-M23/M33) */
     typedef struct {
-        volatile uint32_t CTRL;
-        volatile uint32_t RNR;
-        volatile uint32_t RBAR;
-        volatile uint32_t RLAR;   /* PMSAv8 uses RLAR, not RASR */
-        volatile uint32_t RBAR_Alt;
-        volatile uint32_t RLAR_Alt;
-        volatile uint32_t SFSR;
-        volatile uint32_t SFAR;
+        volatile uint32_t TYPE;   /* 0x00 RO  MPU Type Register        */
+        volatile uint32_t CTRL;   /* 0x04 RW  MPU Control Register     */
+        volatile uint32_t RNR;    /* 0x08 RW  MPU Region Number        */
+        volatile uint32_t RBAR;   /* 0x0C RW  MPU Region Base Address  */
+        volatile uint32_t RLAR;   /* 0x10 RW  MPU Region Limit Address */
     } OS_MPU_Type;
 #else
     #define OS_MPU_PMSAv8  0
     #define OS_MPU_PMSAv7  1
-    /* PMSAv7 MPU register layout */
+    /* PMSAv7 MPU register layout (ARMv7-M, Cortex-M3/M4/M7) */
     typedef struct {
-        volatile uint32_t CTRL;
-        volatile uint32_t RNR;
-        volatile uint32_t RBAR;
-        volatile uint32_t RASR;
+        volatile uint32_t TYPE;   /* 0x00 RO  MPU Type Register                    */
+        volatile uint32_t CTRL;   /* 0x04 RW  MPU Control Register                 */
+        volatile uint32_t RNR;    /* 0x08 RW  MPU Region Number Register           */
+        volatile uint32_t RBAR;   /* 0x0C RW  MPU Region Base Address Register     */
+        volatile uint32_t RASR;   /* 0x10 RW  MPU Region Attribute & Size Register */
     } OS_MPU_Type;
 #endif
 #define OS_MPU_BASE ((OS_MPU_Type*)0xE000ED90UL)

@@ -29,7 +29,11 @@ extern "C" void os_event_register(ECB* e) {
     int16_t id;
     for (uint32_t attempt = 0; attempt < 32768; attempt++) {
         id = os_event_next_id++;
-        if (os_event_next_id > 32767) os_event_next_id = 0;
+        /* os_event_next_id is int16_t: 32767 is INT16_MAX, so "++" wraps
+           to -32768 (UB) before any > 32767 test could fire.  Compare
+           against INT16_MAX - 1 so the increment never overflows, and
+           wrap back to 0 once the top of the range is reached. */
+        if (os_event_next_id >= 32767) os_event_next_id = 0;
         /* Check if this ID is already in use */
         bool in_use = false;
         for (ECB* cur = event_list; cur; cur = cur->next) {

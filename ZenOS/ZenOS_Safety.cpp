@@ -417,12 +417,15 @@ extern "C" void os_hw_watchdog_check(void) {
 }
 
 extern "C" uint32_t os_get_hw_wdg_reset_count(void) {
-    /* Check RCC CSR for IWDG reset flag using port-level macro */
+    /* Check RCC CSR for the IWDG reset flag using the port-level address AND
+       the port-level bit positions (OS_RCC_IWDGRSTF_BIT / OS_RCC_RMVF_BIT).
+       The RCC_CSR layout is not identical on every STM32 series, so both the
+       address (OS_RCC_CSR_ADDR) and the flag bits must come from the port. */
     uint32_t csr = *((volatile uint32_t*)OS_RCC_CSR_ADDR);
-    if (csr & (1UL << 29)) {  /* IWDGUSRSTF */
+    if (csr & (1UL << OS_RCC_IWDGRSTF_BIT)) {
         hw_wdg_reset_count_var++;
-        /* Clear flag by writing RMVF (bit 24) */
-        *((volatile uint32_t*)OS_RCC_CSR_ADDR) |= (1UL << 24);
+        /* Clear all reset flags by writing RMVF */
+        *((volatile uint32_t*)OS_RCC_CSR_ADDR) |= (1UL << OS_RCC_RMVF_BIT);
     }
     return hw_wdg_reset_count_var;
 }
@@ -553,9 +556,27 @@ extern "C" uint32_t os_get_crc_error_count(void) { return 0; }
 static void os_mpu_set_region(uint8_t region, uint32_t base,
                               uint32_t size_bytes, uint32_t ap, bool xn) {
     if (region >= OS_MPU_MAX_REGIONS) return;
-    /* RASR SIZE field = log2(region_size) - 1 (region = 2^(SIZE+1) bytes) */
-    uint32_t size_log = 4;
-    while ((1UL << (size_log + 1)) < size_bytes && size_log < 31) size_log++;
+
+    /* PMSAv7 rules (ARMv7-M ARM, B3.5.1 / MPU_RASR.SIZE):
+     *   - region size must be a power of two, minimum 32 bytes;
+     *   - SIZE field = log2(size) - 1, so SIZE=4 => 32 bytes ... SIZE=31 => 4 GB;
+     *   - the base address MUST be aligned to the region size.
+     *
+     * The previous code started size_log at 4 and looped while
+     * (1 << (size_log+1)) < size_bytes, which: (a) never rejected a
+     * non-power-of-two size, and (b) never validated base alignment,
+     * so small/misaligned regions silently became wrong or disabled. */
+    if (size_bytes < 32) size_bytes = 32;
+    /* Round UP to the next power of two (2^(size_log+1) >= size_bytes). */
+    uint32_t size_log = 4;                       /* 32 bytes */
+    while (size_log < 31 && ((1UL << (size_log + 1)) < size_bytes))
+        size_log++;
+    uint32_t region_size = 1UL << (size_log + 1);
+    if (region_size < size_bytes) return;        /* > 4 GB, cannot encode */
+    if ((base & (region_size - 1)) != 0) {       /* base must be aligned */
+        os_report_error(OSError::PRIORITY_CONFLICT);
+        return;
+    }
     OS_MPU_BASE->RNR  = region;
     OS_MPU_BASE->RBAR = base;
     OS_MPU_BASE->RASR = (1UL << MPU_RASR_ENABLE_Pos) |
