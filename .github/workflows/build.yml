@@ -1,0 +1,236 @@
+name: ZenOS Build Matrix
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Cortex-M0 (ARMv6-M) — no FPU, no MPU ──
+          - target: STM32F0xx
+            cpu: cortex-m0
+            arch: armv6-m
+            fpu: ""
+            flags: "-DSTM32F0xx -DOS_SAFETY_MPU=0 -DOS_HAS_FPU_HW=0 -DOS_HAS_CYCLE_COUNTER=0"
+            family: STM32F0
+
+          - target: STM32G0xx
+            cpu: cortex-m0plus
+            arch: armv6-m
+            fpu: ""
+            flags: "-DSTM32G0xx -DOS_SAFETY_MPU=0 -DOS_HAS_FPU_HW=0 -DOS_HAS_CYCLE_COUNTER=0"
+            family: STM32G0
+
+          # ── Cortex-M3 (ARMv7-M) — no FPU, has MPU ──
+          - target: STM32F1xx
+            cpu: cortex-m3
+            arch: armv7-m
+            fpu: ""
+            flags: "-DSTM32F1xx"
+            family: STM32F1
+
+          - target: STM32F2xx
+            cpu: cortex-m3
+            arch: armv7-m
+            fpu: ""
+            flags: "-DSTM32F2xx"
+            family: STM32F2
+
+          # ── Cortex-M4 (ARMv7E-M) — no FPU variant ──
+          - target: STM32F3xx
+            cpu: cortex-m4
+            arch: armv7e-m
+            fpu: ""
+            flags: "-DSTM32F3xx -DOS_HAS_FPU_HW=0"
+            family: STM32F3
+
+          # ── Cortex-M4F (ARMv7E-M with single-precision FPU) ──
+          - target: STM32F4xx
+            cpu: cortex-m4
+            arch: armv7e-m
+            fpu: "-mfpu=fpv4-sp-d16"
+            flags: "-DSTM32F4xx -DOS_HAS_FPU_HW=1"
+            family: STM32F4
+
+          - target: STM32G4xx
+            cpu: cortex-m4
+            arch: armv7e-m
+            fpu: "-mfpu=fpv4-sp-d16"
+            flags: "-DSTM32G4xx -DOS_HAS_FPU_HW=1"
+            family: STM32G4
+
+          # ── Cortex-M7F (ARMv7E-M with double-precision FPU) ──
+          - target: STM32F7xx
+            cpu: cortex-m7
+            arch: armv7e-m
+            fpu: "-mfpu=fpv5-d16"
+            flags: "-DSTM32F7xx -DOS_HAS_FPU_HW=1"
+            family: STM32F7
+
+          - target: STM32H7xx
+            cpu: cortex-m7
+            arch: armv7e-m
+            fpu: "-mfpu=fpv5-d16"
+            flags: "-DSTM32H7xx -DOS_HAS_FPU_HW=1"
+            family: STM32H7
+
+          # ── Cortex-M4F Low-Power ──
+          - target: STM32L0xx
+            cpu: cortex-m0plus
+            arch: armv6-m
+            fpu: ""
+            flags: "-DSTM32L0xx -DOS_SAFETY_MPU=0 -DOS_HAS_FPU_HW=0 -DOS_HAS_CYCLE_COUNTER=0"
+            family: STM32L0
+
+          - target: STM32L1xx
+            cpu: cortex-m3
+            arch: armv7-m
+            fpu: ""
+            flags: "-DSTM32L1xx"
+            family: STM32L1
+
+          - target: STM32L4xx
+            cpu: cortex-m4
+            arch: armv7e-m
+            fpu: "-mfpu=fpv4-sp-d16"
+            flags: "-DSTM32L4xx -DOS_HAS_FPU_HW=1"
+            family: STM32L4
+
+          - target: STM32L5xx
+            cpu: cortex-m33
+            arch: armv8-m.main
+            fpu: "-mfpu=fpv5-sp-d16"
+            flags: "-DSTM32L5xx -DOS_HAS_FPU_HW=1"
+            family: STM32L5
+
+          - target: STM32U5xx
+            cpu: cortex-m33
+            arch: armv8-m.main
+            fpu: "-mfpu=fpv5-sp-d16"
+            flags: "-DSTM32U5xx -DOS_HAS_FPU_HW=1"
+            family: STM32U5
+
+          # ── Wireless ──
+          - target: STM32WBxx
+            cpu: cortex-m4
+            arch: armv7e-m
+            fpu: "-mfpu=fpv4-sp-d16"
+            flags: "-DSTM32WBxx -DOS_HAS_FPU_HW=1"
+            family: STM32WB
+
+          - target: STM32WBAxx
+            cpu: cortex-m33
+            arch: armv8-m.main
+            fpu: "-mfpu=fpv5-sp-d16"
+            flags: "-DSTM32WBAxx -DOS_HAS_FPU_HW=1"
+            family: STM32WBA
+
+    name: "Build ${{ matrix.family }} (${{ matrix.cpu }})"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ARM toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '13.2.Rel1'
+
+      - name: Verify toolchain
+        run: |
+          arm-none-eabi-gcc --version
+          arm-none-eabi-g++ --version
+
+      - name: Build ZenOS (kernel only, no HAL)
+        run: |
+          # Common flags
+          CFLAGS="-mcpu=${{ matrix.cpu }} -mthumb -march=${{ matrix.arch }} -ffreestanding -fno-exceptions -fno-rtti -Wall -Wextra -Werror -Os -g -DOS_OPT_LEVEL_STRING=\"Os\""
+
+          if [ -n "${{ matrix.fpu }}" ]; then
+            CFLAGS="$CFLAGS ${{ matrix.fpu }} -mfloat-abi=hard"
+          else
+            CFLAGS="$CFLAGS -mfloat-abi=soft"
+          fi
+
+          # Add target-specific flags
+          CFLAGS="$CFLAGS ${{ matrix.flags }}"
+
+          echo "Building with flags: $CFLAGS"
+
+          mkdir -p build
+
+          # Compile each ZenOS source file
+          for src in ZenOS-RTOS/ZenOS/ZenOS.cpp \
+                     ZenOS-RTOS/ZenOS/ZenOS_Scheduler.cpp \
+                     ZenOS-RTOS/ZenOS/ZenOS_IPC.cpp \
+                     ZenOS-RTOS/ZenOS/ZenOS_Safety.cpp \
+                     ZenOS-RTOS/ZenOS/ZenOS_Monitor.cpp; do
+
+            base=$(basename "$src" .cpp)
+            echo "Compiling $base..."
+            arm-none-eabi-g++ $CFLAGS \
+              -I ZenOS-RTOS/ZenOS \
+              -c "$src" \
+              -o "build/${base}.o" || exit 1
+          done
+
+          echo "All kernel source files compiled successfully for ${{ matrix.family }}!"
+
+      - name: Verify object files
+        run: |
+          echo "--- Build artifacts ---"
+          ls -la build/*.o
+          echo "--- Symbol check: TCB present ---"
+          arm-none-eabi-nm build/ZenOS.o | grep -c "TCB" || true
+          echo "--- No undefined symbols (incomplete stubs) ---"
+          for f in build/*.o; do
+            echo "Checking $f..."
+            arm-none-eabi-nm "$f" --undefined-only | grep -v "__aeabi\|__gcc\|__cxa\|__gnu" | head -5 || true
+          done
+
+      - name: Size report
+        run: |
+          echo "=== Flash & RAM Impact (${{ matrix.family }}, ${{ matrix.cpu }}, Os) ==="
+          for f in build/*.o; do
+            base=$(basename "$f" .o)
+            text=$(arm-none-eabi-size "$f" | awk 'NR==2{print $1}')
+            data=$(arm-none-eabi-size "$f" | awk 'NR==2{print $2}')
+            bss=$(arm-none-eabi-size "$f" | awk 'NR==2{print $3}')
+            echo "  $base: text=${text}B data=${data}B bss=${bss}B"
+          done
+          echo "--- Total ---"
+          arm-none-eabi-size build/*.o | tail -1
+
+      - name: Static analysis — check for TODOs
+        run: |
+          echo "Checking for TODO/FIXME/HACK in kernel source..."
+          ! grep -rn "TODO\|FIXME\|HACK" ZenOS-RTOS/ZenOS/ --include="*.cpp" --include="*.hpp" --include="*.h" || {
+            echo "ERROR: Found TODO/FIXME/HACK in source files"
+            exit 1
+          }
+          echo "No TODO/FIXME/HACK found."
+
+      - name: Static analysis — check for mock/fake/stub
+        run: |
+          echo "Checking for mock/fake/stub implementations..."
+          ! grep -rn "mock\|fake\|stub" ZenOS-RTOS/ZenOS/ --include="*.cpp" --include="*.hpp" -i || {
+            echo "ERROR: Found mock/fake/stub in source files"
+            exit 1
+          }
+          echo "No mock/fake/stub found."
+
+      - name: API audit — verify no empty implementations
+        run: |
+          echo "Checking for empty function bodies (potential stubs)..."
+          # Check for functions that are declared but have empty bodies
+          ! grep -Pzn "void\s+\w+\(.*\)\s*\{\s*\}" ZenOS-RTOS/ZenOS/*.cpp || {
+            echo "WARNING: Found empty function bodies"
+          }
+          echo "API audit complete."

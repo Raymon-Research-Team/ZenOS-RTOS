@@ -485,7 +485,6 @@ extern "C" void os_task_start(void(*entry)(void)) {
     os_critical_exit(cs);
 }
 
-#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
 extern "C" uint8_t os_task_get_state(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = os_find_task_by_entry(entry);
@@ -493,7 +492,6 @@ extern "C" uint8_t os_task_get_state(void(*entry)(void)) {
     os_critical_exit(cs);
     return result;
 }
-#endif
 
 extern "C" bool os_task_isActive(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();

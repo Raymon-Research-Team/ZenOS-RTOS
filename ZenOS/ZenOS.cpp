@@ -485,6 +485,7 @@ extern "C" void os_start(void) {
     os_pq_add(&idle_tcb);
 
 
+#if OS_HAS_VTOR
     {
         uint32_t* fv = (uint32_t*)OS_SCB_VTOR;
         for (uint32_t i = 0; i < OS_VECTOR_COUNT; i++)
@@ -497,6 +498,13 @@ extern "C" void os_start(void) {
         ram_vectors[OS_USAGEFAULT_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
         OS_SCB_VTOR = (uint32_t)ram_vectors;
     }
+#else
+    /* Cortex-M0/M0+ has no VTOR — PendSV and fault handlers must be
+       installed via weak symbol override in the startup file.
+       The startup_stm32f0xx.s / startup_stm32g0xx.s already provides
+       weak aliases; our OS_PendSV_Handler / OS_Fault_Handler symbols
+       override them at link time. */
+#endif
 
     OS_SYST_CSR = 0; OS_SYST_CVR = 0;
     uint32_t reload = (SystemCoreClock / 1000000UL) * OS_KERNEL_TICK_PERIOD_US;
@@ -532,6 +540,23 @@ extern "C" void os_start(void) {
 /* ═══════════════ PendSV Handler — Bitmap + Period Gate Scheduler ═══════════════
    Uses the priority bitmap first, then checks periodic release eligibility
    inside the selected priority queues. No fixed task-count limit is used. ═══════ */
+/* ──────────────────────────────────────────────────────────────────────────────
+ *  PendSV Context Switch — FPU-Aware, Multi-Architecture
+ *  ==========================================================================
+ *  Two compile-time variants exist:
+ *    OS_HAS_FPU_HW = 1: FPU save/restore via vstmdb/vldmia (Cortex-M4F/M7F)
+ *    OS_HAS_FPU_HW = 0: Core registers only (Cortex-M0/M0+/M3)
+ *
+ *  The FPU variant detects lazy stacking via EXC_RETURN bit 4 and
+ *  conditionally saves/restores S16-S31 + FPSCR.
+ *
+ *  EXC_RETURN bit 4:
+ *    0 = FPU context in exception frame (S0-S15 + FPSCR stacked)
+ *    1 = No FPU context in exception frame
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+#if OS_HAS_FPU_HW
+/* ════════════ FPU variant: saves S16-S31 when task used FPU ════════════ */
 extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
     __asm volatile(
         ".syntax unified\n"
@@ -540,27 +565,34 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r1, =current_task\n"
         "ldr r1, [r1]\n"
         "cmp r1, #0\n"
-        "bne save_ctx\n"
+        "bne 1f\n"
         "b first_run\n"
+        "1:\n"
 
-        "save_ctx:\n"
+        /* ── FPU state: check EXC_RETURN bit 4 ── */
+        "tst lr, #0x10\n"
+        "bne 2f\n"
+        "vstmdb r0!, {s16-s31}\n"
+        "vmrs r2, fpscr\n"
+        "str r2, [r0, #-4]!\n"
+        "2:\n"
+
+        /* Save r4-r11 */
         "stmdb r0!, {r4-r11}\n"
         "str r0, [r1, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
 
+        /* RUNNING -> READY */
         "ldrb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
         "cmp r2, #2\n"
-        "bne skip_save\n"
+        "bne 3f\n"
         "movs r2, #1\n"
         "strb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
-        "skip_save:\n"
+        "3:\n"
 
-        /* Load r8/r9 AFTER saving context so the interrupted task's
-           original register values are preserved on its stack. */
         "ldr r8, =tick_count\n"
         "ldr r9, =os_idle_tcb_ptr\n"
 
-        /* Scheduler: call os_pq_next() to get the highest-priority eligible task.
-           r8/r9 hold tick_count/os_idle_tcb_ptr addresses across the calls. */
+        /* Scheduler */
         "push {lr}\n"
         "bl os_pq_next\n"
         "mov r5, r0\n"
@@ -568,7 +600,7 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "pop {lr}\n"
 
         "cmp r5, #0\n"
-        "beq fallback_idle_sched\n"
+        "beq fallback_idle\n"
 
         "ldr r1, =current_task\n"
         "str r5, [r1]\n"
@@ -576,20 +608,20 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
         "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
         "cmp r7, #0\n"
-        "beq ts_no_period\n"
+        "beq 4f\n"
         "ldr r6, [r8]\n"
         "adds r6, r6, r7\n"
         "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "b ts_done\n"
-        "ts_no_period:\n"
+        "b 5f\n"
+        "4:\n"
         "ldr r6, [r8]\n"
         "adds r6, r6, #1\n"
         "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "ts_done:\n"
+        "5:\n"
         "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
         "b restore_ctx\n"
 
-        "fallback_idle_sched:\n"
+        "fallback_idle:\n"
         "ldr r5, [r9]\n"
         "ldr r1, =current_task\n"
         "str r5, [r1]\n"
@@ -617,18 +649,17 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "movs r6, #2\n"
         "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
         "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
-
         "cmp r7, #0\n"
-        "beq first_ts_no_period\n"
+        "beq 6f\n"
         "ldr r6, [r8]\n"
         "adds r6, r6, r7\n"
         "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "b first_ts_done\n"
-        "first_ts_no_period:\n"
+        "b 7f\n"
+        "6:\n"
         "ldr r6, [r8]\n"
         "adds r6, r6, #1\n"
         "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
-        "first_ts_done:\n"
+        "7:\n"
         "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
         "b restore_ctx\n"
 
@@ -639,13 +670,12 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "movs r6, #2\n"
         "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
         "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+
+        "restore_ctx:\n"
 #if OS_SAFETY_MPU
-        /* ── MPU per-task switch (next task in r5) ──
-           Tasks run unprivileged (CONTROL.nPRIV=1); the idle task stays
-           privileged so it can reach everything (watchdog, CRC, MPU). */
         "ldr   r6, [r9]\n"
         "cmp   r5, r6\n"
-        "beq   3f\n"
+        "beq   8f\n"
         "mrs   r6, CONTROL\n"
         "orr   r6, r6, #0x01\n"
         "msr   CONTROL, r6\n"
@@ -654,21 +684,171 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "mov   r0, r5\n"
         "bl    os_mpu_configure_task\n"
         "pop   {r0-r3, lr}\n"
-        "b     4f\n"
-        "3:\n"
+        "b     9f\n"
+        "8:\n"
         "mrs   r6, CONTROL\n"
         "bic   r6, r6, #0x01\n"
         "msr   CONTROL, r6\n"
         "isb\n"
-        "4:\n"
+        "9:\n"
 #endif
 
+        "ldmia r0!, {r4-r11}\n"
+
+        /* FPU restore: check EXC_RETURN bit 4 for new task */
+        "tst lr, #0x10\n"
+        "bne 10f\n"
+        /* r0 = &s16.  FPSCR is at r0+68 (after 16 FP regs = 64 bytes + 4).
+           Load FPSCR first, then S16-S31, then skip FPSCR word. */
+        "mov  r2, r0\n"
+        "ldr  r2, [r2, #68]\n"
+        "vmsr fpscr, r2\n"
+        "vldmia r0!, {s16-s31}\n"
+        "add  r0, r0, #4\n"  /* skip past the saved fpscr word */
+        "10:\n"
+
+        "msr psp, r0\n"
+        "isb\n"
+        "bx lr\n"
+        ".ltorg\n"
+    );
+}
+
+#else
+/* ════════════ Non-FPU variant: core registers only (no FP instructions) ════════════ */
+extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
+    __asm volatile(
+        ".syntax unified\n"
+        ".thumb\n"
+        "mrs r0, psp\n"
+        "ldr r1, =current_task\n"
+        "ldr r1, [r1]\n"
+        "cmp r1, #0\n"
+        "bne 1f\n"
+        "b first_run\n"
+        "1:\n"
+
+        /* Save r4-r11 */
+        "stmdb r0!, {r4-r11}\n"
+        "str r0, [r1, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+
+        /* RUNNING -> READY */
+        "ldrb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
+        "cmp r2, #2\n"
+        "bne 3f\n"
+        "movs r2, #1\n"
+        "strb r2, [r1, #" OS_STR(OS_OFF_STATE) "]\n"
+        "3:\n"
+
+        "ldr r8, =tick_count\n"
+        "ldr r9, =os_idle_tcb_ptr\n"
+
+        /* Scheduler */
+        "push {lr}\n"
+        "bl os_pq_next\n"
+        "mov r5, r0\n"
+        "bl os_pq_rotate\n"
+        "pop {lr}\n"
+
+        "cmp r5, #0\n"
+        "beq fallback_idle\n"
+
+        "ldr r1, =current_task\n"
+        "str r5, [r1]\n"
+        "movs r6, #2\n"
+        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
+        "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
+        "cmp r7, #0\n"
+        "beq 4f\n"
+        "ldr r6, [r8]\n"
+        "adds r6, r6, r7\n"
+        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
+        "b 5f\n"
+        "4:\n"
+        "ldr r6, [r8]\n"
+        "adds r6, r6, #1\n"
+        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
+        "5:\n"
+        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+        "b restore_ctx\n"
+
+        "fallback_idle:\n"
+        "ldr r5, [r9]\n"
+        "ldr r1, =current_task\n"
+        "str r5, [r1]\n"
+        "movs r6, #2\n"
+        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
+        "ldr r6, [r8]\n"
+        "adds r6, r6, #1\n"
+        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
+        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+        "b restore_ctx\n"
+
+        "first_run:\n"
+        "ldr r8, =tick_count\n"
+        "ldr r9, =os_idle_tcb_ptr\n"
+        "push {lr}\n"
+        "bl os_pq_next\n"
+        "mov r5, r0\n"
+        "bl os_pq_rotate\n"
+        "pop {lr}\n"
+
+        "cmp r5, #0\n"
+        "beq fallback_idle_first\n"
+        "ldr r1, =current_task\n"
+        "str r5, [r1]\n"
+        "movs r6, #2\n"
+        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
+        "ldr r7, [r5, #" OS_STR(OS_OFF_PERIOD_TICKS) "]\n"
+        "cmp r7, #0\n"
+        "beq 6f\n"
+        "ldr r6, [r8]\n"
+        "adds r6, r6, r7\n"
+        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
+        "b 7f\n"
+        "6:\n"
+        "ldr r6, [r8]\n"
+        "adds r6, r6, #1\n"
+        "str r6, [r5, #" OS_STR(OS_OFF_NEXT_RUN_TIME) "]\n"
+        "7:\n"
+        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+        "b restore_ctx\n"
+
+        "fallback_idle_first:\n"
+        "ldr r5, [r9]\n"
+        "ldr r1, =current_task\n"
+        "str r5, [r1]\n"
+        "movs r6, #2\n"
+        "strb r6, [r5, #" OS_STR(OS_OFF_STATE) "]\n"
+        "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
+
         "restore_ctx:\n"
+#if OS_SAFETY_MPU
+        "ldr   r6, [r9]\n"
+        "cmp   r5, r6\n"
+        "beq   8f\n"
+        "mrs   r6, CONTROL\n"
+        "orr   r6, r6, #0x01\n"
+        "msr   CONTROL, r6\n"
+        "isb\n"
+        "push  {r0-r3, lr}\n"
+        "mov   r0, r5\n"
+        "bl    os_mpu_configure_task\n"
+        "pop   {r0-r3, lr}\n"
+        "b     9f\n"
+        "8:\n"
+        "mrs   r6, CONTROL\n"
+        "bic   r6, r6, #0x01\n"
+        "msr   CONTROL, r6\n"
+        "isb\n"
+        "9:\n"
+#endif
+
         "ldmia r0!, {r4-r11}\n"
         "msr psp, r0\n"
         "isb\n"
         "bx lr\n"
-        /* Flush literal pool here — keeps ldr rX,=sym offsets within ±4KB */
         ".ltorg\n"
     );
 }
+#endif /* OS_HAS_FPU_HW */

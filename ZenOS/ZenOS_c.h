@@ -73,16 +73,15 @@ void OS_Fault_C_Handler(void);
    Mirrors the switches in ZenOS_Config.hpp — each block compiles
    only when its feature is enabled. */
 
-/* Monitor: task state / CPU usage / stack watermark.
-   NOTE: the error-log query API (os_log_error, os_get_error_log_entry/count/total)
-   is declared only in ZenOS.hpp — it takes the C++-only OSError type, so no
-   C counterpart exists. Do not add it here. */
-#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
+/* Task state query — always available */
 uint8_t  os_task_get_state(void(*entry)(void));
-uint8_t  os_get_cpu_usage(void);
-uint8_t  os_get_cpu_usage_total(void);
 uint32_t os_get_wdg_reset_count(void);
 uint32_t os_get_stack_recovery_count(void);
+
+/* Monitor: CPU usage / stack watermark (requires at least one OS_MONITOR_* enabled) */
+#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
+uint8_t  os_get_cpu_usage(void);
+uint8_t  os_get_cpu_usage_total(void);
 uint32_t os_get_stack_usage(void(*entry)(void));
 uint8_t  os_get_task_cpu_usage(void(*entry)(void));
 uint32_t os_get_stack_watermark(uint8_t task_id);
@@ -105,38 +104,30 @@ void     os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_ms);
 uint32_t os_get_deadline_miss_count(void(*entry)(void));
 #endif
 
-/* Hardware watchdog (IWDG) */
-#if OS_SAFETY_HW_WATCHDOG
+/* Hardware watchdog (IWDG) — always declared, no-op if disabled */
 void     os_hw_watchdog_feed(void);
 void     os_hw_watchdog_check(void);
 uint32_t os_get_hw_wdg_reset_count(void);
-#endif
 
-/* Background RAM test (March-C) */
-#if OS_SAFETY_RAM_TEST
+/* Background RAM test (March-C) — always declared, no-op if disabled */
 void     os_ram_test_step(void);
 uint8_t  os_ram_test_progress(void);
 uint32_t os_get_ram_test_error_count(void);
 bool     os_ram_test_complete(void);
-#endif
 
-/* MPU protection */
-#if OS_SAFETY_MPU
+/* MPU protection — always declared, no-op if disabled */
 void os_mpu_init(void);
 void os_mpu_configure_task(void* tcb_ptr);
 void os_mpu_add_region(void* tcb_ptr, uint32_t base, uint32_t size, uint32_t attrs);
 void os_mpu_disable(void);
 void os_mpu_enable(void);
-#endif
 
-/* ROM CRC integrity check */
-#if OS_SAFETY_CRC_CHECK
+/* ROM CRC integrity check — always declared, no-op if disabled */
 void     os_crc_init(void);
 void     os_crc_check_step(void);
 uint8_t  os_crc_check_progress(void);
 bool     os_crc_check_complete(void);
 uint32_t os_get_crc_error_count(void);
-#endif
 
 /* SMP (multi-core) */
 #if OS_SMP_CORES > 1

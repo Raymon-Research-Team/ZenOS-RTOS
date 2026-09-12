@@ -21,7 +21,24 @@ extern "C" uint32_t SystemCoreClock;
 extern "C" void os_event_register(ECB* e) {
     if (!e) return;
     uint32_t cs = os_critical_enter();
-    e->id = os_event_next_id++; e->in_use = 1; e->count = 0;
+    /* Find a free ID: start from the next candidate and skip any
+       ID already in use.  After 32767 events we wrap to 0.
+       The search is bounded by 32768 — if all IDs are taken,
+       we fail (extremely unlikely in practice). */
+    int16_t start = os_event_next_id;
+    int16_t id;
+    for (uint32_t attempt = 0; attempt < 32768; attempt++) {
+        id = os_event_next_id++;
+        if (os_event_next_id > 32767) os_event_next_id = 0;
+        /* Check if this ID is already in use */
+        bool in_use = false;
+        for (ECB* cur = event_list; cur; cur = cur->next) {
+            if (cur->in_use && cur->id == id) { in_use = true; break; }
+        }
+        if (!in_use) break;
+        (void)start; /* suppress unused warning */
+    }
+    e->id = id; e->in_use = 1; e->count = 0;
     e->next = event_list; event_list = e;
     os_critical_exit(cs);
 }

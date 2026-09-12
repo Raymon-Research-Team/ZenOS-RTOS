@@ -215,7 +215,14 @@ extern "C" {
 }
 
 
-/* ── Monitor ── */
+/* ── Task state query (always available — used by application code) ── */
+extern "C" {
+    uint8_t  os_task_get_state(void(*entry)(void));
+    uint32_t os_get_wdg_reset_count(void);
+    uint32_t os_get_stack_recovery_count(void);
+}
+
+/* ── Monitor (requires at least one OS_MONITOR_* feature enabled) ── */
 #if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
 
 /* One entry of the per-task stack usage report (os_get_stack_report) */
@@ -227,11 +234,8 @@ typedef struct {
 } os_stack_report_entry_t;
 
 extern "C" {
-    uint8_t  os_task_get_state(void(*entry)(void));
     uint8_t  os_get_cpu_usage(void);
     uint8_t  os_get_cpu_usage_total(void);
-    uint32_t os_get_wdg_reset_count(void);
-    uint32_t os_get_stack_recovery_count(void);
     uint32_t os_get_stack_usage(void(*entry)(void));
     uint8_t  os_get_task_cpu_usage(void(*entry)(void));
     uint32_t os_get_stack_watermark(uint8_t task_id);
@@ -368,10 +372,8 @@ extern "C" {
 
 
 /* ============================================================================
- *  Error Log API (optional)
+ *  Error Log API — always declared, no-op if OS_MONITOR_ERROR_LOG=0
  * ============================================================================ */
-
-#if OS_MONITOR_ERROR_LOG
 
 struct OSErrorEntry {
     uint32_t      timestamp_tick;
@@ -386,41 +388,35 @@ extern "C" {
     uint32_t os_get_error_log_count(void);
     uint32_t os_get_error_log_total(void);
 }
-#endif
 
 
 /* ============================================================================
- *  Hardware Watchdog API (optional)
+ *  Hardware Watchdog API — always declared, no-op if OS_SAFETY_HW_WATCHDOG=0
  * ============================================================================ */
 
-#if OS_SAFETY_HW_WATCHDOG
 extern "C" {
     void os_hw_watchdog_feed(void);
     void os_hw_watchdog_check(void);   /* feed if healthy, else skip */
     uint32_t os_get_hw_wdg_reset_count(void);
 }
-#endif
 
 
 /* ============================================================================
- *  RAM Test API (optional)
+ *  RAM Test API — always declared, no-op if OS_SAFETY_RAM_TEST=0
  * ============================================================================ */
 
-#if OS_SAFETY_RAM_TEST
 extern "C" {
     void os_ram_test_step(void);
     uint8_t os_ram_test_progress(void);
     uint32_t os_get_ram_test_error_count(void);
     bool os_ram_test_complete(void);
 }
-#endif
 
 
 /* ============================================================================
- *  MPU API (optional)
+ *  MPU API — always declared, no-op if OS_SAFETY_MPU=0
  * ============================================================================ */
 
-#if OS_SAFETY_MPU
 extern "C" {
     void os_mpu_init(void);
     void os_mpu_configure_task(void* tcb_ptr);
@@ -428,17 +424,12 @@ extern "C" {
     void os_mpu_disable(void);
     void os_mpu_enable(void);
 }
-#endif
 
 
 /* ============================================================================
- *  CRC Program Flow Monitoring API (optional)
- *  ---------------------------------------------------------------------------
- *  CubeMX enables the CRC peripheral. The OS uses it to verify ROM
- *  integrity. Call os_crc_check_step() from idle or a low-priority task.
+ *  CRC Program Flow Monitoring API — always declared, no-op if OS_SAFETY_CRC_CHECK=0
  * ============================================================================ */
 
-#if OS_SAFETY_CRC_CHECK
 extern "C" {
     void     os_crc_init(void);          /* compute expected CRC at boot */
     void     os_crc_check_step(void);    /* check one block per call */
@@ -446,7 +437,6 @@ extern "C" {
     bool     os_crc_check_complete(void);
     uint32_t os_get_crc_error_count(void);
 }
-#endif
 
 
 /* ============================================================================
