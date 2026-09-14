@@ -6,7 +6,7 @@
  * Extracted from ZenOS.cpp as part of the modular split.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 2.0.0
+ * @version 1.1.0
  */
 
 #define OS_BUILD
@@ -19,6 +19,10 @@ extern "C" uint32_t SystemCoreClock;
    TASK_STUCK / STACK_OVERFLOW) and read from task context — volatile too. */
 
 uint32_t os_get_wdg_reset_count(void)      { return wdg_reset_count; }
+/* stack_recovery_count: legacy counter. Per-task recovery now uses
+   task->wdg_retries (unified with soft watchdog). This global counter
+   is kept for backward compatibility but incremented only by the
+   soft watchdog path in os_tick. */
 uint32_t os_get_stack_recovery_count(void) { return stack_recovery_count; }
 
 uint32_t os_get_error_count(void)            { return error_total; }
@@ -32,8 +36,8 @@ uint32_t os_in_safe(void)                    { return os_safe_depth; }
 extern "C" void os_error_expect_begin(void) { error_expect_depth++; }
 extern "C" void os_error_expect_end(void)   { if (error_expect_depth > 0) error_expect_depth--; }
 
-/* os_report_error — no CS needed (error path only, last-writer-wins) */
-void os_report_error(OSError code) {
+/* _os_report_error — no CS needed (error path only, last-writer-wins) */
+void _os_report_error(OSError code) {
     error_total++;
     if (error_expect_depth > 0) error_expected++;
     error_last = code;
@@ -55,7 +59,7 @@ void os_report_error(OSError code) {
  *   2. Canary corruption (memory corruption from outside)
  * On detection, the task is removed from the scheduler and either
  * reset or disabled based on recovery count. */
-void os_stack_check_all(void) {
+void _os_stack_check_all(void) {
     for (TCB* task = task_list; task; task = task->next) {
         if (task == &idle_tcb) continue;
         if (task->state == TaskState::INACTIVE) continue;
@@ -82,30 +86,19 @@ void os_stack_check_all(void) {
         if (!overflow) continue;
 
         /* Stack overflow confirmed */
-        os_report_error(OSError::STACK_OVERFLOW);
+        _os_report_error(OSError::STACK_OVERFLOW);
 
         /* O(1) scheduler: remove from priority queue before state change */
-        os_pq_remove(task);
+        _os_pq_remove(task);
+        /* _os_stack_check_all runs inside the os_tick critical section, so a
+           plain decrement is atomic. ARMv6-M has no ldrex/strex. */
         if (task->state == TaskState::BLOCKED && blocked_count > 0) {
-            uint32_t tmp, res;
-            __asm volatile(
-                "1: ldrex %0, [%2]\n"
-                "   cmp   %0, #0\n"
-                "   beq   2f\n"
-                "   subs  %0, %0, #1\n"
-                "   strex %1, %0, [%2]\n"
-                "   cmp   %1, #0\n"
-                "   bne   1b\n"
-                "2:\n"
-                : "=&r"(tmp), "=&r"(res)
-                : "r"(&blocked_count)
-                : "memory", "cc"
-            );
+            blocked_count--;
         }
 
 #if OS_MONITOR_TCB_INTEGRITY
         /* TCB corrupted too — too risky to reset, deactivate instead */
-        if (!os_tcb_check_magic(task)) {
+        if (!_os_tcb_check_magic(task)) {
             task->state = TaskState::INACTIVE;
             continue;
         }
@@ -118,9 +111,11 @@ void os_stack_check_all(void) {
             return;
         }
 
-        if (stack_recovery_count < OS_SAFETY_TASK_MAX_RECOVERY) {
-            stack_recovery_count++;
-            os_reset_task_internal(task);
+        /* Unified recovery: use per-task wdg_retries (shared with soft watchdog)
+           so both subsystems don't double-count recovery attempts on the same task */
+        if (task->wdg_retries < OS_SAFETY_TASK_MAX_RECOVERY) {
+            task->wdg_retries++;
+            _os_reset_task_internal(task);
         }
         else {
             task->state = TaskState::INACTIVE;
@@ -141,44 +136,20 @@ void os_stack_check_all(void) {
  * After capture, the offending task is disabled and the system
  * falls back to the idle task for continued operation. */
 
-/* Fault context structure — captured on stack during fault handler */
-struct ZenOS_FaultContext {
-    /* Exception frame (pushed by hardware) */
-    uint32_t r0;
-    uint32_t r1;
-    uint32_t r2;
-    uint32_t r3;
-    uint32_t r12;
-    uint32_t lr;
-    uint32_t pc;
-    uint32_t xpsr;
-    /* NVIC registers */
-    uint32_t cfsr;
-    uint32_t hfsr;
-    uint32_t mmfar;
-    uint32_t bfar;
-    uint32_t ctrl;
-    uint32_t msp;
-    uint32_t psp;
-    /* Task context */
-    const char* task_name;
-    uint8_t     task_id;
-    uint32_t*   task_stack_top;
-    uint32_t    task_stack_size;
-};
+/* ZenOS_FaultContext and os_last_fault are now in ZenOS_Internal.hpp */
 
 /* Global fault context for post-mortem analysis */
 volatile ZenOS_FaultContext os_last_fault;
 
 extern "C" void OS_Fault_C_Handler(void) {
-    os_report_error(OSError::HARDFAULT);
+    _os_report_error(OSError::HARDFAULT);
     os_safe_depth = 0;
 
     /* ── Capture NVIC fault registers before clearing ── */
-    volatile uint32_t cfsr  = *((volatile uint32_t*)0xE000ED28UL); /* CFSR */
-    volatile uint32_t hfsr  = *((volatile uint32_t*)0xE000ED2CUL); /* HFSR */
-    volatile uint32_t mmfar = *((volatile uint32_t*)0xE000ED34UL); /* MMFAR */
-    volatile uint32_t bfar  = *((volatile uint32_t*)0xE000ED38UL); /* BFAR */
+    volatile uint32_t cfsr  = OS_SCB->CFSR;
+    volatile uint32_t hfsr  = OS_SCB->HFSR;
+    volatile uint32_t mmfar = OS_SCB->MMFAR;
+    volatile uint32_t bfar  = OS_SCB->BFAR;
 
     /* ── Populate fault context ── */
     os_last_fault.cfsr  = cfsr;
@@ -227,21 +198,10 @@ extern "C" void OS_Fault_C_Handler(void) {
         }
 
         /* ── Disable the offending task ── */
+        /* OS_Fault_Handler enters with cpsid i, so we are inside a critical
+           section: a plain decrement is atomic. ARMv6-M has no ldrex/strex. */
         if (fault_task->state == TaskState::BLOCKED && blocked_count > 0) {
-            uint32_t tmp, res;
-            __asm volatile(
-                "1: ldrex %0, [%2]\n"
-                "   cmp   %0, #0\n"
-                "   beq   2f\n"
-                "   subs  %0, %0, #1\n"
-                "   strex %1, %0, [%2]\n"
-                "   cmp   %1, #0\n"
-                "   bne   1b\n"
-                "2:\n"
-                : "=&r"(tmp), "=&r"(res)
-                : "r"(&blocked_count)
-                : "memory", "cc"
-            );
+            blocked_count--;
         }
         fault_task->state = TaskState::INACTIVE;
     }
@@ -249,7 +209,7 @@ extern "C" void OS_Fault_C_Handler(void) {
     current_task = nullptr;
 
     /* ── Reset idle task for recovery ── */
-    os_stack_init(&idle_tcb);
+    _os_stack_init(&idle_tcb);
     idle_tcb.state         = TaskState::READY;
     idle_tcb.delay_ticks   = 0;
     idle_tcb.blocking_on   = nullptr;
@@ -351,7 +311,7 @@ extern "C" void os_ram_test_step(void) {
     *ram_test_current = ~val;
     if (*ram_test_current != ~val) {
         ram_test_errors++;
-        os_report_error(OSError::RAM_TEST_FAIL);
+        _os_report_error(OSError::RAM_TEST_FAIL);
     }
     *ram_test_current = val;
     ram_test_current++;
@@ -490,7 +450,7 @@ extern "C" void os_crc_check_step(void) {
         uint32_t full_crc = os_crc_compute_block(OS_FLASH_START, OS_FLASH_SIZE / 4);
         if (full_crc != crc_expected) {
             crc_error_count++;
-            os_report_error(OSError::HARDFAULT);  /* ROM corruption */
+            _os_report_error(OSError::HARDFAULT);  /* ROM corruption */
         }
     }
 }
@@ -574,7 +534,7 @@ static void os_mpu_set_region(uint8_t region, uint32_t base,
     uint32_t region_size = 1UL << (size_log + 1);
     if (region_size < size_bytes) return;        /* > 4 GB, cannot encode */
     if ((base & (region_size - 1)) != 0) {       /* base must be aligned */
-        os_report_error(OSError::PRIORITY_CONFLICT);
+        _os_report_error(OSError::MPU_CONFIG_ERROR);
         return;
     }
     OS_MPU_BASE->RNR  = region;

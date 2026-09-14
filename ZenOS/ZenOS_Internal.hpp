@@ -7,14 +7,18 @@
  * declarations for functions and globals shared across the split
  * translation units (scheduler, IPC, safety, monitor).
  *
+ * ALL functions and variables here use the _os_ prefix to mark them
+ * as internal — they are NOT for application use.
+ *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  */
 
 #define OS_BUILD
 #include "ZenOS.hpp"
+#include "ZenOS_Debug.hpp"
 
-/* ═══════════════ Shared Globals ═══════════════ */
+/* ═══════════════ Shared Globals (internal) ═══════════════ */
 extern TCB*              volatile task_list;
 extern uint16_t          volatile task_count;
 extern TCB*              volatile current_task;
@@ -53,88 +57,47 @@ extern ECB* volatile     event_list;
 extern int16_t           os_event_next_id;
 #endif
 
-/* ═══════════════ Scheduler Functions ═══════════════ */
-void os_pq_add(TCB* task);
-void os_pq_remove(TCB* task);
-extern "C" void os_priority_queues_init(void);
+/* ═══════════════ Scheduler Functions (internal) ═══════════════ */
+void _os_pq_add(TCB* task);
+void _os_pq_remove(TCB* task);
+extern "C" void _os_priority_queues_init(void);
 
-void os_stack_init(TCB* task);
-void os_reset_task_internal(TCB* task);
-void os_task_exit(void);
+void _os_stack_init(TCB* task);
+void _os_reset_task_internal(TCB* task);
+void _os_task_exit(void);
 
-void os_wake_task(TCB* t, uint8_t result);
-bool os_block_current(TaskState state, void* blocking_on,
-                      uint32_t block_timeout, uint32_t delay_ticks);
+void _os_wake_task(TCB* t, uint8_t result);
+bool _os_block_current(TaskState state, void* blocking_on,
+                       uint32_t block_timeout, uint32_t delay_ticks);
 
-inline void os_wake_on_delay_expiry(TCB* task) {
-    /* When a task wakes from delay, reset next_run_time to tick_count so
-       it becomes immediately eligible. This is necessary when tickless idle
-       has advanced tick_count while the task was blocked — otherwise the
-       period gate (now - next_run_time >= 0) would see an old next_run_time
-       and consider the task ineligible, causing it to miss its release. */
+inline void _os_wake_on_delay_expiry(TCB* task) {
     task->next_run_time = tick_count;
-    os_wake_task(task, 1);
+    _os_wake_task(task, 1);
 }
 
-inline void os_wake_on_timeout_expiry(TCB* task) {
+inline void _os_wake_on_timeout_expiry(TCB* task) {
     task->wait_result = 2;
-    /* Same as above — any wake from blocking must reset next_run_time so the
-       period gate doesn't reject the task due to tickless-idle tick advancement. */
     task->next_run_time = tick_count;
-    os_wake_task(task, 2);
+    _os_wake_task(task, 2);
 }
 
-/* ── Period Gate Consistency Check ──────────────────────────────
-   This function verifies that after a delay wake, next_run_time is valid
-   for period gate eligibility. Call this in os_tickless_process after
-   waking tasks to confirm the fix is working correctly. */
-#if OS_DEBUG_PERIOD_GATE
-inline bool os_verify_period_gate_after_wake(TCB* task, uint32_t current_tick) {
-    if (!task) return true;
-    if (task->period_ticks == 0) {
-        /* Non-periodic task: next_run_time should be current_tick (+1 after PendSV) */
-        return (task->next_run_time <= current_tick + 1);
-    } else {
-        /* Periodic task: next_run_time should be current_tick (our fix sets this),
-           and PendSV will later set it to current_tick + period_ticks */
-        uint32_t now = current_tick;
-        int32_t elapsed = (int32_t)(now - task->next_run_time);
-        /* The task should be immediately eligible (elapsed >= 0) */
-        return (elapsed >= 0);
-    }
-}
-#endif
+uint32_t _os_ms_to_ticks(uint32_t ms);
+TCB* _os_find_task_by_entry(void(*entry)(void));
+TCB* _os_find_task_by_id(uint8_t id);
 
-uint32_t os_ms_to_ticks(uint32_t ms);
-TCB* os_find_task_by_entry(void(*entry)(void));
-TCB* os_find_task_by_id(uint8_t id);
-
-/* ═══════════════ Microsecond Time Extension ═══════════════ */
-/* Wrap-safe µs domain used by os_get_us() — state and rationale in ZenOS.cpp.
-   os_time_fold() is the single fold path: it samples DWT CYCCNT (wrap-safe
-   via unsigned subtraction), converts cycles to µs exactly for ANY
-   SystemCoreClock via cycles × 10^6 / SystemCoreClock, and carries the
-   fractional remainder in cycle·µs units so per-fold truncation cannot
-   accumulate into drift.  A SystemCoreClock change automatically applies
-   to subsequent windows only; call os_time_reset() after a clock change to
-   also zero the domain and resync the wrap baseline.  One 64-bit division
-   per fold at the 100 µs tick rate — negligible on Cortex-M3+.
-   Safe from task and ISR context (nested critical sections). */
+/* ═══════════════ Microsecond Time Extension (internal) ═══════════════ */
 extern volatile uint32_t os_us_cycles_pending;
 extern volatile uint32_t os_us_remainder;
 extern volatile uint32_t os_us_accumulated;
-void os_time_reset(void);
-void os_time_sample(void);
+void _os_time_reset(void);
+void _os_time_sample(void);
 
 #if OS_HAS_CYCLE_COUNTER
-inline void os_time_fold(void) {
+inline void _os_time_fold(void) {
     uint32_t cs  = os_critical_enter();
     uint32_t now = OS_DWT_CYCCNT;
-    /* Unsigned subtraction is wrap-safe (mod-2^32 arithmetic). */
     uint32_t delta = now - os_us_cycles_pending;
     os_us_cycles_pending = now;
-    /* cycle·µs units → exact µs for any clock; remainder carried so no
-       truncation accumulates across folds. */
     uint64_t units = (uint64_t)delta * 1000000ULL + os_us_remainder;
     uint32_t clk   = (SystemCoreClock != 0UL) ? SystemCoreClock : 1UL;
     os_us_accumulated += (uint32_t)(units / clk);
@@ -142,37 +105,58 @@ inline void os_time_fold(void) {
     os_critical_exit(cs);
 }
 #else
-inline void os_time_fold(void) { /* no DWT — tick-derived domain */ }
+inline void _os_time_fold(void) { /* no DWT — tick-derived domain */ }
 #endif
 
 #if OS_TOOL_TICKLESS_IDLE
-bool os_tickless_process(uint32_t skip);
+bool _os_tickless_process(uint32_t skip);
 #endif
 
-/* ═══════════════ ISR Detection ═══════════════ */
-inline bool os_in_isr(void) {
+/* ═══════════════ FPU Detection Helper (internal) ═══════════════ */
+#if OS_HAS_FPU_HW
+inline bool _os_fpu_is_active() {
+    uint32_t exc_return;
+    __asm volatile("mov %0, lr" : "=r"(exc_return));
+    return (exc_return & 0x10) == 0;
+}
+#endif
+
+/* ═══════════════ ISR Detection (internal) ═══════════════ */
+inline bool _os_in_isr(void) {
     uint32_t ipsr;
     __asm volatile("mrs %0, IPSR" : "=r"(ipsr));
     return ipsr != 0;
 }
 
-/* ═══════════════ Error Reporting ═══════════════ */
-void os_report_error(OSError code);
+/* ═══════════════ Error Reporting (internal) ═══════════════ */
+void _os_report_error(OSError code);
 
-/* ═══════════════ Safety Functions ═══════════════ */
-void os_stack_check_all(void);
+/* ═══════════════ Safety Functions (internal) ═══════════════ */
+void _os_stack_check_all(void);
+
+/* Fault context structure */
+struct ZenOS_FaultContext {
+    uint32_t r0, r1, r2, r3;
+    uint32_t r12, lr, pc, xpsr;
+    uint32_t cfsr, hfsr, mmfar, bfar;
+    uint32_t ctrl, msp, psp;
+    const char* task_name;
+    uint8_t     task_id;
+    uint32_t*   task_stack_top;
+    uint32_t    task_stack_size;
+};
+
+extern volatile ZenOS_FaultContext os_last_fault;
 
 #if OS_MONITOR_TCB_INTEGRITY
-inline bool os_tcb_check_magic(TCB* t) {
+inline bool _os_tcb_check_magic(TCB* t) {
     return t && t->magic == OS_TCB_MAGIC;
 }
 #endif
 
-/* ═══════════════ Monitor Functions ═══════════════ */
-/* Defined in ZenOS_Monitor.cpp under OS_MONITOR_ENABLED — the declaration
-   guard must mirror the definition guard so a disabled build has neither. */
+/* ═══════════════ Monitor Functions (internal) ═══════════════ */
 #if OS_MONITOR_ENABLED
-uint32_t os_stack_watermark_scan(const TCB* task);
+uint32_t _os_stack_watermark_scan(const TCB* task);
 #endif
 
 /* ═══════════════ Critical Section ═══════════════ */

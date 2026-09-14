@@ -10,7 +10,7 @@
  *   ZenOS_Monitor.cpp   — Stack watermark, CPU usage, deadline, error log
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  */
 
 #define OS_BUILD
@@ -18,8 +18,17 @@
 
 extern "C" uint32_t SystemCoreClock;
 
+/* Forward declarations for vector table installation */
+extern "C" void os_tick(void);
+extern "C" void OS_PendSV_Handler(void);
+extern "C" void OS_Fault_Handler(void);
 
+/* Only cores with a VTOR relocate the vector table at runtime; on ARMv6-M
+   (Cortex-M0/M0+) there is no VTOR, the table stays in flash and this buffer
+   would be dead storage (and a -Werror=unused-variable failure). */
+#if OS_HAS_VTOR
 static uint32_t ram_vectors[OS_VECTOR_COUNT] OS_ALIGNED(512);
+#endif
 
 /* ═══════════════ Shared Globals ═══════════════ */
 /* All scheduler globals below are shared between task context, the naked
@@ -55,7 +64,7 @@ static uint32_t fault_stack[OS_FAULT_STACK_WORDS] OS_ALIGNED(8);
 
 volatile uint32_t os_safe_depth = 0;
 
-/* ── Microsecond time domain (see os_time_fold in ZenOS_Internal.hpp) ──
+/* ── Microsecond time domain (see _os_time_fold in ZenOS_Internal.hpp) ──
    The DWT cycle counter is 32-bit and wraps (~59.6 s at 72 MHz), so raw
    CYCCNT reads cannot measure beyond one wrap period.  These three values
    form a wrap-safe µs accumulator:
@@ -63,12 +72,12 @@ volatile uint32_t os_safe_depth = 0;
      os_us_remainder      — fractional µs not yet convertible, carried in
                             cycle·µs units (cycles × 10^6) so per-fold
                             truncation cannot accumulate into drift
-     os_us_accumulated    — µs since os_init()/os_time_reset()
+     os_us_accumulated    — µs since os_init()/_os_time_reset()
    Conversion is exact for ANY SystemCoreClock via µs = cycles × 10^6 /
    SystemCoreClock, and a clock change automatically applies only to
-   subsequent windows.  os_time_fold() is the single writer (os_tick,
-   os_time_reset and the lazy path in os_get_us all route through it);
-   os_time_reset() reinitializes the domain.  All state is guarded by
+   subsequent windows.  _os_time_fold() is the single writer (os_tick,
+   _os_time_reset and the lazy path in os_get_us all route through it);
+   _os_time_reset() reinitializes the domain.  All state is guarded by
    os_critical_enter/exit at every call site. */
 volatile uint32_t os_us_cycles_pending = 0;
 volatile uint32_t os_us_remainder      = 0;
@@ -106,9 +115,16 @@ extern "C" void os_delay_us(uint32_t us) {
         while ((int32_t)(OS_DWT_CYCCNT - deadline) < 0)
             __asm volatile("nop");
 #else
+        /* Cortex-M0/M0+ without DWT: calibrated NOP loop.
+           Each iteration is ~4 cycles (nop + loop overhead).
+           SystemCoreClock/4000000 gives iterations for ~1µs at 4 cycles/iter. */
         uint32_t n = (uint32_t)((uint64_t)us * (SystemCoreClock / 4000000UL));
         if (n == 0) n = 1;
-        while (n--) { __asm volatile("nop"); __asm volatile("nop"); }
+        __asm volatile(
+            "1: subs %0, #1\n"
+            "   bne 1b\n"
+            : "+r"(n) :: "cc"
+        );
 #endif
         return;
     }
@@ -130,13 +146,13 @@ extern "C" void os_delay_us(uint32_t us) {
 
 extern "C" void os_delay_ms(uint32_t ms) {
     /* Never block from an ISR: os_safe_depth only catches the RAII guards,
-       os_in_isr() catches every exception context. */
-    if (os_safe_depth > 0 || os_in_isr()) { os_report_error(OSError::SAFE_DELAY_MS); return; }
+       _os_in_isr() catches every exception context. */
+    if (os_safe_depth > 0 || _os_in_isr()) { _os_report_error(OSError::SAFE_DELAY_MS); return; }
     if (ms == 0) return;
 
-    uint32_t delay_ticks = os_ms_to_ticks(ms);
+    uint32_t delay_ticks = _os_ms_to_ticks(ms);
     uint32_t cs = os_critical_enter();
-    os_block_current(TaskState::BLOCKED, nullptr, 0, delay_ticks);
+    _os_block_current(TaskState::BLOCKED, nullptr, 0, delay_ticks);
     os_critical_exit(cs);
     os_yield();
 }
@@ -159,17 +175,13 @@ extern "C" void os_yield(void) {
         "str   r2, [r1, #" OS_STR(OS_OFF_LAST_YIELD_TICK) "]\n"
         "1:\n"
         "msr   PRIMASK, r0\n"
+        /* STR directly to ICSR PendSVSet bit — no read-modify-write */
         "ldr   r0, =0xE000ED04\n"
-        "ldr   r1, [r0]\n"
-        "orr   r1, r1, #0x10000000\n"
+        "ldr   r1, =0x10000000\n"
         "str   r1, [r0]\n"
         : /* no outputs */
         : /* no inputs */
         : "r0", "r1", "r2", "cc", "memory"
-        /* The asm destroys r0/r1/r2 and the condition flags, and writes
-           current_task->last_yield_tick + SCB_ICSR.  Without this clobber
-           list GCC at -O2 keeps live values in these registers across the
-           asm and the scheduler state corrupts. */
     );
 }
 
@@ -178,14 +190,14 @@ extern "C" void os_yield(void) {
 extern "C" void os_tick(void) {
 
     /* ═══════ C2 fix: one critical section for the whole tick path ═══════
-       os_tickless_process() and os_stack_check_all() mutate global
+       _os_tickless_process() and _os_stack_check_all() mutate global
        scheduler state (priority queues, bitmap, blocked_count). They must
        run with interrupts disabled, otherwise a higher-priority ISR
        (e.g. EXTI calling os_event_signal_from_isr) can corrupt that state
        concurrently with the µs sampler below. */
     uint32_t cs = os_critical_enter();
 
-    os_time_sample();
+    _os_time_sample();
 
     tick_count++;
 
@@ -207,13 +219,13 @@ extern "C" void os_tick(void) {
         uint32_t elapsed = tick_count - current_task->last_yield_tick;
         uint32_t max_ticks = OS_SAFETY_SOFT_WDG_TIMEOUT_MS * OS_TICKS_PER_MS;
         if (elapsed > max_ticks) {
-            os_report_error(OSError::TASK_STUCK);
+            _os_report_error(OSError::TASK_STUCK);
             wdg_reset_count++;
             /* O(1) scheduler: remove from pq before reset */
-            os_pq_remove(current_task);
+            _os_pq_remove(current_task);
             if (current_task->wdg_retries < OS_SAFETY_TASK_MAX_RECOVERY) {
                 current_task->wdg_retries++;
-                os_reset_task_internal(current_task);
+                _os_reset_task_internal(current_task);
             } else {
                 current_task->state = TaskState::INACTIVE;
             }
@@ -230,7 +242,7 @@ extern "C" void os_tick(void) {
         uint32_t elapsed = tick_count - current_task->last_yield_tick;
         if (elapsed > current_task->deadline_ticks) {
             current_task->deadline_miss_count++;
-            os_report_error(OSError::DEADLINE_MISS);
+            _os_report_error(OSError::DEADLINE_MISS);
             /* Do NOT reset/disable task from ISR context —
                only PendSV (lowest priority) should modify current_task.
                The miss is recorded; higher-level code can react. */
@@ -245,12 +257,12 @@ extern "C" void os_tick(void) {
             if (task->delay_ticks > 0) {
                 task->delay_ticks--;
                 if (task->delay_ticks == 0) {
-                    os_wake_on_delay_expiry(task);
+                    _os_wake_on_delay_expiry(task);
                 }
             } else if (task->block_timeout > 0) {
                 task->block_timeout--;
                 if (task->block_timeout == 0) {
-                    os_wake_on_timeout_expiry(task);
+                    _os_wake_on_timeout_expiry(task);
                 }
             }
         }
@@ -258,7 +270,7 @@ extern "C" void os_tick(void) {
 
     /* Stack check mutates the same scheduler structures, so it stays
        inside the critical section too. */
-    if ((tick_count & 0x0F) == 0) os_stack_check_all();
+    if ((tick_count & 0x0F) == 0) _os_stack_check_all();
 
     os_critical_exit(cs);
     /* ═══════ end C2 fix ═══════ */
@@ -352,7 +364,7 @@ static bool os_idle_tickless(void) {
                    the HAL TIM1 time base) wakes us repeatedly before that
                    SysTick fires, because tick_skip would be overwritten. */
                 idle_ticks += skip;
-                if (os_tickless_process(skip)) {
+                if (_os_tickless_process(skip)) {
                     /* A task expired while we slept — reschedule now */
                     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
                 }
@@ -373,7 +385,7 @@ static bool os_idle_tickless(void) {
 
 /* Forward declaration for tickless processing (in ZenOS_Scheduler.cpp) */
 #if OS_TOOL_TICKLESS_IDLE
-extern bool os_tickless_process(uint32_t skip);
+extern bool _os_tickless_process(uint32_t skip);
 #endif
 
 
@@ -408,9 +420,9 @@ extern "C" void os_init(void) {
     error_expect_depth = 0; error_last = OSError::NONE;
     idle_ticks = 0; wdg_reset_count = 0; stack_recovery_count = 0;
     os_syst_rvr_normal = 0;
-    /* O(1) scheduler: initialize priority bitmap and queues */
-    os_ready_bitmap = 0;
-    for (uint32_t i = 0; i < 32; i++) os_pq_head[i] = nullptr;
+    /* O(1) scheduler: initialize ALL priority bitmap and queues
+       (including extension storage for >32 priorities) */
+    _os_priority_queues_init();
 
 
 #if OS_HAS_CYCLE_COUNTER
@@ -419,10 +431,15 @@ extern "C" void os_init(void) {
     OS_DWT_CTRL  |= OS_DWT_CYCCNTENA;
 #endif
 
+    /* Initialize debug UART (or RTT) after DWT is ready */
+#if OS_DEBUG_UART
+    os_debug_init();
+#endif
+
     /* µs time domain: start the extension from zero exactly when the DWT
        counter resets.  MUST run after the DWT block above (which zeroes
        CYCCNT). */
-    os_time_reset();
+    _os_time_reset();
 #if OS_SAFETY_MPU
     os_mpu_init();
 #endif
@@ -433,6 +450,11 @@ extern "C" void os_init(void) {
        false CRC fault on the first idle iteration. */
     os_crc_init();
 #endif
+	
+#if OS_DEBUG_UART
+	/* Print boot banner via ZenOS debug subsystem */
+	os_debug_boot_banner();
+#endif
 }
 
 
@@ -442,17 +464,17 @@ extern "C" void os_init(void) {
    measure beyond one wrap period.  These two functions keep a 32-bit
    µs accumulator that survives wraparound indefinitely:
 
-   os_time_sample()  — folds the DWT cycles elapsed since the previous
+   _os_time_sample()  — folds the DWT cycles elapsed since the previous
                        sample into os_us_accumulated.  Conversion is exact
                        for any SystemCoreClock via cycles × 10^6 / clock,
                        and the carried remainder prevents truncation from
                        accumulating into drift across folds.
-   os_time_reset()   — reinitializes the domain after os_init() zeroes
+   _os_time_reset()   — reinitializes the domain after os_init() zeroes
                        CYCCNT, and after SystemCoreClock updates.
 
    Every caller holds the os_critical section — the state is touched
    from task context, SysTick and the tickless-idle wake path. */
-void os_time_reset(void) {
+void _os_time_reset(void) {
     uint32_t cs = os_critical_enter();
     os_us_accumulated = 0;
     os_us_remainder   = 0;
@@ -464,9 +486,9 @@ void os_time_reset(void) {
     os_critical_exit(cs);
 }
 
-void os_time_sample(void) {
+void _os_time_sample(void) {
 #if OS_HAS_CYCLE_COUNTER
-    os_time_fold();
+    _os_time_fold();
 #else
     /* No DWT: the µs domain is derived from tick_count directly in
        os_get_us(); nothing to sample. */
@@ -479,7 +501,7 @@ extern "C" void os_start(void) {
     idle_tcb.priority = 0; idle_tcb.state = TaskState::READY;
     /* Use the configured idle stack size, NOT a hardcoded 64, so that
        changing OS_IDLE_STACK_WORDS in ZenOS_Config.hpp/Port.hpp actually
-       takes effect.  A mismatch here would make os_stack_check_all()
+       takes effect.  A mismatch here would make _os_stack_check_all()
        report the idle task as overflowing (or under-check it). */
     idle_tcb.stack_base = idle_stack; idle_tcb.stack_size = OS_IDLE_STACK_WORDS;
     idle_tcb.period_ticks = 0; idle_tcb.next_run_time = 0;
@@ -487,13 +509,14 @@ extern "C" void os_start(void) {
     idle_tcb.block_timeout = 0; idle_tcb.wait_result = 0;
     idle_tcb.last_yield_tick = tick_count;
     idle_tcb.mutex_nesting = 0; idle_tcb.base_priority = 0;
+    idle_tcb.mutex_held_count = 0;
     idle_tcb.next = task_list;
     task_list = &idle_tcb;
-    os_stack_init(&idle_tcb);
+    _os_stack_init(&idle_tcb);
     /* Priority 0 is reserved: idle is never enqueued.  PendSV falls back to
        os_idle_tcb_ptr when no priority queue has an eligible task.  This call
        is a no-op guard — it must NOT reset scheduler state. */
-    os_pq_add(&idle_tcb);
+    _os_pq_add(&idle_tcb);
 
 
 #if OS_HAS_VTOR
@@ -503,10 +526,14 @@ extern "C" void os_start(void) {
             ram_vectors[i] = fv[i];
 
         ram_vectors[OS_PENDSV_VECTOR_INDEX]     = (uint32_t)OS_PendSV_Handler;
+        ram_vectors[OS_SYSTICK_VECTOR_INDEX]    = (uint32_t)os_tick;
         ram_vectors[OS_HARDFAULT_VECTOR_INDEX]  = (uint32_t)OS_Fault_Handler;
         ram_vectors[OS_MEMMANAGE_VECTOR_INDEX]  = (uint32_t)OS_Fault_Handler;
         ram_vectors[OS_BUSFAULT_VECTOR_INDEX]   = (uint32_t)OS_Fault_Handler;
         ram_vectors[OS_USAGEFAULT_VECTOR_INDEX] = (uint32_t)OS_Fault_Handler;
+        /* All other IRQ handlers (TIM, UART, SPI, EXTI, etc.) are preserved
+           from the flash vector table copy above — works with any timer
+           or peripheral the user configures in CubeMX. */
         OS_SCB_VTOR = (uint32_t)ram_vectors;
     }
 #else
@@ -605,9 +632,9 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
 
         /* Scheduler */
         "push {lr}\n"
-        "bl os_pq_next\n"
+        "bl _os_pq_next\n"
         "mov r5, r0\n"
-        "bl os_pq_rotate\n"
+        "bl _os_pq_rotate\n"
         "pop {lr}\n"
 
         "cmp r5, #0\n"
@@ -648,9 +675,9 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r8, =tick_count\n"
         "ldr r9, =os_idle_tcb_ptr\n"
         "push {lr}\n"
-        "bl os_pq_next\n"
+        "bl _os_pq_next\n"
         "mov r5, r0\n"
-        "bl os_pq_rotate\n"
+        "bl _os_pq_rotate\n"
         "pop {lr}\n"
 
         "cmp r5, #0\n"
@@ -761,9 +788,9 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
 
         /* Scheduler */
         "push {lr}\n"
-        "bl os_pq_next\n"
+        "bl _os_pq_next\n"
         "mov r5, r0\n"
-        "bl os_pq_rotate\n"
+        "bl _os_pq_rotate\n"
         "pop {lr}\n"
 
         "cmp r5, #0\n"
@@ -804,9 +831,9 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r8, =tick_count\n"
         "ldr r9, =os_idle_tcb_ptr\n"
         "push {lr}\n"
-        "bl os_pq_next\n"
+        "bl _os_pq_next\n"
         "mov r5, r0\n"
-        "bl os_pq_rotate\n"
+        "bl _os_pq_rotate\n"
         "pop {lr}\n"
 
         "cmp r5, #0\n"

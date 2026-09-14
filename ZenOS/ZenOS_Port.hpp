@@ -9,7 +9,7 @@
  * architecture; the STM32 family macros provide peripheral-memory maps.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 2.0.0
+ * @version 1.1.0
  */
 
 /* ═══════════════ Compiler / Linker Attributes ═══════════════ */
@@ -254,17 +254,22 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-/* ── Fallback: unknown STM32 or generic Cortex-M ──── */
+/* ── Fallback: unknown STM32 or generic Cortex-M ────
+ * Uses __ARM_ARCH_* (set by -mcpu flag, NOT CMSIS) for architecture
+ * features. No CMSIS device header dependency. */
 #else
     #define OS_FAMILY_NAME      "Generic Cortex-M"
     #define OS_VECTOR_COUNT     68
     #define OS_SMP_CORES        1
-    #if defined(__FPU_PRESENT) && (__FPU_PRESENT != 0U)
+    /* FPU: ARMv7E-M+ (M4F/M7) always has FPU; ARMv7-M (M3) and ARMv6-M (M0/M0+) do not */
+    #if defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__)
         #define OS_HAS_FPU_HW   1
     #else
         #define OS_HAS_FPU_HW   0
     #endif
-    #if defined(__MPU_PRESENT) && (__MPU_PRESENT != 0U)
+    /* MPU: ARMv7-M+ has MPU (optional on M0+); ARMv6-M (M0) does not */
+    #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || \
+        defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
         #define OS_HAS_MPU_HW   1
     #else
         #define OS_HAS_MPU_HW   0
@@ -277,7 +282,293 @@
     #define OS_RCC_CSR_ADDR     0x40021024UL
 #endif
 
+/* Now that OS_CRC_BASE_ADDR and OS_IWDG_BASE_ADDR are set per-family,
+   include ZenOS_Regs.hpp which defines the register-level accessors
+   (OS_CRC_DR, OS_CRC_CR, OS_IWDG_KR, OS_IWDG_SR) using those addresses. */
+#include "ZenOS_Regs.hpp"
+
 #define OS_SMP_MAX_CORES 2
+
+/* ═══════════════ Debug UART Peripheral Mapping ═══════════════
+ * Each STM32 family uses different GPIO AF mechanisms:
+ *   F0/F1/F3: AFIO remap (MAPR register) — legacy style
+ *   F2/F4/F7/H7/G0/G4/L0/L1/L4/L5/U5/WB/WBA: MODER + AFR — modern style
+ *
+ * OS_DEBUG_USART_DEFAULT_BASE: USART peripheral base address for debug
+ * OS_DEBUG_GPIO_DEFAULT_BASE:  GPIO base for TX pin
+ * OS_DEBUG_GPIO_MODER_OFFSET:  MODER register offset (modern families)
+ * OS_DEBUG_GPIO_AFR_OFFSET:    AFR register offset (modern families)
+ * OS_DEBUG_RCC_ENR:            RCC peripheral clock enable register
+ * OS_DEBUG_RCC_ENR_BIT:        Bit position in RCC enable register
+ *
+ * These are defaults — override all via project defines.
+ * Ref: STM32 Reference Manual, GPIO and RCC chapters per family.
+ */
+
+/* STM32F1 — AFIO remap style (legacy GPIO config via CRL/CRH) */
+#if defined(STM32F1xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 @ APB2 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x40010800UL  /* GPIOA @ APB2 */
+    #endif
+    /* F1: RCC->APB2ENR, USART1EN=bit14, IOPAEN=bit2 */
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021018UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   2U
+    #endif
+
+/* STM32F0 — MODER style (Cortex-M0, no AFIO) */
+#elif defined(STM32F0xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021014UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   17U               /* IOPAEN in AHBENR */
+    #endif
+
+/* STM32F2/F4 — MODER + AFR style */
+#elif defined(STM32F2xx) || defined(STM32F4xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40011000UL  /* USART1 @ APB2 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x40020000UL  /* GPIOA @ AHB1 */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40023830UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U                 /* USART1EN */
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB1ENR */
+    #endif
+
+/* STM32F3 — MODER + AFR style */
+#elif defined(STM32F3xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021014UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   17U                /* IOPAEN in AHBENR */
+    #endif
+
+/* STM32F7 — MODER + AFR style */
+#elif defined(STM32F7xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40011000UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x40020000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40023830UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB1ENR */
+    #endif
+
+/* STM32G0 — MODER + AFR style (Cortex-M0+) */
+#elif defined(STM32G0xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x50000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021040UL       /* RCC->APBENR2 */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in IOPENR */
+    #endif
+
+/* STM32G4 — MODER + AFR style */
+#elif defined(STM32G4xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021060UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB2ENR */
+    #endif
+
+/* STM32H7 — MODER + AFR style (different bus) */
+#elif defined(STM32H7xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40011000UL  /* USART1 @ APB2 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x58020000UL  /* GPIOA @ AHB4 */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x58024460UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB4ENR */
+    #endif
+
+/* STM32L0 — MODER style (Cortex-M0+) */
+#elif defined(STM32L0xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40011400UL  /* USART2 (L0 often uses USART2) */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x50000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021028UL       /* RCC->APB1ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  17U                /* USART2EN */
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* IOPAEN in IOPENR */
+    #endif
+
+/* STM32L1 — MODER style (Cortex-M3) */
+#elif defined(STM32L1xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x40020000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40023824UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* IOPAEN in AHBENR */
+    #endif
+
+/* STM32L4/L5/U5 — MODER + AFR style */
+#elif defined(STM32L4xx) || defined(STM32L5xx) || defined(STM32U5xx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021060UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB2ENR */
+    #endif
+
+/* STM32WB — MODER + AFR style */
+#elif defined(STM32WBxx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x58000058UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U                 /* GPIOAEN in AHB2ENR */
+    #endif
+
+/* STM32WBA — MODER + AFR style */
+#elif defined(STM32WBAxx)
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL  /* USART1 */
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x48000000UL  /* GPIOA */
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x58000098UL       /* RCC->APB2ENR */
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  4U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   0U
+    #endif
+
+/* Generic fallback */
+#else
+    #ifndef OS_DEBUG_USART_DEFAULT_BASE
+    #define OS_DEBUG_USART_DEFAULT_BASE  0x40013800UL
+    #endif
+    #ifndef OS_DEBUG_GPIO_DEFAULT_BASE
+    #define OS_DEBUG_GPIO_DEFAULT_BASE   0x40010800UL
+    #endif
+    #ifndef OS_DEBUG_RCC_ENR
+    #define OS_DEBUG_RCC_ENR        0x40021018UL
+    #endif
+    #ifndef OS_DEBUG_RCC_USART_BIT
+    #define OS_DEBUG_RCC_USART_BIT  14U
+    #endif
+    #ifndef OS_DEBUG_RCC_GPIO_BIT
+    #define OS_DEBUG_RCC_GPIO_BIT   2U
+    #endif
+#endif
+
+/* GPIO register offsets (modern families: MODER/OTYPER/OSPEEDR/PUPDR/ODR/AFR) */
+/* Ref: STM32 RM, GPIO chapter — offsets are identical across all STM32 families */
+#define OS_GPIO_MODER_OFFSET   0x00UL
+#define OS_GPIO_OTYPER_OFFSET  0x04UL
+#define OS_GPIO_OSPEEDR_OFFSET 0x08UL
+#define OS_GPIO_PUPDR_OFFSET   0x0CUL
+#define OS_GPIO_ODR_OFFSET     0x14UL
+#define OS_GPIO_BSRR_OFFSET    0x18UL
+#define OS_GPIO_AFRL_OFFSET    0x20UL  /* AFR[0] for pins 0-7 */
+#define OS_GPIO_AFRH_OFFSET    0x24UL  /* AFR[1] for pins 8-15 */
 
 /* ═══════════════ RCC Reset-Flag Bit Positions ═══════════════
  * os_get_hw_wdg_reset_count() must read the IWDG reset flag and clear
@@ -286,8 +577,8 @@
  *
  *   Family group          IWDGRSTF  RMVF
  *   F0/F1/F2/F3/F4/F7/L0/L1/L4/L5/U5/WB/WBA/G4   29   24
- *   G0/L5(alt)/U5(alt)    — see RM (G0 CSR @ +0x94, bits differ)
- *   H7                    — RCC_CSR layout differs (bit 29 still IWDGRSTF)
+ *   G0/L5(alt)/U5(alt)    -- see RM (G0 CSR @ +0x94, bits differ)
+ *   H7                    -- RCC_CSR layout differs (bit 29 still IWDGRSTF)
  *
  * Default to the classic 29/24 pair (correct for the vast majority of
  * families) and allow a project to override with -D. */
@@ -308,7 +599,16 @@
 
 #define OS_RAM_TEST_SKIP     0x4000UL
 #define OS_RAM_TEST_START    (OS_RAM_START + OS_RAM_TEST_SKIP)
+/* RAM test covers the lower half of RAM. The upper half typically contains
+   active stack and heap — a destructive March-C test there would corrupt
+   live data. For IEC 62304 Class C / IEC 61508 SIL 3+ full coverage,
+   either:
+   (a) Run a non-destructive read-only pattern check on the upper half, or
+   (b) Schedule the test during a safe shutdown window.
+   Override with -DOS_RAM_TEST_END=<addr> to extend coverage. */
+#ifndef OS_RAM_TEST_END
 #define OS_RAM_TEST_END      (OS_RAM_START + (OS_RAM_SIZE / 2))
+#endif
 
 /* ═══════════════ ARM Architecture Detection ═══════════════
  * CMSIS defines these based on the -mcpu flag:
@@ -351,83 +651,44 @@
 #define OS_PENDSV_VECTOR_INDEX      14
 #define OS_SYSTICK_VECTOR_INDEX     15
 
-/* ═══════════════ NVIC Priority Registers ═══════════════
- * The SHPR2/SHPR3 registers at 0xE000ED1C/0xE000ED20 control
- * the priority of system exceptions (SVCall, PendSV, SysTick). */
-#define OS_SCB_BASE        0xE000ED00UL
-#define OS_SCB_ICSR        (*((volatile uint32_t*)(OS_SCB_BASE + 0x04UL)))
-#define OS_SCB_VTOR        (*((volatile uint32_t*)(OS_SCB_BASE + 0x08UL)))
-#define OS_SCB_SHPR3       (*((volatile uint32_t*)(OS_SCB_BASE + 0x20UL)))
-#define OS_ICSR_PENDSVSET_Msk (1UL << 28)
+/* NVIC Priority, SysTick, DWT, SCB register definitions are now in
+   ZenOS_Regs.hpp (included above). Do NOT redefine them here. */
 
-/* ═══════════════ SysTick Registers ═══════════════ */
-#define OS_SYST_BASE       0xE000E010UL
-#define OS_SYST_CSR        (*((volatile uint32_t*)(OS_SYST_BASE + 0x00UL)))
-#define OS_SYST_RVR        (*((volatile uint32_t*)(OS_SYST_BASE + 0x04UL)))
-#define OS_SYST_CVR        (*((volatile uint32_t*)(OS_SYST_BASE + 0x08UL)))
-#define OS_SYST_CSR_ENABLE_Msk    (1UL << 0)
-#define OS_SYST_CSR_TICKINT_Msk   (1UL << 1)
-#define OS_SYST_CSR_COUNTFLAG_Msk (1UL << 16)
-
-/* ═══════════════ DWT (Data Watchpoint and Trace) ═══════════════
- * Present on Cortex-M3+ except some Cortex-M0 variants.
- * Used for cycle-accurate µs timing via DWT->CYCCNT. */
-#define OS_DWT_BASE        0xE0001000UL
-#define OS_DWT_CTRL        (*((volatile uint32_t*)(OS_DWT_BASE + 0x00UL)))
-#define OS_DWT_CYCCNT      (*((volatile uint32_t*)(OS_DWT_BASE + 0x04UL)))
-#define OS_DWT_CTRL_CYCCNTENA_Msk (1UL << 0)
-#define OS_COREDEBUG_DEMCR (*(volatile uint32_t*)0xE000EDFCUL)
-#define OS_COREDEM_TRCENA  (1UL << 24)
-#define OS_DWT_CYCCNTENA   (1UL << 0)
-
-/* Cycle counter detection: CMSIS defines DWT on most Cortex-M3+.
-   We also check known STM32 families that always have it. */
-#if defined(DWT) || defined(DWT_LSR)
-    #define OS_HAS_CYCLE_COUNTER 1
+/* Cycle counter detection: DWT CYCCNT is present on Cortex-M3+ (ARMv7-M).
+   Cortex-M0/M0+ (ARMv6-M) does NOT have CYCCNT.
+   Use known STM32 families + __ARM_ARCH_* for detection. */
+#if defined(STM32F0xx) || defined(STM32G0xx) || defined(STM32L0xx)
+    /* Cortex-M0/M0+: no DWT CYCCNT */
+    #define OS_HAS_CYCLE_COUNTER 0
+#elif defined(__ARM_ARCH_6M__)
+    /* ARMv6-M: no DWT CYCCNT */
+    #define OS_HAS_CYCLE_COUNTER 0
 #elif defined(STM32F1xx) || defined(STM32F2xx) || defined(STM32F3xx) || \
       defined(STM32F4xx) || defined(STM32F7xx) || defined(STM32H7xx) || \
       defined(STM32G4xx) || defined(STM32L4xx) || defined(STM32L1xx) || \
       defined(STM32L5xx) || defined(STM32U5xx) || defined(STM32WBxx) || \
       defined(STM32WBAxx)
     #define OS_HAS_CYCLE_COUNTER 1
-#elif defined(STM32F0xx) || defined(STM32G0xx) || defined(STM32L0xx)
-    /* Cortex-M0/M0+: no DWT CYCCNT */
-    #define OS_HAS_CYCLE_COUNTER 0
+#elif defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || \
+      defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
+    #define OS_HAS_CYCLE_COUNTER 1
 #else
-    /* Try to use CMSIS detection */
     #define OS_HAS_CYCLE_COUNTER 0
 #endif
 
-/* ═══════════════ Hardware Feature Overrides ═══════════════
- * The family-level flags above give per-chip defaults.
- * CMSIS __MPU_PRESENT etc. can override for non-standard configs. */
-
-/* MPU: trust CMSIS device header if available, else use family default */
-#if defined(__MPU_PRESENT)
-    #if (__MPU_PRESENT == 0U)
-        #undef  OS_HAS_MPU_HW
-        #define OS_HAS_MPU_HW 0
-    #endif
-#else
-    /* No CMSIS header: fall back to family-level default */
-#endif
+/* ═══════════════ Hardware Feature Detection (CMSIS-Free) ═══════════════
+ * All feature flags are derived from:
+ *   - STM32Fxxx/Gxxx/Lxxx/Hxxx family macros (set by CubeMX or project)
+ *   - __ARM_ARCH_* macros (set by -mcpu compiler flag)
+ * NO dependency on CMSIS device headers (__MPU_PRESENT, __FPU_PRESENT,
+ * __VTOR_PRESENT, __NVIC_PRIO_BITS). */
 
 /* VTOR: present on all ARMv7-M+ (Cortex-M3+), absent on ARMv6-M (M0/M0+).
- * __VTOR_PRESENT from the CMSIS device header is authoritative when present.
- * ARMv8-M Baseline (Cortex-M23) DOES have VTOR, so only ARMv6-M lacks it. */
-#if defined(__VTOR_PRESENT)
-    #define OS_HAS_VTOR ((__VTOR_PRESENT) != 0U)
-#elif defined(__ARM_ARCH_6M__)
+ * ARMv8-M Baseline (Cortex-M23) DOES have VTOR. */
+#if defined(__ARM_ARCH_6M__)
     #define OS_HAS_VTOR 0
 #else
     #define OS_HAS_VTOR 1
-#endif
-
-/* FPU: trust CMSIS device header if available */
-#if defined(__FPU_PRESENT)
-    #define OS_HAS_FPU_HW ((__FPU_PRESENT) != 0U)
-#elif !defined(OS_HAS_FPU_HW)
-    #define OS_HAS_FPU_HW 0
 #endif
 
 /* ═══════════════ Cortex-M Architecture Selection ═══════════════
@@ -468,11 +729,9 @@
  *   STM32H7:            APB4 @ 0x58004800
  * The IWDG-KR register offset is always +0x00.
  * The IWDG-SR register offset is always +0x0C. */
-#ifndef OS_IWDG_BASE_ADDR
-    #define OS_IWDG_BASE_ADDR  0x40003000UL
-#endif
-#define OS_IWDG_KR  (*((volatile uint32_t*)(OS_IWDG_BASE_ADDR + 0x00UL)))
-#define OS_IWDG_SR  (*((volatile uint32_t*)(OS_IWDG_BASE_ADDR + 0x0CUL)))
+/* IWDG register definitions are now in ZenOS_Regs.hpp.
+   The OS_IWDG_BASE_ADDR is set per-family above; ZenOS_Regs.hpp
+   provides OS_IWDG_KR / OS_IWDG_SR using that address. */
 
 /* ═══════════════ CRC Peripheral ═══════════════
  * CRC peripheral base addresses vary significantly across families:
@@ -481,80 +740,24 @@
  *   STM32L5/U5/WBA:                         0x40023000
  * The CRC-DR register offset is always +0x00.
  * The CRC-CR register offset is always +0x08. */
-#ifndef OS_CRC_BASE_ADDR
-    #define OS_CRC_BASE_ADDR  0x40023000UL
-#endif
-#define OS_CRC_DR  (*((volatile uint32_t*)(OS_CRC_BASE_ADDR + 0x00UL)))
-#define OS_CRC_CR  (*((volatile uint32_t*)(OS_CRC_BASE_ADDR + 0x08UL)))
+/* CRC register definitions are now in ZenOS_Regs.hpp.
+   The OS_CRC_BASE_ADDR is set per-family above; ZenOS_Regs.hpp
+   provides OS_CRC_DR / OS_CRC_CR using that address. */
 
 /* ═══════════════ NVIC Priority Helper ═══════════════
  * Different STM32 families implement different numbers of NVIC priority bits
- * (2, 3, or 4).  CMSIS defines __NVIC_PRIO_BITS from the device header.
+ * (2, 3, or 4).  OS_NVIC_PRIO_BITS is set per-family above (ZenOS_Port.hpp)
+ * and the PendSV/SysTick priority registers are in ZenOS_Regs.hpp.
  * The PendSV and SysTick priorities must be set to the lowest priority
  * (all bits set) so they never preempt any application interrupt. */
+/* OS_NVIC_PRIO_BITS: already defined per-family in the STM32 detection
+   block above.  Fallback to 4 if nothing matched (generic Cortex-M). */
 #ifndef OS_NVIC_PRIO_BITS
-    #if defined(__NVIC_PRIO_BITS)
-        #define OS_NVIC_PRIO_BITS __NVIC_PRIO_BITS
-    #elif defined(OS_NVIC_PRIO_BITS)
-        /* Use the family-level default set above */
-    #else
-        #define OS_NVIC_PRIO_BITS 4
-    #endif
+    #define OS_NVIC_PRIO_BITS 4
 #endif
 
-#define OS_PENDSV_PRIO    (*((volatile uint8_t*)0xE000ED22UL))
-#define OS_SYSTICK_PRIO   (*((volatile uint8_t*)0xE000ED23UL))
-
-/* ═══════════════ MPU Type Definitions ═══════════════
- * Different ARM architectures use different MPU register layouts:
- *
- * ARMv7-M (Cortex-M3/M4/M7): PMSAv7
- *   - RBAR: Region Base Address Register (region number in bits [3:0])
- *   - RASR: Region Attribute and Size Register (AP, TEX, S, C, B, XN, SIZE)
- *   - 8 regions max
- *
- * ARMv8-M (Cortex-M23/M33): PMSAv8
- *   - RBAR: Region Base Address Register (region number in RBAR[3:0])
- *   - RLAR: Region Limit Address Register (LIMIT, AttrIndx, EN, SH, AP, XN)
- *   - Up to 16 regions on Mainline
- *
- * The MPU implementation in ZenOS_Safety.cpp uses the ARMv7-M layout
- * by default.  When targeting ARMv8-M (M23/M33), enable OS_MPU_PMSAv8
- * in your project defines or let the architecture detection set it. */
-/* Authoritative layout follows ARM CMSIS (core_cm3.h / core_cm23.h /
- * core_cm33.h).  EVERY MPU block begins with the read-only TYPE register
- * at offset 0x00; CTRL is therefore at 0x04, RNR at 0x08, RBAR at 0x0C
- * and RASR/RLAR at 0x10.  Omitting TYPE shifts every member down by 4
- * bytes, so OS_MPU_BASE->CTRL would read MPU_TYPE and any write intended
- * for a later register lands in reserved SCS space (0xE000EDF8) — an
- * imprecise buffered write that escalates to a HardFault on every core.
- *
- * PMSAv8 has NO SFSR/SFAR inside the MPU; those registers belong to the
- * Security Attribution Unit (SAU) at SCS_BASE + 0x0DD0, not the MPU. */
-#if defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
-    #define OS_MPU_PMSAv8  1
-    #define OS_MPU_PMSAv7  0
-    /* PMSAv8 MPU register layout (ARMv8-M, Cortex-M23/M33) */
-    typedef struct {
-        volatile uint32_t TYPE;   /* 0x00 RO  MPU Type Register        */
-        volatile uint32_t CTRL;   /* 0x04 RW  MPU Control Register     */
-        volatile uint32_t RNR;    /* 0x08 RW  MPU Region Number        */
-        volatile uint32_t RBAR;   /* 0x0C RW  MPU Region Base Address  */
-        volatile uint32_t RLAR;   /* 0x10 RW  MPU Region Limit Address */
-    } OS_MPU_Type;
-#else
-    #define OS_MPU_PMSAv8  0
-    #define OS_MPU_PMSAv7  1
-    /* PMSAv7 MPU register layout (ARMv7-M, Cortex-M3/M4/M7) */
-    typedef struct {
-        volatile uint32_t TYPE;   /* 0x00 RO  MPU Type Register                    */
-        volatile uint32_t CTRL;   /* 0x04 RW  MPU Control Register                 */
-        volatile uint32_t RNR;    /* 0x08 RW  MPU Region Number Register           */
-        volatile uint32_t RBAR;   /* 0x0C RW  MPU Region Base Address Register     */
-        volatile uint32_t RASR;   /* 0x10 RW  MPU Region Attribute & Size Register */
-    } OS_MPU_Type;
-#endif
-#define OS_MPU_BASE ((OS_MPU_Type*)0xE000ED90UL)
+/* MPU type definitions are now in ZenOS_Regs.hpp (included above).
+   Do NOT redefine OS_MPU_Type or OS_MPU_BASE here. */
 
 /* ═══════════════ Cache Operations (Cortex-M7/H7) ═══════════════
  * Cortex-M7 and H7 have data/instruction caches that can cause
@@ -575,3 +778,28 @@
  * This is a porting concern — see PORTING_GUIDE.md. */
 #define OS_HAS_CACHE  0  /* Default: assume no cache. Set to 1 in project
                             defines if targeting STM32F7/H7 with cache enabled. */
+
+/* ═══════════════ CubeMX Peripheral Consistency Checks ═══════════════
+ * If CubeMX enables a peripheral (via HAL_IWDG_MODULE_ENABLED, etc.)
+ * but the corresponding ZenOS safety feature is disabled, the peripheral
+ * runs unsupervised — a safety hazard.
+ *
+ * These checks use HAL_*_MODULE_ENABLED defines which are available when:
+ *   - CubeMX project includes HAL headers (stm32f1xx_hal_conf.h), OR
+ *   - User defines HAL_IWDG_MODULE_ENABLED in project preprocessor defines
+ *
+ * They are #ifdef-guarded so they are harmless when HAL is not used.
+ * If you get a #error from these checks, either:
+ *   (a) Enable the matching OS_SAFETY_* in ZenOS_Config.hpp, OR
+ *   (b) Disable the peripheral in CubeMX .ioc file
+ */
+#if defined(HAL_IWDG_MODULE_ENABLED) && !OS_SAFETY_HW_WATCHDOG
+#error "[ZenOS] IWDG enabled in CubeMX but OS_SAFETY_HW_WATCHDOG=0. \
+Enable OS_SAFETY_HW_WATCHDOG=1 or disable IWDG in CubeMX. \
+Running IWDG without kernel-managed feed causes spurious MCU resets."
+#endif
+
+#if defined(HAL_CRC_MODULE_ENABLED) && !OS_SAFETY_CRC_CHECK
+#error "[ZenOS] CRC enabled in CubeMX but OS_SAFETY_CRC_CHECK=0. \
+Enable OS_SAFETY_CRC_CHECK=1 or disable CRC in CubeMX."
+#endif

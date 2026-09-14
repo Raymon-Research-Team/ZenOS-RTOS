@@ -7,7 +7,7 @@
  * C++ features (enums, classes, templates) are guarded by __cplusplus.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  */
 
 #include <stdint.h>
@@ -17,6 +17,7 @@
 #endif
 #include "ZenOS_Config.hpp"
 #include "ZenOS_Port.hpp"
+#include "ZenOS_Version.hpp"
 
 
 /* ============================================================================
@@ -73,38 +74,13 @@
 #define OS_TICKS_PER_MS   (1000UL / OS_KERNEL_TICK_PERIOD_US)
 #define OS_WAIT_FOREVER   0xFFFFFFFFUL
 
-/* Forward declarations required by the deadline helpers below.  The real
- * definitions live in ZenOS.cpp / ZenOS_Scheduler.cpp; only the
- * declarations must be visible here so the inline helpers compile. */
-extern volatile uint32_t tick_count;
-uint32_t os_ms_to_ticks(uint32_t ms);
-
-/* Absolute-deadline wait helper for the OS_QUEUE / OS_SEMAPHORE retry loops.
- * A naive "while (...) wait(timeout_ms)" restarts the full timeout on every
- * iteration, so a contended object can block for N x timeout_ms.  Convert
- * once to an absolute tick deadline (wrap-safe signed compare) and derive
- * the remaining ms each iteration instead.  Defined here (not in
- * ZenOS_Internal.hpp) because the OS_QUEUE/OS_SEMAPHORE templates below need
- * the declaration at parse time. */
-inline uint32_t os_deadline_from_ms(uint32_t timeout_ms) {
-    if (timeout_ms == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
-    return tick_count + os_ms_to_ticks(timeout_ms);
-}
-
-inline uint32_t os_deadline_remaining_ms(uint32_t deadline_tick) {
-    if (deadline_tick == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
-    int32_t remain = (int32_t)(deadline_tick - tick_count);
-    if (remain <= 0) return 0;
-    return (uint32_t)remain / OS_TICKS_PER_MS + 1;
-}
-
 
 /* ============================================================================
  *  Interrupt Helpers (inline — zero overhead)
  * ============================================================================ */
 
-static inline void os_hw_disable_irq() { __asm volatile("cpsid i" ::: "memory"); }
-static inline void os_hw_enable_irq()  { __asm volatile("cpsie i" ::: "memory"); }
+static inline void _os_hw_disable_irq() { __asm volatile("cpsid i" ::: "memory"); }
+static inline void _os_hw_enable_irq()  { __asm volatile("cpsie i" ::: "memory"); }
 
 
 /* ============================================================================
@@ -114,17 +90,8 @@ static inline void os_hw_enable_irq()  { __asm volatile("cpsie i" ::: "memory");
  * ============================================================================ */
 
 /* ============================================================================
- *  Version Constants
+ *  Version Constants (from ZenOS_Version.hpp — single source of truth)
  * ============================================================================ */
-
-#define OS_VERSION_MAJOR           1
-#define OS_VERSION_MINOR           0
-#define OS_VERSION_PATCH           1
-#define OS_VERSION_PACKED          ((OS_VERSION_MAJOR << 16) | (OS_VERSION_MINOR << 8) | OS_VERSION_PATCH)
-
-#define OS_STR_(x) #x
-#define OS_STR(x)  OS_STR_(x)
-#define OS_VERSION_STRING  OS_STR(OS_VERSION_MAJOR) "." OS_STR(OS_VERSION_MINOR) "." OS_STR(OS_VERSION_PATCH)
 
 
 #ifdef __cplusplus
@@ -132,6 +99,8 @@ extern "C" {
 #endif
 
 extern uint32_t SystemCoreClock;
+extern volatile uint32_t tick_count;
+uint32_t _os_ms_to_ticks(uint32_t ms);
 
 void os_init(void);
 void os_start(void);
@@ -179,9 +148,31 @@ void OS_PendSV_Handler(void);
 void OS_Fault_Handler(void);
 void OS_Fault_C_Handler(void);
 
+#if OS_DEBUG_UART
+/* Debug functions — only declared when debug is enabled.
+   When OS_DEBUG_UART=0, all debug code is compiled away. */
+void os_debug_boot_banner(void);
+void os_debug_init(void);
+void os_debug_fault_dump(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
+
+/* Absolute-deadline wait helper for the OS_QUEUE / OS_SEMAPHORE retry loops.
+ * tick_count and _os_ms_to_ticks are declared above inside extern "C". */
+inline uint32_t _os_deadline_from_ms(uint32_t timeout_ms) {
+    if (timeout_ms == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
+    return tick_count + _os_ms_to_ticks(timeout_ms);
+}
+
+inline uint32_t _os_deadline_remaining_ms(uint32_t deadline_tick) {
+    if (deadline_tick == OS_WAIT_FOREVER) return OS_WAIT_FOREVER;
+    int32_t remain = (int32_t)(deadline_tick - tick_count);
+    if (remain <= 0) return 0;
+    return (uint32_t)remain / OS_TICKS_PER_MS + 1;
+}
 
 
 /* ============================================================================
@@ -210,6 +201,7 @@ enum class OSError : uint8_t {
     SENSOR_TIMEOUT    = 13,
     SAFE_MUTEX_LOCK   = 14,
     RAM_TEST_FAIL     = 15,
+    MPU_CONFIG_ERROR  = 16,
     ERROR_COUNT
 };
 
@@ -254,7 +246,7 @@ enum class ErrorSeverity : uint8_t {
 
 /* ── Error Reporting (C++ overload) ── */
 extern "C" {
-    void os_report_error(OSError code);
+    void _os_report_error(OSError code);
     OSError  os_get_last_error(void);
 }
 
@@ -325,6 +317,7 @@ struct TCB {
     uint8_t     mutex_nesting;      /* [52] Nested lock count */
     uint8_t     base_priority;      /* [53] Original priority (before PI) */
     uint8_t     wdg_retries;        /* [54] Watchdog recovery count */
+    uint8_t     mutex_held_count;   /* [55] Number of mutexes currently held */
     uint32_t    cpu_ticks;          /* [56] CPU time accounting */
     TCB*        queue_next;         /* [60] Priority queue linked list */
 #if OS_SMP_CORES > 1
@@ -401,6 +394,7 @@ static_assert(offsetof(TCB, mutex_nesting)   == OS_OFF_MUTEX_NESTING,   "TCB lay
 static_assert(offsetof(TCB, base_priority)   == OS_OFF_BASE_PRIORITY,   "TCB layout");
 static_assert(offsetof(TCB, wdg_retries)     == OS_OFF_WDG_RETRIES,     "TCB layout");
 static_assert(offsetof(TCB, cpu_ticks)       == OS_OFF_CPU_TICKS,       "TCB layout");
+static_assert(offsetof(TCB, mutex_held_count) == 55,                    "TCB layout — mutex_held_count");
 static_assert(offsetof(TCB, queue_next)      == 60,                     "TCB layout — queue_next");
 
 
@@ -520,16 +514,30 @@ extern "C" int8_t _os_task_create_internal(
  * ============================================================================ */
 
 template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>
-inline int8_t _os_task_create_impl(const char* name,
+inline int8_t __os_task_create_impl(const char* name,
     uint8_t priority = 1, uint32_t period_ms = 0)
 {
     static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");
     static_assert((StackBytes % 4) == 0, "ZenOS task stack size must be a multiple of 4 bytes");
+    /* Effective stack floor: _os_task_create_internal() clamps stack_size
+       (in WORDS) to 64 words = 256 bytes, and os_stack_init() fills exactly
+       that many words plus pushes the 16-word initial frame.  Allocating
+       less than 256 bytes made the clamp write past this buffer and
+       corrupt adjacent .bss (TCBs, os_pq_head, HAL handles) at every boot. */
+    constexpr uint32_t StackBytesEff = (StackBytes < 256) ? 256 : StackBytes;
 #if OS_SAFETY_MPU
     static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");
-    static uint32_t stack_raw[StackBytes / 4] __attribute__((aligned(StackBytes)));
+#if defined(__ICCARM__)
+    static uint32_t stack_raw[StackBytesEff / 4] OS_ALIGNED(StackBytesEff);
 #else
-	static uint32_t stack_raw[(StackBytes / 4) + 8] __attribute__((aligned(8)));
+    static uint32_t stack_raw[StackBytesEff / 4] __attribute__((aligned(StackBytesEff)));
+#endif
+#else
+#if defined(__ICCARM__)
+    static uint32_t stack_raw[(StackBytesEff / 4) + 8] OS_ALIGNED(8);
+#else
+    static uint32_t stack_raw[(StackBytesEff / 4) + 8] __attribute__((aligned(8)));
+#endif
 #endif
     static TCB tcb;
     static bool created = false;
@@ -538,7 +546,7 @@ inline int8_t _os_task_create_impl(const char* name,
 
     uintptr_t addr = (uintptr_t)stack_raw;
 #if OS_SAFETY_MPU
-    addr = (addr + StackBytes - 1UL) & ~(StackBytes - 1UL);
+    addr = (addr + StackBytesEff - 1UL) & ~(StackBytesEff - 1UL);
 #else
     addr = (addr + 7UL) & ~7UL;
 #endif
@@ -550,11 +558,22 @@ inline int8_t _os_task_create_impl(const char* name,
         &tcb, aligned_stack, aligned_size, name, Entry, priority, period_ms);
 }
 
+/* os_task_create macro: portable variadic forwarding.
+   GNU ##__VA_ARGS## removes the comma when no args follow — necessary
+   for os_task_create(entry) with default priority/period.
+   IAR/ARMCC may not support ##__VA_ARGS — provide overloaded helpers. */
+#if defined(__GNUC__) || defined(__clang__)
 #define os_task_create(entry, ...) \
-    _os_task_create_impl<entry>(#entry, ##__VA_ARGS__)
+    __os_task_create_impl<entry>(#entry, ##__VA_ARGS__)
+#else
+/* Non-GNU fallback: explicit overloads via template default args.
+   os_task_create(entry) uses defaults, os_task_create(entry, prio) etc. */
+#define os_task_create(entry, ...) \
+    __os_task_create_impl<entry>(#entry, __VA_ARGS__)
+#endif
 
 #define os_task_create_st(entry, prio, period, stack_Bytes) \
-    _os_task_create_impl<entry, stack_Bytes>(#entry, prio, period)
+    __os_task_create_impl<entry, stack_Bytes>(#entry, prio, period)
 
 
 /* ============================================================================
@@ -581,19 +600,19 @@ extern "C" {
  * ============================================================================ */
 
 /* --- OS_SAFE --- */
-class _OsSafeGuard {
+class __OsSafeGuard {
     uint32_t saved_primask;
     uint32_t start_cycle;
     bool done;
 public:
-    _OsSafeGuard();
-    ~_OsSafeGuard();
+    __OsSafeGuard();
+    ~__OsSafeGuard();
     bool once();
-    _OsSafeGuard(const _OsSafeGuard&) = delete;
-    _OsSafeGuard& operator=(const _OsSafeGuard&) = delete;
+    __OsSafeGuard(const __OsSafeGuard&) = delete;
+    __OsSafeGuard& operator=(const __OsSafeGuard&) = delete;
 };
 
-#define OS_SAFE for (_OsSafeGuard _os_s; _os_s.once(); )
+#define OS_SAFE for (__OsSafeGuard _os_s; _os_s.once(); )
 
 
 /* --- OS_EVENT --- */
@@ -602,15 +621,15 @@ public:
 struct ECB { volatile uint32_t count; volatile uint32_t in_use; int16_t id; ECB* next; };
 
 extern "C" {
-    void os_event_signal(int16_t id);
-    void os_event_signal_from_isr(uint32_t mask);
+    void _os_event_signal(int16_t id);
+    void __os_event_signal_from_isr(uint32_t mask);
 }
 
 extern "C" {
-    void    os_event_register(ECB* e);
-    void    os_event_unregister(ECB* e);
-    void    os_event_destroy(int16_t id);
-    int     os_event_wait(int16_t id, uint32_t timeout_ms);
+    void    _os_event_register(ECB* e);
+    void    _os_event_unregister(ECB* e);
+    void    _os_event_destroy(int16_t id);
+    int     _os_event_wait(int16_t id, uint32_t timeout_ms);
     extern int16_t os_event_next_id;
 }
 
@@ -649,10 +668,10 @@ static inline uint32_t operator|(const OS_EVENT& a, const OS_EVENT& b) {
 #if OS_TOOL_MUTEX
 
 extern "C" {
-    TCB* os_get_current_task(void);
-    TCB* os_mutex_handoff(void* mutex_obj);
-    void os_mutex_block_on(void* obj, uint32_t timeout_ticks);
-    int  os_mutex_check_and_clear_result(void);
+    TCB* _os_get_current_task(void);
+    TCB* _os_mutex_handoff(void* mutex_obj);
+    void _os_mutex_block_on(void* obj, uint32_t timeout_ticks);
+    int  _os_mutex_check_and_clear_result(void);
 }
 
 class OS_MUTEX {
@@ -662,6 +681,7 @@ class OS_MUTEX {
     bool priority_boosted;
 public:
     OS_MUTEX(uint8_t ceiling = 0);
+    ~OS_MUTEX();
     bool lock(uint32_t timeout_ms = OS_WAIT_FOREVER);
     void unlock();
     bool is_locked() const;
@@ -670,19 +690,19 @@ public:
     OS_MUTEX& operator=(const OS_MUTEX&) = delete;
 };
 
-class _OsLockGuard {
+class __OsLockGuard {
     OS_MUTEX& mtx;
     bool acquired;
     mutable bool done;
 public:
-    _OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms = OS_WAIT_FOREVER);
-    ~_OsLockGuard();
+    __OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms = OS_WAIT_FOREVER);
+    ~__OsLockGuard();
     bool once();
-    _OsLockGuard(const _OsLockGuard&) = delete;
-    _OsLockGuard& operator=(const _OsLockGuard&) = delete;
+    __OsLockGuard(const __OsLockGuard&) = delete;
+    __OsLockGuard& operator=(const __OsLockGuard&) = delete;
 };
 
-#define OS_LOCK(mtx) for (_OsLockGuard _os_l(mtx); _os_l.once(); )
+#define OS_LOCK(mtx) for (__OsLockGuard _os_l(mtx); _os_l.once(); )
 
 #endif /* OS_TOOL_MUTEX */
 
@@ -707,14 +727,14 @@ public:
     OS_QUEUE() : head(0), tail(0), count(0) {}
     ~OS_QUEUE() {} // OS_EVENT destructors auto-destroy events
 
-    bool put(const T& item) { return put(item, OS_WAIT_FOREVER); }
+    bool put(const T& item) { return put(item, 0); }
 
     bool put(const T& item, uint32_t timeout_ms) {
         /* Absolute deadline: a naive per-iteration wait(timeout_ms) restarts
            the full timeout on every wakeup, so under contention the call can
            block for N x timeout_ms.  Convert once, then pass only the
            remaining time to each wait(). */
-        uint32_t deadline = os_deadline_from_ms(timeout_ms);
+        uint32_t deadline = _os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count < Capacity) {
@@ -725,7 +745,7 @@ public:
                     return true;
                 }
             }
-            uint32_t remain = os_deadline_remaining_ms(deadline);
+            uint32_t remain = _os_deadline_remaining_ms(deadline);
             if (remain == 0) return false;
             if (!not_full.wait(remain)) return false;
         }
@@ -742,10 +762,10 @@ public:
         return true;
     }
 
-    bool get(T& item) { return get(item, OS_WAIT_FOREVER); }
+    bool get(T& item) { return get(item, 0); }
 
     bool get(T& item, uint32_t timeout_ms) {
-        uint32_t deadline = os_deadline_from_ms(timeout_ms);
+        uint32_t deadline = _os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count > 0) {
@@ -756,7 +776,7 @@ public:
                     return true;
                 }
             }
-            uint32_t remain = os_deadline_remaining_ms(deadline);
+            uint32_t remain = _os_deadline_remaining_ms(deadline);
             if (remain == 0) return false;
             if (!not_empty.wait(remain)) return false;
         }
@@ -798,12 +818,12 @@ public:
     bool wait(uint32_t timeout_ms = OS_WAIT_FOREVER) {
         /* Absolute deadline so a contended semaphore cannot extend the
            total wait to N x timeout_ms across loop iterations. */
-        uint32_t deadline = os_deadline_from_ms(timeout_ms);
+        uint32_t deadline = _os_deadline_from_ms(timeout_ms);
         while (1) {
             OS_LOCK(mtx) {
                 if (count > 0) { count--; return true; }
             }
-            uint32_t remain = os_deadline_remaining_ms(deadline);
+            uint32_t remain = _os_deadline_remaining_ms(deadline);
             if (remain == 0) return false;
             if (!has_count.wait(remain)) return false;
         }
@@ -842,5 +862,6 @@ public:
 };
 
 #endif /* OS_TOOL_SEMAPHORE */
+
 
 #endif /* __cplusplus */

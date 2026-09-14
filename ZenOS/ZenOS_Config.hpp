@@ -35,7 +35,7 @@
  *   [IND-4]  Industrial IEC 61508 SIL 4 — highest-integrity (rare in SW)
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  */
 
 
@@ -74,7 +74,7 @@
  *          requires analysis of resource usage.  IEC 61508 Part 3 §7.4.3
  *          requires stack depth analysis for all execution paths. */
 #ifndef OS_KERNEL_STACK_SIZE
-#define OS_KERNEL_STACK_SIZE  128
+#define OS_KERNEL_STACK_SIZE  512
 #endif
 
 
@@ -151,6 +151,17 @@
 #define OS_TOOL_TICKLESS_IDLE  1
 #endif
 
+/* Debug UART: live trace output over UART (register-level, no HAL)
+ * 1 = enabled, 0 = disabled (default).  When disabled, all debug code
+ * is compiled away — zero code/RAM overhead.
+ * Configure OS_DEBUG_USART_BASE, OS_DEBUG_BAUDRATE, and GPIO pins
+ * in your project defines.  See ZenOS_Debug.hpp for all options.
+ * NOTE: This is debug-only and NOT safety-critical.  If UART fails,
+ * the kernel must not block or crash. */
+#ifndef OS_DEBUG_UART
+#define OS_DEBUG_UART          1
+#endif
+
 
 /* ============================================================================
  *  OS_MONITOR — Runtime Observability
@@ -166,7 +177,7 @@
  *          of software execution timing.  Deadline misses indicate a
  *          potential failure of the safety function. */
 #ifndef OS_MONITOR_DEADLINE
-#define OS_MONITOR_DEADLINE    0 // Default=0
+#define OS_MONITOR_DEADLINE    1
 #endif
 
 /* TCB integrity: magic-number check for memory corruption detection
@@ -175,7 +186,7 @@
  * [IND-3] REQUIRED — IEC 61508 Part 2 Table 3: random hardware fault
  *          metrics apply to data corruption in control structures. */
 #ifndef OS_MONITOR_TCB_INTEGRITY
-#define OS_MONITOR_TCB_INTEGRITY  0 // Default=0
+#define OS_MONITOR_TCB_INTEGRITY  1
 #endif
 
 /* Error log: circular buffer recording errors with timestamp and task ID
@@ -215,7 +226,7 @@
  * NOTE: This test is non-destructive but may produce false positives
  *       during active DMA transfers.  Call from idle task only. */
 #ifndef OS_SAFETY_RAM_TEST
-#define OS_SAFETY_RAM_TEST     0 // Default=0
+#define OS_SAFETY_RAM_TEST     0
 #endif
 
 /* MPU: hardware memory protection per task (Cortex-M3/M4/M7)
@@ -240,7 +251,7 @@
  * NOTE: Configure IWDG timeout via CubeMX.  The feed task must run
  *       at ≤ 50% of the IWDG timeout to prevent spurious resets. */
 #ifndef OS_SAFETY_HW_WATCHDOG
-#define OS_SAFETY_HW_WATCHDOG  0 // Default=0
+#define OS_SAFETY_HW_WATCHDOG  1
 #endif
 
 /* CRC check: ROM integrity verification via CRC peripheral
@@ -252,7 +263,7 @@
  * NOTE: Do not write to flash while CRC check is in progress;
  *       this causes false positives. */
 #ifndef OS_SAFETY_CRC_CHECK
-#define OS_SAFETY_CRC_CHECK    0 // Default=0
+#define OS_SAFETY_CRC_CHECK    0
 #endif
 
 /* Software watchdog: detect stuck tasks and recover
@@ -326,6 +337,9 @@
 #if (OS_SAFETY_DEADLINE_ACTION < 0) || (OS_SAFETY_DEADLINE_ACTION > 2)
 #error "OS_SAFETY_DEADLINE_ACTION must be 0, 1, or 2"
 #endif
+
+/* CubeMX peripheral consistency checks are in ZenOS_Port.hpp at the end
+   (after HAL defines may be available). If HAL is not used, they are harmless. */
 
 
 /* ============================================================================

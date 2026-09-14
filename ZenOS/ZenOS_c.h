@@ -5,7 +5,7 @@
  * @brief   Thin C wrapper for ZenOS — use from .c files only
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  *
  * Declares every ZenOS function callable from C. For C++ code include
  * ZenOS.hpp directly (C++-only features: task creation templates, RAII
@@ -49,6 +49,7 @@ void     os_task_stop(void(*entry)(void));
 void     os_task_start(void(*entry)(void));
 uint16_t os_get_task_count(void);
 bool     os_task_isActive(void(*entry)(void));
+uint8_t  os_get_task_priority(void(*entry)(void));
 
 /* Time */
 uint32_t os_get_tick(void);

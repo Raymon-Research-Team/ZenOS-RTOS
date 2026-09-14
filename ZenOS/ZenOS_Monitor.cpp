@@ -6,7 +6,7 @@
  * Extracted from ZenOS.cpp as part of the modular split.
  *
  * @author  Rahman Heidari <rahman.h22@gmail.com> — Raymon Research Team
- * @version 1.0.1
+ * @version 1.1.0
  */
 
 #define OS_BUILD
@@ -16,7 +16,7 @@
    Canary pattern: 0xA5A5A5A5 (set in os_stack_init).
    Scan from stack_base upward to find first non-canary word = peak usage. ═══════════════ */
 #if OS_MONITOR_ENABLED
-uint32_t os_stack_watermark_scan(const TCB* task) {
+uint32_t _os_stack_watermark_scan(const TCB* task) {
     if (!task || !task->stack_base || task->stack_size == 0) return 0;
     const uint32_t* base = task->stack_base;
     uint32_t size = task->stack_size;
@@ -35,18 +35,18 @@ uint32_t os_stack_watermark_scan(const TCB* task) {
 
 extern "C" uint32_t os_get_stack_watermark(uint8_t task_id) {
     uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_id(task_id);
+    TCB* t = _os_find_task_by_id(task_id);
     if (!t) { os_critical_exit(cs); return 0; }
-    uint32_t used = os_stack_watermark_scan(t);
+    uint32_t used = _os_stack_watermark_scan(t);
     os_critical_exit(cs);
     return used;
 }
 
 extern "C" uint32_t os_get_stack_watermark_percent(uint8_t task_id) {
     uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_id(task_id);
+    TCB* t = _os_find_task_by_id(task_id);
     if (!t) { os_critical_exit(cs); return 0; }
-    uint32_t used = os_stack_watermark_scan(t);
+    uint32_t used = _os_stack_watermark_scan(t);
     uint32_t total = t->stack_size * 4;
     os_critical_exit(cs);
     return (total > 0) ? (used * 100 / total) : 0;
@@ -72,7 +72,7 @@ extern "C" bool os_get_stack_report(uint8_t index, os_stack_report_entry_t* out)
             out->name       = t->name;
             out->id         = t->id;
             out->size_bytes = t->stack_size * 4;
-            out->peak_bytes = os_stack_watermark_scan(t);
+            out->peak_bytes = _os_stack_watermark_scan(t);
             os_critical_exit(cs);
             return true;
         }
@@ -105,13 +105,13 @@ extern "C" uint8_t os_get_cpu_usage_total(void) {
 }
 
 extern "C" uint32_t os_get_stack_usage(void(*entry)(void)) {
-    TCB* t = os_find_task_by_entry(entry);
+    TCB* t = _os_find_task_by_entry(entry);
     if (!t || !t->stack_base) return 0;
-    return os_stack_watermark_scan(t);
+    return _os_stack_watermark_scan(t);
 }
 
 extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
-    TCB* t = os_find_task_by_entry(entry);
+    TCB* t = _os_find_task_by_entry(entry);
     if (!t || t == &idle_tcb) return 0;
     uint32_t total = tick_count;
     if (total == 0) return 0;
@@ -123,7 +123,7 @@ extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
 /* ═══════════════ Deadline ═══════════════ */
 #if OS_MONITOR_DEADLINE
 extern "C" void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_ms) {
-    TCB* t = os_find_task_by_entry(entry);
+    TCB* t = _os_find_task_by_entry(entry);
     if (!t) return;
     /* deadline_ms == 0 disables the deadline. os_ms_to_ticks(0) would
        otherwise return 1 (its "at least one tick" guard), turning a reset
@@ -138,7 +138,7 @@ extern "C" void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_m
 
 extern "C" uint32_t os_get_deadline_miss_count(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
-    TCB* t = os_find_task_by_entry(entry);
+    TCB* t = _os_find_task_by_entry(entry);
     uint32_t result = t ? t->deadline_miss_count : 0;
     os_critical_exit(cs);
     return result;
