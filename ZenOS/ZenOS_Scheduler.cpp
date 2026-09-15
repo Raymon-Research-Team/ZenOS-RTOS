@@ -157,17 +157,22 @@ extern "C" void _os_priority_queues_init(void) {
 /* os_ready_level_count removed — was unused dead code. */
 
 extern "C" TCB* _os_pq_next(void) {
+    os_debug_pq_next_calls++;
     const uint32_t now = tick_count;
 
     /* O(1) selection: use the bitmap to find the highest priority with
        an eligible task. For >32 priorities, _os_pq_highest_prio() scans
-       extension words top-down — still O(1) bounded by word count. */
-    for (int p = (int)OS_KERNEL_MAX_PRIORITIES - 1; p >= 1; --p) {
-        uint8_t prio = (uint8_t)p;
-        if (!_os_pq_bit_is_set(prio)) continue;
+       extension words top-down using CLZ — O(1) bounded by word count. */
+    uint8_t prio = _os_pq_highest_prio();
+    while (prio > 0) {
+        if (!_os_pq_bit_is_set(prio)) {
+            prio--;
+            continue;
+        }
         TCB* head = *_os_pq_head_for(prio);
         if (!head) {
             _os_pq_clear_bit(prio);
+            prio--;
             continue;
         }
 
@@ -182,15 +187,21 @@ extern "C" TCB* _os_pq_next(void) {
             }
             prev = t;
         }
-        if (!selected) continue;
+        if (!selected) {
+            prio--;
+            continue;
+        }
 
         if (selected != head) {
             prev->queue_next = selected->queue_next;
             selected->queue_next = head;
             *_os_pq_head_for(prio) = selected;
         }
+        os_debug_sel_id[selected->id]++;
+        os_debug_sel_prio[prio < 32 ? prio : 0]++;
         return selected;
     }
+    os_debug_pq_next_null++;
     return nullptr;
 }
 
@@ -199,17 +210,21 @@ extern "C" void _os_pq_rotate(void) {
     uint8_t p = 0xFF;
 
     /* Find the highest priority with an eligible task (O(1) bitmap scan) */
-    for (int prio = (int)OS_KERNEL_MAX_PRIORITIES - 1; prio >= 1; --prio) {
-        uint8_t candidate = (uint8_t)prio;
-        if (!_os_pq_bit_is_set(candidate)) continue;
-        for (TCB* t = *_os_pq_head_for(candidate); t; t = t->queue_next) {
+    uint8_t prio = _os_pq_highest_prio();
+    while (prio > 0) {
+        if (!_os_pq_bit_is_set(prio)) {
+            prio--;
+            continue;
+        }
+        for (TCB* t = *_os_pq_head_for(prio); t; t = t->queue_next) {
             if (t->period_ticks == 0 ||
                 ((int32_t)(now - t->next_run_time) >= 0)) {
-                p = candidate;
+                p = prio;
                 break;
             }
         }
         if (p != 0xFF) break;
+        prio--;
     }
     if (p == 0xFF) return;
 
@@ -257,7 +272,7 @@ void _os_stack_init(TCB* task) {
 
 void _os_reset_task_internal(TCB* task) {
     _os_stack_init(task);
-    os_pq_remove(task);
+    _os_pq_remove(task);
     task->state = TaskState::READY;
     task->delay_ticks = 0;
     task->blocking_on = nullptr;
@@ -268,13 +283,13 @@ void _os_reset_task_internal(TCB* task) {
     task->priority = task->base_priority;
     task->mutex_nesting = 0;
     task->mutex_held_count = 0;
-    os_pq_add(task);
+    _os_pq_add(task);
 }
 
 void _os_task_exit(void) {
     uint32_t cs = os_critical_enter();
     if (current_task) {
-        os_pq_remove(current_task); /* Remove from priority queue before state change */
+        _os_pq_remove(current_task); /* Remove from priority queue before state change */
         current_task->state = TaskState::INACTIVE;
     }
     os_critical_exit(cs);
@@ -300,13 +315,13 @@ void _os_wake_task(TCB* t, uint8_t result) {
        option here: ARMv6-M (Cortex-M0/M0+) has no exclusive access
        instructions. */
     if (blocked_count > 0) blocked_count--;
-    os_pq_add(t);
+    _os_pq_add(t);
 }
 
 bool _os_block_current(TaskState state, void* blocking_on,
                       uint32_t block_timeout, uint32_t delay_ticks) {
     if (!current_task) return false;
-    os_pq_remove(current_task);
+    _os_pq_remove(current_task);
     current_task->state = state;
     current_task->blocking_on = blocking_on;
     current_task->block_timeout = block_timeout;
@@ -344,6 +359,7 @@ extern "C" int8_t _os_task_create_internal(
     if (priority == 0) priority = 1;
     if (!_os_priority_valid(priority)) return -1;
     if (stack_size < 64) stack_size = 64;
+    if (task_count >= 255) { _os_report_error(OSError::TASK_AFTER_START); return -1; } /* ID is uint8_t */
 
     /* os_init() clears task_count. Reset scheduler storage before the first
        task of a new lifecycle is inserted, so no stale >32-priority state
@@ -395,7 +411,7 @@ extern "C" int8_t _os_task_create_internal(
     _os_stack_init(task);
     task->next = task_list;
     task_list = task;
-    os_pq_add(task);
+    _os_pq_add(task);
     return (int8_t)task->id;
 }
 
@@ -434,7 +450,7 @@ extern "C" void os_task_stop(void(*entry)(void)) {
     if (t && t != &idle_tcb) {
         TaskState st = t->state;
         if (st == TaskState::READY || st == TaskState::RUNNING) {
-            os_pq_remove(t);
+            _os_pq_remove(t);
             t->state = TaskState::SUSPENDED;
             if (t == current_task) OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
         } else if (st == TaskState::BLOCKED) {
@@ -484,7 +500,7 @@ extern "C" void os_task_start(void(*entry)(void)) {
             t->priority = t->base_priority;
             t->mutex_nesting = 0;
             t->mutex_held_count = 0;
-            os_pq_add(t);
+            _os_pq_add(t);
         } else if (t->state == TaskState::INACTIVE) {
             /* First start, or restart after the entry function returned /
                the task was killed.  Reset stack + scheduling state. */
@@ -535,7 +551,7 @@ bool _os_tickless_process(uint32_t skip) {
             if (task->delay_ticks > 0) {
                 if (task->delay_ticks <= skip) {
                     task->delay_ticks = 0;
-                    os_wake_on_delay_expiry(task);
+                    _os_wake_on_delay_expiry(task);
                     /* Verify: after wake, next_run_time should be tick_count
                        (set by os_wake_on_delay_expiry in our fix). The period
                        gate in os_pq_next will then see (tick_count - next_run_time)
@@ -561,7 +577,7 @@ bool _os_tickless_process(uint32_t skip) {
             } else if (task->block_timeout > 0) {
                 if (task->block_timeout <= skip) {
                     task->block_timeout = 0;
-                    os_wake_on_timeout_expiry(task);
+                    _os_wake_on_timeout_expiry(task);
                     /* Same verification as above for timeout expiry wakes */
                     if (task->period_ticks > 0 && task->next_run_time > tick_count) {
                         task->next_run_time = tick_count;
@@ -574,6 +590,41 @@ bool _os_tickless_process(uint32_t skip) {
     return woke;
 }
 #endif
+
+extern "C" volatile uint32_t os_debug_pendsv_count = 0;
+extern "C" volatile uint32_t os_debug_pq_next_calls = 0;
+extern "C" volatile uint32_t os_debug_pq_next_null = 0;
+extern "C" volatile uint32_t os_debug_blocked_count = 0;
+extern "C" volatile uint32_t os_debug_bitmap = 0;
+extern "C" volatile uint32_t os_debug_sel_id[256] = {0};
+extern "C" volatile uint32_t os_debug_sel_prio[32] = {0};
+
+extern "C" uint8_t _os_debug_snapshot(ZenOS_TaskSnapshot* out, uint8_t max) {
+    uint8_t n = 0;
+    for (TCB* t = task_list; t && n < max; t = t->next) {
+        out[n].id = t->id;
+        out[n].state = (uint8_t)t->state;
+        out[n].priority = t->priority;
+        out[n].base_priority = t->base_priority;
+        out[n].next_run_time = t->next_run_time;
+        out[n].delay_ticks = t->delay_ticks;
+        out[n].period_ticks = t->period_ticks;
+        out[n].queue_next_lo = (uint32_t)t->queue_next;
+        out[n].blocking_on = (uint32_t)t->blocking_on;
+        out[n].in_pq = _os_pq_bit_is_set(t->priority) ? 1 : 0;
+        n++;
+    }
+    return n;
+}
+
+extern "C" uint8_t _os_debug_pq_dump(uint8_t prio, uint8_t* ids, uint8_t max) {
+    uint8_t n = 0;
+    if (prio >= 32) return 0;
+    for (TCB* t = os_pq_head[prio]; t && n < max; t = t->queue_next) {
+        ids[n++] = t->id;
+    }
+    return n;
+}
 
 extern "C" uint32_t os_get_tick(void) { return tick_count; }
 
@@ -597,7 +648,7 @@ extern "C" uint32_t os_get_tick(void) { return tick_count; }
    with the counter. */
 extern "C" uint32_t os_get_us(void) {
 #if OS_HAS_CYCLE_COUNTER
-    os_time_fold();          /* lazy sample — same path os_tick uses */
+    _os_time_fold();          /* lazy sample — same path os_tick uses */
     return os_us_accumulated;
 #else
     /* No DWT: scale the kernel tick (resolution = OS_KERNEL_TICK_PERIOD_US,

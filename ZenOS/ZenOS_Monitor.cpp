@@ -87,18 +87,22 @@ extern "C" bool os_get_stack_report(uint8_t index, os_stack_report_entry_t* out)
 /* ═══════════════ CPU Usage ═══════════════ */
 #if OS_MONITOR_ENABLED
 extern "C" uint8_t os_get_cpu_usage(void) {
+    uint32_t cs = os_critical_enter();
     static uint32_t lt = 0, li = 0;
     uint32_t t = tick_count, i = idle_ticks;
     uint32_t dt = t - lt, di = i - li;
     lt = t; li = i;
+    os_critical_exit(cs);
     if (dt == 0) return 0;
     uint32_t u = 100UL - (uint32_t)(((uint64_t)di * 100UL) / dt);
     return (u > 100) ? 100 : (uint8_t)u;
 }
 
 extern "C" uint8_t os_get_cpu_usage_total(void) {
+    uint32_t cs = os_critical_enter();
     uint32_t t = tick_count;
     uint32_t i = idle_ticks;
+    os_critical_exit(cs);
     if (t == 0) return 0;
     uint32_t u = 100UL - (uint32_t)(((uint64_t)i * 100UL) / t);
     return (u > 100) ? 100 : (uint8_t)u;
@@ -111,11 +115,14 @@ extern "C" uint32_t os_get_stack_usage(void(*entry)(void)) {
 }
 
 extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
+    uint32_t cs = os_critical_enter();
     TCB* t = _os_find_task_by_entry(entry);
-    if (!t || t == &idle_tcb) return 0;
+    if (!t || t == &idle_tcb) { os_critical_exit(cs); return 0; }
     uint32_t total = tick_count;
+    uint32_t task_ticks = t->cpu_ticks;
+    os_critical_exit(cs);
     if (total == 0) return 0;
-    uint32_t percent = (t->cpu_ticks * 100UL) / total;
+    uint32_t percent = (task_ticks * 100UL) / total;
     return (percent > 100) ? 100 : (uint8_t)percent;
 }
 #endif /* OS_MONITOR_ENABLED */
@@ -128,7 +135,7 @@ extern "C" void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_m
     /* deadline_ms == 0 disables the deadline. os_ms_to_ticks(0) would
        otherwise return 1 (its "at least one tick" guard), turning a reset
        into a 1-tick deadline that streams DEADLINE_MISS on every tick. */
-    uint32_t deadline_ticks = (deadline_ms == 0) ? 0 : os_ms_to_ticks(deadline_ms);
+    uint32_t deadline_ticks = (deadline_ms == 0) ? 0 : _os_ms_to_ticks(deadline_ms);
     uint32_t cs = os_critical_enter();
     t->deadline_ticks = deadline_ticks;
     t->deadline_miss_count = 0;

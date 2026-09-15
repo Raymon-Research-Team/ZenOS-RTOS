@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #endif
 #include "ZenOS_Config.hpp"
+#include "ZenOS_Compiler.hpp"
 #include "ZenOS_Port.hpp"
 #include "ZenOS_Version.hpp"
 
@@ -64,7 +65,7 @@
 #define OS_IDLE_STACK_WORDS     64
 #define OS_IDLE_STACK_SIZE      (OS_IDLE_STACK_WORDS * 4)
 
-#define OS_FAULT_STACK_WORDS    48
+#define OS_FAULT_STACK_WORDS    128
 #define OS_FAULT_STACK_SIZE     (OS_FAULT_STACK_WORDS * 4)
 
 /* ============================================================================
@@ -98,9 +99,13 @@ static inline void _os_hw_enable_irq()  { __asm volatile("cpsie i" ::: "memory")
 extern "C" {
 #endif
 
+/* SystemCoreClock is provided by CMSIS (system_stm32fxxx.c).
+   All Cortex-M toolchains and IDEs include it. */
 extern uint32_t SystemCoreClock;
 extern volatile uint32_t tick_count;
 uint32_t _os_ms_to_ticks(uint32_t ms);
+void _os_event_signal(int16_t id);
+void _os_event_signal_from_isr(uint32_t mask);
 
 void os_init(void);
 void os_start(void);
@@ -148,13 +153,6 @@ void OS_PendSV_Handler(void);
 void OS_Fault_Handler(void);
 void OS_Fault_C_Handler(void);
 
-#if OS_DEBUG_UART
-/* Debug functions — only declared when debug is enabled.
-   When OS_DEBUG_UART=0, all debug code is compiled away. */
-void os_debug_boot_banner(void);
-void os_debug_init(void);
-void os_debug_fault_dump(void);
-#endif
 
 #ifdef __cplusplus
 }
@@ -514,7 +512,7 @@ extern "C" int8_t _os_task_create_internal(
  * ============================================================================ */
 
 template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>
-inline int8_t __os_task_create_impl(const char* name,
+inline int8_t _os_task_create_impl(const char* name,
     uint8_t priority = 1, uint32_t period_ms = 0)
 {
     static_assert(StackBytes >= 64, "ZenOS task stacks must be at least 64 bytes");
@@ -559,21 +557,14 @@ inline int8_t __os_task_create_impl(const char* name,
 }
 
 /* os_task_create macro: portable variadic forwarding.
-   GNU ##__VA_ARGS## removes the comma when no args follow — necessary
-   for os_task_create(entry) with default priority/period.
-   IAR/ARMCC may not support ##__VA_ARGS — provide overloaded helpers. */
-#if defined(__GNUC__) || defined(__clang__)
+   ##__VA_ARGS__ removes the trailing comma when no variadic args follow.
+   Supported by GCC, Clang, IAR (v8+), and ARMClang as an extension.
+   For older ARMCC (armcc v5), use os_task_create_st() instead. */
 #define os_task_create(entry, ...) \
-    __os_task_create_impl<entry>(#entry, ##__VA_ARGS__)
-#else
-/* Non-GNU fallback: explicit overloads via template default args.
-   os_task_create(entry) uses defaults, os_task_create(entry, prio) etc. */
-#define os_task_create(entry, ...) \
-    __os_task_create_impl<entry>(#entry, __VA_ARGS__)
-#endif
+    _os_task_create_impl<entry>(#entry, ##__VA_ARGS__)
 
 #define os_task_create_st(entry, prio, period, stack_Bytes) \
-    __os_task_create_impl<entry, stack_Bytes>(#entry, prio, period)
+    _os_task_create_impl<entry, stack_Bytes>(#entry, prio, period)
 
 
 /* ============================================================================
@@ -600,19 +591,19 @@ extern "C" {
  * ============================================================================ */
 
 /* --- OS_SAFE --- */
-class __OsSafeGuard {
+class _OsSafeGuard {
     uint32_t saved_primask;
     uint32_t start_cycle;
     bool done;
 public:
-    __OsSafeGuard();
-    ~__OsSafeGuard();
+    _OsSafeGuard();
+    ~_OsSafeGuard();
     bool once();
-    __OsSafeGuard(const __OsSafeGuard&) = delete;
-    __OsSafeGuard& operator=(const __OsSafeGuard&) = delete;
+    _OsSafeGuard(const _OsSafeGuard&) = delete;
+    _OsSafeGuard& operator=(const _OsSafeGuard&) = delete;
 };
 
-#define OS_SAFE for (__OsSafeGuard _os_s; _os_s.once(); )
+#define OS_SAFE for (_OsSafeGuard _os_s; _os_s.once(); )
 
 
 /* --- OS_EVENT --- */
@@ -622,7 +613,7 @@ struct ECB { volatile uint32_t count; volatile uint32_t in_use; int16_t id; ECB*
 
 extern "C" {
     void _os_event_signal(int16_t id);
-    void __os_event_signal_from_isr(uint32_t mask);
+    void _os_event_signal_from_isr(uint32_t mask);
 }
 
 extern "C" {
@@ -636,7 +627,7 @@ extern "C" {
 class OS_EVENT {
 public:
     ECB ecb;
-    int16_t id;     /* -1 = unregistered; IDs auto-assigned, no practical limit */
+    int16_t id;     /* -1 = unregistered; IDs 0..31 for mask-based ISR signaling */
     OS_EVENT();
     ~OS_EVENT();
     void destroy();
@@ -690,19 +681,19 @@ public:
     OS_MUTEX& operator=(const OS_MUTEX&) = delete;
 };
 
-class __OsLockGuard {
+class _OsLockGuard {
     OS_MUTEX& mtx;
     bool acquired;
     mutable bool done;
 public:
-    __OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms = OS_WAIT_FOREVER);
-    ~__OsLockGuard();
+    _OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms = OS_WAIT_FOREVER);
+    ~_OsLockGuard();
     bool once();
-    __OsLockGuard(const __OsLockGuard&) = delete;
-    __OsLockGuard& operator=(const __OsLockGuard&) = delete;
+    _OsLockGuard(const _OsLockGuard&) = delete;
+    _OsLockGuard& operator=(const _OsLockGuard&) = delete;
 };
 
-#define OS_LOCK(mtx) for (__OsLockGuard _os_l(mtx); _os_l.once(); )
+#define OS_LOCK(mtx) for (_OsLockGuard _os_l(mtx); _os_l.once(); )
 
 #endif /* OS_TOOL_MUTEX */
 
@@ -745,6 +736,8 @@ public:
                     return true;
                 }
             }
+            /* If timeout is 0, return immediately without blocking */
+            if (timeout_ms == 0) return false;
             uint32_t remain = _os_deadline_remaining_ms(deadline);
             if (remain == 0) return false;
             if (!not_full.wait(remain)) return false;
@@ -762,6 +755,17 @@ public:
         return true;
     }
 
+    bool get_from_isr(T& item) {
+        uint32_t cs = os_critical_enter();
+        if (count == 0) { os_critical_exit(cs); return false; }
+        item = buf[tail];
+        tail = (tail + 1) % Capacity;
+        count--;
+        os_critical_exit(cs);
+        not_full.signal_from_isr();
+        return true;
+    }
+
     bool get(T& item) { return get(item, 0); }
 
     bool get(T& item, uint32_t timeout_ms) {
@@ -776,6 +780,8 @@ public:
                     return true;
                 }
             }
+            /* If timeout is 0, return immediately without blocking */
+            if (timeout_ms == 0) return false;
             uint32_t remain = _os_deadline_remaining_ms(deadline);
             if (remain == 0) return false;
             if (!not_empty.wait(remain)) return false;
@@ -812,7 +818,10 @@ class OS_SEMAPHORE {
 
 public:
     OS_SEMAPHORE(uint32_t initial = 1, uint32_t max = 0)
-        : count(initial), max_count(max ? max : 0xFFFFFFFFUL) {}
+        : count(initial), max_count(max ? max : 0xFFFFFFFFUL) {
+        /* Validate: initial count must not exceed max count */
+        if (count > max_count) count = max_count;
+    }
     ~OS_SEMAPHORE() {} // OS_EVENT destructor auto-destroys event
 
     bool wait(uint32_t timeout_ms = OS_WAIT_FOREVER) {

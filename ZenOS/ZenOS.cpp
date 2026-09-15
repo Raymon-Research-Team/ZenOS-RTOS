@@ -16,7 +16,7 @@
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
 
-extern "C" uint32_t SystemCoreClock;
+/* SystemCoreClock is provided by CMSIS (system_stm32fxxx.c) */
 
 /* Forward declarations for vector table installation */
 extern "C" void os_tick(void);
@@ -140,7 +140,7 @@ extern "C" void os_delay_us(uint32_t us) {
         return;
     }
 
-    uint32_t start = os_get_us();
+    volatile uint32_t start = os_get_us();
     while ((os_get_us() - start) < us) __asm volatile("nop");
 }
 
@@ -338,12 +338,16 @@ static bool os_idle_tickless(void) {
         OS_SYST_CVR = 0;
         OS_SYST_RVR = hw_sleep - 1;
         OS_SYST_CSR = 0x07;
+
+        /* DSB + WFI must be inside the critical section to prevent
+           a race where an ISR fires between cs exit and WFI,
+           causing us to miss the wakeup and sleep until SysTick. */
+        __asm volatile("dsb" ::: "memory");
+        __asm volatile("wfi");
+        __asm volatile("isb" ::: "memory");
+
         os_critical_exit(cs);
     }
-
-    __asm volatile("dsb" ::: "memory");
-    __asm volatile("wfi");
-    __asm volatile("isb" ::: "memory");
 
     {
         uint32_t cs = os_critical_enter();
@@ -407,6 +411,8 @@ static void os_idle_task(void) {
 
 /* ═══════════════ Init ═══════════════ */
 extern "C" void os_init(void) {
+    /* SystemCoreClock is set by SystemInit() (CubeMX) before main(). */
+
     os_event_next_id = 0;
     task_list = nullptr; task_count = 0; current_task = nullptr;
     tick_count = 0; blocked_count = 0;
@@ -431,10 +437,6 @@ extern "C" void os_init(void) {
     OS_DWT_CTRL  |= OS_DWT_CYCCNTENA;
 #endif
 
-    /* Initialize debug UART (or RTT) after DWT is ready */
-#if OS_DEBUG_UART
-    os_debug_init();
-#endif
 
     /* µs time domain: start the extension from zero exactly when the DWT
        counter resets.  MUST run after the DWT block above (which zeroes
@@ -451,10 +453,6 @@ extern "C" void os_init(void) {
     os_crc_init();
 #endif
 	
-#if OS_DEBUG_UART
-	/* Print boot banner via ZenOS debug subsystem */
-	os_debug_boot_banner();
-#endif
 }
 
 
@@ -558,7 +556,7 @@ extern "C" void os_start(void) {
        No conflict check needed — PendSV always preempts them. */
 
     {
-        uint32_t msp_val = (uint32_t)(fault_stack + 48);
+        uint32_t msp_val = (uint32_t)(fault_stack + OS_FAULT_STACK_WORDS);
         msp_val &= ~7UL;
         __asm volatile("msr msp, %0" :: "r"(msp_val));
     }
@@ -569,7 +567,7 @@ extern "C" void os_start(void) {
 
     OS_SYST_CSR = 0x07;
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-    os_hw_enable_irq();
+    _os_hw_enable_irq();
     os_started = true;
 
     while (1) __asm volatile("wfi");
@@ -736,18 +734,17 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         /* FPU restore: check EXC_RETURN bit 4 for new task */
         "tst lr, #0x10\n"
         "bne 10f\n"
-        /* r0 = &s16.  The save side pushed S16-S31 first, then FPSCR
-           ("str r2, [r0, #-4]!"), so the stack image low->high is
-           [s16..s31][fpscr].  FPSCR therefore sits at r0+64, NOT r0+68.
-           Reading r0+68 would load 4 bytes past the saved FPSCR into
-           S16's slot (garbage) and restore a corrupted FPSCR. */
-        "ldr  r2, [r0, #64]\n"
+        /* r0 points to start of FPU save area.  Save layout (low→high):
+           [r0+0] FPSCR (4 bytes), [r0+4..r0+67] S16-S31 (64 bytes).
+           The save side did: vstmdb r0!,{s16-s31} then str fpscr,[r0,#-4]!
+           so FPSCR is at the lowest address. */
+        "ldr  r2, [r0]\n"
         "vmsr fpscr, r2\n"
         /* ISB: FPSCR writes affect subsequent FP instruction behavior and
            must complete before S16-S31 are reloaded / task resumes. */
         "isb\n"
-        "vldmia r0!, {s16-s31}\n"
-        "add  r0, r0, #4\n"  /* skip past the saved fpscr word */
+        "add  r0, r0, #4\n"  /* advance past FPSCR to S16-S31 */
+        "vldmia r0!, {s16-s31}\n"  /* r0 now points past the whole FPU frame */
         "10:\n"
 
         "msr psp, r0\n"

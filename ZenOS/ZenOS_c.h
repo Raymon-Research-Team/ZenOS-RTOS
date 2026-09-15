@@ -58,7 +58,11 @@ uint32_t os_get_ms(void);
 
 /* Error counters */
 uint32_t os_get_error_count(void);
+uint32_t os_get_expected_error_count(void);
+uint32_t os_get_unexpected_error_count(void);
 uint32_t os_in_safe(void);
+void     os_error_expect_begin(void);
+void     os_error_expect_end(void);
 
 /* Version */
 uint32_t    os_get_version(void);

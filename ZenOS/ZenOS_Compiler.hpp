@@ -53,7 +53,8 @@
     #define OS_CTZ(x)  __iar_ctz(x)
 #elif OS_COMPILER_ARMCC
     #define OS_CLZ(x)  __clz(x)
-    #define OS_CTZ(x)  __rbit(x)  /* ARMCC has no direct CTZ; use rbit+clz */
+    /* ARMCC has no direct CTZ; use rbit+clz to count trailing zeros */
+    #define OS_CTZ(x)  (__clz(__rbit(x)))
 #endif
 
 /* ═══════════════ Memory Barriers ═══════════════ */

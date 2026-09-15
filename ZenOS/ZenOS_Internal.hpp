@@ -16,7 +16,6 @@
 
 #define OS_BUILD
 #include "ZenOS.hpp"
-#include "ZenOS_Debug.hpp"
 
 /* ═══════════════ Shared Globals (internal) ═══════════════ */
 extern TCB*              volatile task_list;
@@ -55,6 +54,12 @@ extern volatile uint32_t os_syst_rvr_normal;
 #if OS_TOOL_EVENT
 extern ECB* volatile     event_list;
 extern int16_t           os_event_next_id;
+#endif
+
+/* ═══════════════ IPC Functions (internal) ═══════════════ */
+#if OS_TOOL_EVENT
+extern "C" void _os_event_signal(int16_t id);
+extern "C" void _os_event_signal_from_isr(uint32_t mask);
 #endif
 
 /* ═══════════════ Scheduler Functions (internal) ═══════════════ */
@@ -162,3 +167,26 @@ uint32_t _os_stack_watermark_scan(const TCB* task);
 /* ═══════════════ Critical Section ═══════════════ */
 extern "C" uint32_t os_critical_enter(void);
 extern "C" void os_critical_exit(uint32_t old);
+
+/* ═══════════════ Diagnostic dump (temporary) ═══════════════ */
+struct ZenOS_TaskSnapshot {
+    uint8_t  id;
+    uint8_t  state;
+    uint8_t  priority;
+    uint8_t  base_priority;
+    uint32_t next_run_time;
+    uint32_t delay_ticks;
+    uint32_t period_ticks;
+    uint32_t queue_next_lo;
+    uint32_t blocking_on;
+    uint32_t in_pq;
+};
+extern "C" uint8_t _os_debug_snapshot(ZenOS_TaskSnapshot* out, uint8_t max);
+extern "C" uint8_t _os_debug_pq_dump(uint8_t prio, uint8_t* ids, uint8_t max);
+extern "C" volatile uint32_t os_debug_pendsv_count;
+extern "C" volatile uint32_t os_debug_pq_next_calls;
+extern "C" volatile uint32_t os_debug_pq_next_null;
+extern "C" volatile uint32_t os_debug_blocked_count;
+extern "C" volatile uint32_t os_debug_bitmap;
+extern "C" volatile uint32_t os_debug_sel_id[256];
+extern "C" volatile uint32_t os_debug_sel_prio[32];

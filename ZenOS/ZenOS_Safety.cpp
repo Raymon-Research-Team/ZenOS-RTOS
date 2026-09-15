@@ -12,8 +12,6 @@
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
 
-extern "C" uint32_t SystemCoreClock;
-
 /* ═══════════════ Error System ═══════════════ */
 /* Error counters are touched from ISR context (os_tick reports DEADLINE_MISS /
    TASK_STUCK / STACK_OVERFLOW) and read from task context — volatile too. */
@@ -167,26 +165,33 @@ extern "C" void OS_Fault_C_Handler(void) {
         os_last_fault.task_stack_top  = fault_task->stack_top;
         os_last_fault.task_stack_size = fault_task->stack_size;
 
-        /* Try to extract LR and PC from the exception frame on the
-           task's PSP stack (if PSP is valid). The exception frame
-           is laid out as: R0, R1, R2, R3, R12, LR, PC, xPSR */
-        uint32_t psp = (uint32_t)fault_task->stack_top;
-        if (psp >= (uint32_t)fault_task->stack_base &&
-            psp <  (uint32_t)(fault_task->stack_base + fault_task->stack_size)) {
-            uint32_t* frame = (uint32_t*)psp;
-            os_last_fault.r0   = frame[0];
-            os_last_fault.r1   = frame[1];
-            os_last_fault.r2   = frame[2];
-            os_last_fault.r3   = frame[3];
-            os_last_fault.r12  = frame[4];
-            os_last_fault.lr   = frame[5];
-            os_last_fault.pc   = frame[6];
-            os_last_fault.xpsr = frame[7];
-        } else {
-            /* PSP is corrupted — use MSP instead */
+        /* Try to extract LR and PC from the exception frame.
+           Check if we're in handler mode (MSP) or thread mode (PSP). */
+        uint32_t control;
+        __asm volatile("mrs %0, CONTROL" : "=r"(control));
+        bool in_handler_mode = (control & 0x02) == 0; /* SPSEL=0 means MSP */
+        
+        uint32_t* frame = nullptr;
+        if (in_handler_mode) {
+            /* Fault in handler mode — frame is on MSP */
             uint32_t msp_val;
             __asm volatile("mrs %0, MSP" : "=r"(msp_val));
-            uint32_t* frame = (uint32_t*)msp_val;
+            frame = (uint32_t*)msp_val;
+        } else {
+            /* Fault in thread mode — frame is on PSP */
+            uint32_t psp = (uint32_t)fault_task->stack_top;
+            if (psp >= (uint32_t)fault_task->stack_base &&
+                psp <  (uint32_t)(fault_task->stack_base + fault_task->stack_size)) {
+                frame = (uint32_t*)psp;
+            } else {
+                /* PSP is corrupted — use MSP as fallback */
+                uint32_t msp_val;
+                __asm volatile("mrs %0, MSP" : "=r"(msp_val));
+                frame = (uint32_t*)msp_val;
+            }
+        }
+        
+        if (frame) {
             os_last_fault.r0   = frame[0];
             os_last_fault.r1   = frame[1];
             os_last_fault.r2   = frame[2];
@@ -437,17 +442,30 @@ extern "C" void os_crc_init(void) {
 extern "C" void os_crc_check_step(void) {
     if (!crc_init_done || crc_complete) return;
 
-    /* Full CRC check — 64 words per step keeps the ISR budget bounded */
+    /* On first call, reset the CRC peripheral to start fresh */
+    if (crc_current_addr == OS_FLASH_START) {
+        OS_CRC_CR = 1;  /* Reset CRC peripheral */
+    }
+
+    /* Incremental CRC check — 64 words per step keeps the ISR budget bounded.
+       We use the hardware CRC peripheral for each chunk, accumulating the
+       result incrementally. */
     uint32_t chunk_words = 64;
     uint32_t remaining_bytes = (OS_FLASH_START + OS_FLASH_SIZE) - crc_current_addr;
     uint32_t words = remaining_bytes / 4;
     if (words > chunk_words) words = chunk_words;
+
+    /* Feed this chunk to the CRC peripheral without resetting it */
+    volatile uint32_t* p = (volatile uint32_t*)crc_current_addr;
+    for (uint32_t i = 0; i < words; i++) {
+        OS_CRC_DR = p[i];
+    }
     crc_current_addr += words * 4;
 
     /* Done when the whole flash has been re-CRC'd */
     if (crc_current_addr >= OS_FLASH_START + OS_FLASH_SIZE) {
         crc_complete = true;
-        uint32_t full_crc = os_crc_compute_block(OS_FLASH_START, OS_FLASH_SIZE / 4);
+        uint32_t full_crc = OS_CRC_DR;
         if (full_crc != crc_expected) {
             crc_error_count++;
             _os_report_error(OSError::HARDFAULT);  /* ROM corruption */

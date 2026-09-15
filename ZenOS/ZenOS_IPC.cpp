@@ -13,8 +13,6 @@
 #define OS_BUILD
 #include "ZenOS_Internal.hpp"
 
-extern "C" uint32_t SystemCoreClock;
-
 /* ═══════════════ Events ═══════════════ */
 #if OS_TOOL_EVENT
 
@@ -25,7 +23,7 @@ extern "C" void _os_event_register(ECB* e) {
        Strategy: watermark advances monotonically so recently-destroyed
        IDs are not immediately reused (test code checks "new != old").
        The returned id is watermark % 32, always < 32 for the 32-bit
-       mask in __os_event_signal_from_isr().  When the watermark-derived
+       mask in _os_event_signal_from_isr().  When the watermark-derived
        ID is already in use, fall back to first-fit from 0. */
     static uint32_t watermark = 0;
     int16_t id = -1;
@@ -114,7 +112,7 @@ extern "C" void _os_event_signal(int16_t id) {
     os_critical_exit(cs);
 }
 
-extern "C" void __os_event_signal_from_isr(uint32_t mask) {
+extern "C" void _os_event_signal_from_isr(uint32_t mask) {
     bool woke = false;
     uint32_t cs = os_critical_enter();
     ECB* e = event_list;
@@ -164,7 +162,7 @@ extern "C" int _os_event_wait(int16_t id, uint32_t timeout_ms) {
         os_critical_exit(cs);
         return 0;
     }
-    uint32_t tt = os_ms_to_ticks(timeout_ms);
+    uint32_t tt = _os_ms_to_ticks(timeout_ms);
     _os_block_current(TaskState::BLOCKED, e, tt, 0);
     os_critical_exit(cs);
     os_yield();
@@ -184,6 +182,9 @@ extern "C" int _os_event_wait(int16_t id, uint32_t timeout_ms) {
 #if OS_TOOL_MUTEX
 extern "C" TCB* _os_get_current_task(void) { return current_task; }
 
+/* Debug counters removed for production builds.
+ * Use OS_DEBUG_ENABLED=1 in ZenOS_Config.hpp to re-enable. */
+#if OS_DEBUG_ENABLED
 volatile uint32_t dbg_lock_calls = 0;
 volatile uint32_t dbg_ceiling_boosts = 0;
 volatile uint32_t dbg_unlock_calls = 0;
@@ -192,11 +193,14 @@ volatile uint32_t dbg_handoff_finds = 0;
 volatile uint32_t dbg_block_on_calls = 0;
 volatile uint32_t dbg_wait_result_ok = 0;
 volatile uint32_t dbg_wait_result_fail = 0;
+#endif
 
 extern "C" void _os_mutex_block_on(void* obj, uint32_t timeout_ticks) {
     /* Blocking from an ISR would corrupt the scheduler — refuse */
     if (_os_in_isr()) { _os_report_error(OSError::SAFE_MUTEX_LOCK); return; }
+#if OS_DEBUG_ENABLED
     dbg_block_on_calls++;
+#endif
     uint32_t cs = os_critical_enter();
     _os_block_current(TaskState::BLOCKED, obj, timeout_ticks, 0);
     os_critical_exit(cs);
@@ -223,7 +227,9 @@ extern "C" TCB* _os_mutex_handoff(void* mutex_obj) {
         }
     }
     if (best) {
+#if OS_DEBUG_ENABLED
         dbg_handoff_finds++;
+#endif
         _os_wake_task(best, 1);
         /* DSB: ensure _os_wake_task writes are visible before PendSV */
         __asm volatile("dsb" ::: "memory");
@@ -239,7 +245,7 @@ extern "C" TCB* _os_mutex_handoff(void* mutex_obj) {
  * ══════════════════════════════════════════════════════════════════════ */
 
 /* ── OsSafeGuard ── */
-__OsSafeGuard::__OsSafeGuard()
+_OsSafeGuard::_OsSafeGuard()
     : done(false) {
 #if OS_HAS_CYCLE_COUNTER
     start_cycle = OS_DWT_CYCCNT;
@@ -248,7 +254,7 @@ __OsSafeGuard::__OsSafeGuard()
     os_safe_depth++;
 }
 
-__OsSafeGuard::~__OsSafeGuard() {
+_OsSafeGuard::~_OsSafeGuard() {
     if (os_safe_depth > 0) os_safe_depth--;
 #if OS_HAS_CYCLE_COUNTER && (OS_SAFETY_MAX_CRITICAL_US > 0)
     {
@@ -261,7 +267,7 @@ __OsSafeGuard::~__OsSafeGuard() {
     __asm volatile("msr PRIMASK, %0" :: "r"(saved_primask) : "memory");
 }
 
-bool __OsSafeGuard::once() {
+bool _OsSafeGuard::once() {
     if (done) return false;
     done = true;
     return true;
@@ -288,11 +294,9 @@ void OS_EVENT::signal(uint32_t mask) {
     if (id < 0) return;
     if (mask) {
         while (mask) {
-            /* Portable CTZ — works on GCC/Clang/IAR/ARMCC */
-            uint32_t tmp = mask;
-            uint8_t i = 0;
-            while (!(tmp & 1)) { tmp >>= 1; i++; }
-            mask &= mask - 1;
+            /* Use compiler CLZ intrinsic for O(1) bit scan */
+            uint8_t i = (uint8_t)OS_CTZ(mask);
+            mask &= mask - 1;  /* Clear lowest set bit */
             _os_event_signal((int16_t)i);
         }
     } else {
@@ -303,10 +307,10 @@ void OS_EVENT::signal(uint32_t mask) {
 void OS_EVENT::signal_from_isr(uint32_t mask) {
     if (id < 0) return;
     if (mask) {
-        __os_event_signal_from_isr(mask);
+        _os_event_signal_from_isr(mask);
     } else {
         /* For id >= 32, fall back to non-ISR signal */
-        if (id < 32) __os_event_signal_from_isr(1UL << id);
+        if (id < 32) _os_event_signal_from_isr(1UL << id);
         else _os_event_signal(id);
     }
 }
@@ -330,13 +334,13 @@ OS_MUTEX::~OS_MUTEX() {
     /* If the owner was priority-boosted, restore its base priority
        before the mutex disappears. */
     if (priority_boosted && owner) {
-        os_pq_remove(owner);
+        _os_pq_remove(owner);
         owner->mutex_held_count--;
         /* Restore to base only if no other mutexs held */
         if (owner->mutex_held_count == 0) {
             owner->priority = owner->base_priority;
         }
-        os_pq_add(owner);
+        _os_pq_add(owner);
         priority_boosted = false;
     }
     /* Wake every task blocked on this mutex so they don't stay
@@ -358,11 +362,12 @@ void OS_MUTEX::set_ceiling(uint8_t prio) { ceiling_priority = prio; }
 
 bool OS_MUTEX::lock(uint32_t timeout_ms) {
     while (1) {
-        uint32_t cs;
-        __asm volatile("mrs %0, PRIMASK\n cpsid i\n" : "=r"(cs) :: "memory");
+        uint32_t cs = os_critical_enter();
 
         if (!locked) {
+#if OS_DEBUG_ENABLED
             dbg_lock_calls++;
+#endif
             locked = 1;
             TCB* self = _os_get_current_task();
             if (self) {
@@ -372,20 +377,22 @@ bool OS_MUTEX::lock(uint32_t timeout_ms) {
                     self->base_priority = self->priority;
                     /* IPC: immediately boost to ceiling priority */
                     if (ceiling_priority > self->priority) {
+#if OS_DEBUG_ENABLED
                         dbg_ceiling_boosts++;
+#endif
                         if (self->state != TaskState::BLOCKED &&
                             self->state != TaskState::INACTIVE)
-                            os_pq_remove(self);
+                            _os_pq_remove(self);
                         self->priority = ceiling_priority;
                         priority_boosted = true;
                         if (self->state != TaskState::BLOCKED &&
                             self->state != TaskState::INACTIVE)
-                            os_pq_add(self);
+                            _os_pq_add(self);
                     }
                 }
             }
             owner = self;
-            __asm volatile("msr PRIMASK, %0" :: "r"(cs) : "memory");
+            os_critical_exit(cs);
             return true;
         }
 
@@ -393,36 +400,45 @@ bool OS_MUTEX::lock(uint32_t timeout_ms) {
         TCB* self = _os_get_current_task();
         if (self && self == owner) {
             self->mutex_nesting++;
-            __asm volatile("msr PRIMASK, %0" :: "r"(cs) : "memory");
+            os_critical_exit(cs);
             return true;
         }
 
         /* IPC: owner keeps ceiling — no PI needed, block and wait */
-        __asm volatile("msr PRIMASK, %0" :: "r"(cs) : "memory");
+        os_critical_exit(cs);
+
+        /* If timeout is 0, return immediately without blocking */
+        if (timeout_ms == 0) return false;
 
         uint32_t tt = (timeout_ms == OS_WAIT_FOREVER)
-            ? 0 : os_ms_to_ticks(timeout_ms);
+            ? 0 : _os_ms_to_ticks(timeout_ms);
 
         _os_mutex_block_on(this, tt);
 
         int result = _os_mutex_check_and_clear_result();
+#if OS_DEBUG_ENABLED
         if (result) { dbg_wait_result_ok++; return true; }
         if (timeout_ms != OS_WAIT_FOREVER) { dbg_wait_result_fail++; return false; }
+#else
+        if (result) return true;
+        if (timeout_ms != OS_WAIT_FOREVER) return false;
+#endif
     }
 }
 
 void OS_MUTEX::unlock() {
-    uint32_t cs;
-    __asm volatile("mrs %0, PRIMASK\n cpsid i\n" : "=r"(cs) :: "memory");
+    uint32_t cs = os_critical_enter();
 
     if (owner) {
         owner->mutex_nesting--;
         /* Still nested — don't release the lock */
         if (owner->mutex_nesting > 0) {
-            __asm volatile("msr PRIMASK, %0" :: "r"(cs) : "memory");
+            os_critical_exit(cs);
             return;
         }
+#if OS_DEBUG_ENABLED
         dbg_unlock_calls++;
+#endif
         owner->mutex_held_count--;
 
         /* IPC: restore priority to max(base_priority, ceiling of remaining held mutexs).
@@ -430,10 +446,12 @@ void OS_MUTEX::unlock() {
            If other mutexs are still held, the ceiling of those mutexs will be
            applied when they were locked (base_priority tracks the original). */
         if (priority_boosted) {
+#if OS_DEBUG_ENABLED
             dbg_restores++;
+#endif
             if (owner->state != TaskState::BLOCKED &&
                 owner->state != TaskState::INACTIVE)
-                os_pq_remove(owner);
+                _os_pq_remove(owner);
             /* Restore to base_priority only if no other mutexs are held */
             if (owner->mutex_held_count == 0) {
                 owner->priority = owner->base_priority;
@@ -441,7 +459,7 @@ void OS_MUTEX::unlock() {
             priority_boosted = false;
             if (owner->state != TaskState::BLOCKED &&
                 owner->state != TaskState::INACTIVE)
-                os_pq_add(owner);
+                _os_pq_add(owner);
         }
     }
 
@@ -456,10 +474,10 @@ void OS_MUTEX::unlock() {
             /* IPC: boost new owner to ceiling and re-queue (it was just
                woken by _os_mutex_handoff → READY and queued). */
             if (ceiling_priority > new_owner->priority) {
-                os_pq_remove(new_owner);
+                _os_pq_remove(new_owner);
                 new_owner->priority = ceiling_priority;
                 priority_boosted = true;
-                os_pq_add(new_owner);
+                _os_pq_add(new_owner);
             }
         }
         /* IPC: after waking a waiter, ensure preemption if the woken
@@ -475,18 +493,18 @@ void OS_MUTEX::unlock() {
         locked = 0;
         owner  = nullptr;
     }
-    __asm volatile("msr PRIMASK, %0" :: "r"(cs) : "memory");
+    os_critical_exit(cs);
 }
 
 /* ── OsLockGuard ── */
-__OsLockGuard::__OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms)
+_OsLockGuard::_OsLockGuard(OS_MUTEX& m, uint32_t timeout_ms)
     : mtx(m)
     , acquired(mtx.lock(timeout_ms))
     , done(false) {}
 
-__OsLockGuard::~__OsLockGuard() { if (acquired) mtx.unlock(); }
+_OsLockGuard::~_OsLockGuard() { if (acquired) mtx.unlock(); }
 
-bool __OsLockGuard::once() {
+bool _OsLockGuard::once() {
     if (done) return false;
     done = true;
     return true;

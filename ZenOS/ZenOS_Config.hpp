@@ -151,23 +151,20 @@
 #define OS_TOOL_TICKLESS_IDLE  1
 #endif
 
-/* Debug UART: live trace output over UART (register-level, no HAL)
- * 1 = enabled, 0 = disabled (default).  When disabled, all debug code
- * is compiled away — zero code/RAM overhead.
- * Configure OS_DEBUG_USART_BASE, OS_DEBUG_BAUDRATE, and GPIO pins
- * in your project defines.  See ZenOS_Debug.hpp for all options.
- * NOTE: This is debug-only and NOT safety-critical.  If UART fails,
- * the kernel must not block or crash. */
-#ifndef OS_DEBUG_UART
-#define OS_DEBUG_UART          1
-#endif
-
 
 /* ============================================================================
  *  OS_MONITOR — Runtime Observability
  * -------------------------------------------------------------------------- *
  *  1 = enabled, 0 = disabled.  Each feature compiles independently.
  * ============================================================================ */
+
+/* Debug counters: performance and diagnostic counters for IPC operations.
+ * 0 = disabled (production), 1 = enabled (development/debug).
+ * These counters track mutex lock/unlock, ceiling boosts, handoff finds, etc.
+ * They consume 32 bytes of RAM when enabled. */
+#ifndef OS_DEBUG_ENABLED
+#define OS_DEBUG_ENABLED     0
+#endif
 
 /* Deadline monitoring: detect and act on task deadline misses
  * [MED-B] [MED-C] REQUIRED — IEC 62304 §5.4.3 requires timing analysis;
@@ -263,7 +260,7 @@
  * NOTE: Do not write to flash while CRC check is in progress;
  *       this causes false positives. */
 #ifndef OS_SAFETY_CRC_CHECK
-#define OS_SAFETY_CRC_CHECK    0
+#define OS_SAFETY_CRC_CHECK    1
 #endif
 
 /* Software watchdog: detect stuck tasks and recover
