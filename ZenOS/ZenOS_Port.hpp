@@ -32,8 +32,6 @@
  *   OS_FAMILY_NAME      — human-readable string for banners
  *   OS_VECTOR_COUNT     — number of IRQs + 16 system exceptions
  *   OS_SMP_CORES        — number of cores (1 for all single-core STM32)
- *   OS_HAS_FPU_HW       — hardware FPU present on this specific chip
- *   OS_HAS_MPU_HW       — MPU hardware present
  *   OS_FLASH_SIZE       — typical flash size (bytes)
  *   OS_RAM_SIZE         — typical SRAM size (bytes)
  *   OS_CRC_BASE_ADDR    — CRC peripheral base address (varies by family)
@@ -41,6 +39,12 @@
  *   OS_RCC_CSR_ADDR     — RCC CSR register for reset flags
  *   OS_NVIC_PRIO_BITS   — number of implemented NVIC priority bits
  * ────────────────────────────────────────────────────────────
+ * Core capability flags (FPU, MPU) are deliberately NOT set here: they are
+ * derived further below from the CMSIS device header (__FPU_PRESENT /
+ * __MPU_PRESENT) and the compiler's __ARM_ARCH_* macros, which are
+ * authoritative.  A family name alone cannot prove that a silicon vendor
+ * instantiated an optional component — STM32F303 is a Cortex-M4 without FPU.
+ *
  * Vector counts are taken from the corresponding STM32 reference manuals.
  * For families with wide ranges (F2/F4/F7/H7), we use a mid-range value.
  * The actual VTOR size only matters when we copy the vector table in
@@ -48,13 +52,156 @@
 
 /* ── Cortex-M0 / M0+ (ARMv6-M) ──────────────────────
  * No BASEPRI, no MPU (M0) or optional MPU (M0+), Thumb-1 only.
- * These cores use a simpler exception model. */
-#if defined(STM32F0xx)
+ * These cores use a simpler exception model.
+ *
+ * ── Family-macro forms accepted below ────────────────────────────────────
+ * A project built by STM32CubeMX defines the *part* macro (STM32F103xB,
+ * STM32L072xx, STM32F030x6, ...) and NOT the STM32F1xx / STM32F1 family
+ * macro; the latter is only defined once the CMSIS device header is
+ * included, which ZenOS does further down.  ZenOS.hpp might be included
+ * before main.h, so matching only STM32F1xx silently fell through to the
+ * "Generic Cortex-M" defaults — wrong OS_FLASH_SIZE (128 KB instead of
+ * 64 KB on F103C8) and, with this file's peripheral detection, an
+ * undetected CRC/IWDG.
+ *
+ * OS_FAMILY_IS_STM32F1 is therefore defined here from the part macros that
+ * the CMSIS device header itself checks (stm32f1xx.h line 59-61), so the
+ * detection is order-independent and does not require the ST header to be
+ * seen first. */
+#if defined(STM32F103x6) || defined(STM32F103xB) || defined(STM32F103xE) || \
+    defined(STM32F103xG) || defined(STM32F100xB) || defined(STM32F100xE) || \
+    defined(STM32F101x6) || defined(STM32F101xB) || defined(STM32F101xE) || \
+    defined(STM32F101xG) || defined(STM32F102x6) || defined(STM32F102xB) || \
+    defined(STM32F105xC) || defined(STM32F107xC)
+    #define OS_FAMILY_IS_STM32F1 1
+#endif
+
+#if defined(STM32F0xx) || defined(STM32F0) || defined(STM32F030x6) || \
+    defined(STM32F030x8) || defined(STM32F031x6) || defined(STM32F042x6) || \
+    defined(STM32F048xx) || defined(STM32F051x8) || defined(STM32F058xx) || \
+    defined(STM32F070x6) || defined(STM32F070xB) || defined(STM32F072xB) || \
+    defined(STM32F078xx) || defined(STM32F091xC) || defined(STM32F098xx)
+    #define OS_FAMILY_IS_STM32F0 1
+#endif
+
+#if defined(STM32G0xx) || defined(STM32G0) || defined(STM32G030xx) || \
+    defined(STM32G031xx) || defined(STM32G041xx) || defined(STM32G050xx) || \
+    defined(STM32G051xx) || defined(STM32G061xx) || defined(STM32G070xx) || \
+    defined(STM32G071xx) || defined(STM32G081xx) || defined(STM32G0B0xx) || \
+    defined(STM32G0B1xx) || defined(STM32G0C1xx)
+    #define OS_FAMILY_IS_STM32G0 1
+#endif
+
+#if defined(STM32L0xx) || defined(STM32L0) || defined(STM32L010x4) || \
+    defined(STM32L010x6) || defined(STM32L010x8) || defined(STM32L010xB) || \
+    defined(STM32L011xx) || defined(STM32L021xx) || defined(STM32L031xx) || \
+    defined(STM32L041xx) || defined(STM32L051xx) || defined(STM32L052xx) || \
+    defined(STM32L053xx) || defined(STM32L062xx) || defined(STM32L063xx) || \
+    defined(STM32L071xx) || defined(STM32L072xx) || defined(STM32L073xx) || \
+    defined(STM32L081xx) || defined(STM32L082xx) || defined(STM32L083xx)
+    #define OS_FAMILY_IS_STM32L0 1
+#endif
+
+#if defined(STM32L1xx) || defined(STM32L1) || defined(STM32L100xB) || \
+    defined(STM32L100xBA) || defined(STM32L100xC) || defined(STM32L151xB) || \
+    defined(STM32L151xBA) || defined(STM32L151xC) || defined(STM32L151xCA) || \
+    defined(STM32L151xD) || defined(STM32L151xDX) || defined(STM32L151xE) || \
+    defined(STM32L152xB) || defined(STM32L152xBA) || defined(STM32L152xC) || \
+    defined(STM32L152xCA) || defined(STM32L152xD) || defined(STM32L152xDX) || \
+    defined(STM32L152xE) || defined(STM32L162xC) || defined(STM32L162xCA) || \
+    defined(STM32L162xD) || defined(STM32L162xDX) || defined(STM32L162xE)
+    #define OS_FAMILY_IS_STM32L1 1
+#endif
+
+#if defined(STM32F2xx) || defined(STM32F2) || defined(STM32F205xx) || \
+    defined(STM32F207xx) || defined(STM32F215xx) || defined(STM32F217xx)
+    #define OS_FAMILY_IS_STM32F2 1
+#endif
+
+#if defined(STM32F3xx) || defined(STM32F3) || defined(STM32F301x8) || \
+    defined(STM32F302x8) || defined(STM32F302xC) || defined(STM32F302xE) || \
+    defined(STM32F303x8) || defined(STM32F303xC) || defined(STM32F303xE) || \
+    defined(STM32F318xx) || defined(STM32F328xx) || defined(STM32F334x8) || \
+    defined(STM32F358xx) || defined(STM32F373xC) || defined(STM32F378xx) || \
+    defined(STM32F398xx)
+    #define OS_FAMILY_IS_STM32F3 1
+#endif
+
+#if defined(STM32F4xx) || defined(STM32F4) || defined(STM32F401xC) || \
+    defined(STM32F401xE) || defined(STM32F405xx) || defined(STM32F407xx) || \
+    defined(STM32F410Cx) || defined(STM32F410Rx) || defined(STM32F410Tx) || \
+    defined(STM32F411xE) || defined(STM32F412Cx) || defined(STM32F412Rx) || \
+    defined(STM32F412Vx) || defined(STM32F412Zx) || defined(STM32F413xx) || \
+    defined(STM32F415xx) || defined(STM32F417xx) || defined(STM32F423xx) || \
+    defined(STM32F427xx) || defined(STM32F429xx) || defined(STM32F437xx) || \
+    defined(STM32F439xx) || defined(STM32F446xx) || defined(STM32F469xx) || \
+    defined(STM32F479xx)
+    #define OS_FAMILY_IS_STM32F4 1
+#endif
+
+#if defined(STM32F7xx) || defined(STM32F7) || defined(STM32F722xx) || \
+    defined(STM32F723xx) || defined(STM32F732xx) || defined(STM32F733xx) || \
+    defined(STM32F745xx) || defined(STM32F746xx) || defined(STM32F750xx) || \
+    defined(STM32F756xx) || defined(STM32F765xx) || defined(STM32F767xx) || \
+    defined(STM32F769xx) || defined(STM32F777xx) || defined(STM32F779xx)
+    #define OS_FAMILY_IS_STM32F7 1
+#endif
+
+#if defined(STM32G4xx) || defined(STM32G4) || defined(STM32G431xx) || \
+    defined(STM32G441xx) || defined(STM32G471xx) || defined(STM32G473xx) || \
+    defined(STM32G474xx) || defined(STM32G483xx) || defined(STM32G484xx) || \
+    defined(STM32GBK1CB)
+    #define OS_FAMILY_IS_STM32G4 1
+#endif
+
+#if defined(STM32H7xx) || defined(STM32H7) || defined(STM32H723xx) || \
+    defined(STM32H725xx) || defined(STM32H730xx) || defined(STM32H735xx) || \
+    defined(STM32H742xx) || defined(STM32H743xx) || defined(STM32H745xx) || \
+    defined(STM32H747xx) || defined(STM32H750xx) || defined(STM32H753xx) || \
+    defined(STM32H755xx) || defined(STM32H757xx) || defined(STM32H7A3xx) || \
+    defined(STM32H7B3xx)
+    #define OS_FAMILY_IS_STM32H7 1
+#endif
+
+#if defined(STM32L4xx) || defined(STM32L4) || defined(STM32L412xx) || \
+    defined(STM32L422xx) || defined(STM32L431xx) || defined(STM32L432xx) || \
+    defined(STM32L433xx) || defined(STM32L442xx) || defined(STM32L443xx) || \
+    defined(STM32L451xx) || defined(STM32L452xx) || defined(STM32L462xx) || \
+    defined(STM32L471xx) || defined(STM32L475xx) || defined(STM32L476xx) || \
+    defined(STM32L485xx) || defined(STM32L486xx) || defined(STM32L496xx) || \
+    defined(STM32L4A6xx) || defined(STM32L4P5xx) || defined(STM32L4Q5xx) || \
+    defined(STM32L4R5xx) || defined(STM32L4R7xx) || defined(STM32L4R9xx) || \
+    defined(STM32L4S5xx) || defined(STM32L4S7xx) || defined(STM32L4S9xx)
+    #define OS_FAMILY_IS_STM32L4 1
+#endif
+
+#if defined(STM32L5xx) || defined(STM32L5) || defined(STM32L552xx) || \
+    defined(STM32L562xx)
+    #define OS_FAMILY_IS_STM32L5 1
+#endif
+
+#if defined(STM32U5xx) || defined(STM32U5) || defined(STM32U535xx) || \
+    defined(STM32U545xx) || defined(STM32U575xx) || defined(STM32U585xx) || \
+    defined(STM32U595xx) || defined(STM32U599xx) || defined(STM32U5A5xx) || \
+    defined(STM32U5A9xx)
+    #define OS_FAMILY_IS_STM32U5 1
+#endif
+
+#if defined(STM32WBxx) || defined(STM32WB) || defined(STM32WB10xx) || \
+    defined(STM32WB15xx) || defined(STM32WB1Mxx) || defined(STM32WB35xx) || \
+    defined(STM32WB50xx) || defined(STM32WB55xx) || defined(STM32WB5Mxx)
+    #define OS_FAMILY_IS_STM32WB 1
+#endif
+
+#if defined(STM32WBAxx) || defined(STM32WBA) || defined(STM32WBA52xx) || \
+    defined(STM32WBA54xx) || defined(STM32WBA55xx)
+    #define OS_FAMILY_IS_STM32WBA 1
+#endif
+
+#if defined(OS_FAMILY_IS_STM32F0)
     #define OS_FAMILY_NAME      "STM32F0"
     #define OS_VECTOR_COUNT     32
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       0
     #define OS_FLASH_SIZE       0x10000UL    /* 64KB (F030) */
     #define OS_RAM_SIZE         0x2000UL     /* 8KB */
     #define OS_NVIC_PRIO_BITS   2
@@ -62,12 +209,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32G0xx)
+#elif defined(OS_FAMILY_IS_STM32G0)
     #define OS_FAMILY_NAME      "STM32G0"
     #define OS_VECTOR_COUNT     32
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       0
     #define OS_FLASH_SIZE       0x20000UL    /* 128KB (G070) */
     #define OS_RAM_SIZE         0x5000UL     /* 20KB */
     #define OS_NVIC_PRIO_BITS   2
@@ -77,12 +222,10 @@
 
 /* ── Cortex-M3 (ARMv7-M) ──────────────────────────────
  * No FPU, optional MPU (M3), Thumb-2, BASEPRI available. */
-#elif defined(STM32F1xx)
+#elif defined(OS_FAMILY_IS_STM32F1)
     #define OS_FAMILY_NAME      "STM32F1"
     #define OS_VECTOR_COUNT     68
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x10000UL    /* 64KB (F103C8) */
     #define OS_RAM_SIZE         0x5000UL     /* 20KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -90,12 +233,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32L0xx)
+#elif defined(OS_FAMILY_IS_STM32L0)
     #define OS_FAMILY_NAME      "STM32L0"
     #define OS_VECTOR_COUNT     32
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       1   /* L0 has optional MPU (Cortex-M0+) */
     #define OS_FLASH_SIZE       0x20000UL    /* 128KB (L072) */
     #define OS_RAM_SIZE         0x5000UL     /* 20KB */
     #define OS_NVIC_PRIO_BITS   2
@@ -103,12 +244,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32L1xx)
+#elif defined(OS_FAMILY_IS_STM32L1)
     #define OS_FAMILY_NAME      "STM32L1"
     #define OS_VECTOR_COUNT     68
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       1   /* L1 has MPU (Cortex-M3) */
     #define OS_FLASH_SIZE       0x100000UL   /* 1MB (L152) */
     #define OS_RAM_SIZE         0x14000UL    /* 80KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -117,12 +256,10 @@
     #define OS_RCC_CSR_ADDR     0x40023824UL
 
 /* ── Cortex-M3 / Cortex-M4 (no FPU) ────────────────── */
-#elif defined(STM32F2xx)
+#elif defined(OS_FAMILY_IS_STM32F2)
     #define OS_FAMILY_NAME      "STM32F2"
     #define OS_VECTOR_COUNT     81
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x100000UL   /* 1MB (F207) */
     #define OS_RAM_SIZE         0x20000UL    /* 128KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -130,12 +267,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40023824UL
 
-#elif defined(STM32F3xx)
+#elif defined(OS_FAMILY_IS_STM32F3)
     #define OS_FAMILY_NAME      "STM32F3"
     #define OS_VECTOR_COUNT     82
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       0   /* F303 has Cortex-M4 without FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x40000UL    /* 256KB (F303) */
     #define OS_RAM_SIZE         0x10000UL    /* 64KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -144,12 +279,10 @@
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
 /* ── Cortex-M4F (ARMv7E-M with FPU) ────────────────── */
-#elif defined(STM32F4xx)
+#elif defined(OS_FAMILY_IS_STM32F4)
     #define OS_FAMILY_NAME      "STM32F4"
     #define OS_VECTOR_COUNT     86
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* F407/F429 have single-precision FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x200000UL   /* 2MB (F429) */
     #define OS_RAM_SIZE         0x20000UL    /* 128KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -157,12 +290,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40023824UL
 
-#elif defined(STM32G4xx)
+#elif defined(OS_FAMILY_IS_STM32G4)
     #define OS_FAMILY_NAME      "STM32G4"
     #define OS_VECTOR_COUNT     100
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* G431/G474 have single-precision FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x80000UL    /* 512KB (G474) */
     #define OS_RAM_SIZE         0x18000UL    /* 96KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -171,12 +302,10 @@
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
 /* ── Cortex-M7 (ARMv7E-M with FPU) ─────────────────── */
-#elif defined(STM32F7xx)
+#elif defined(OS_FAMILY_IS_STM32F7)
     #define OS_FAMILY_NAME      "STM32F7"
     #define OS_VECTOR_COUNT     91
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* F767/F746 have double-precision FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x200000UL   /* 2MB (F767) */
     #define OS_RAM_SIZE         0x40000UL    /* 256KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -184,12 +313,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40023824UL
 
-#elif defined(STM32H7xx)
+#elif defined(OS_FAMILY_IS_STM32H7)
     #define OS_FAMILY_NAME      "STM32H7"
     #define OS_VECTOR_COUNT     150
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* H743/H750 have double-precision FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x200000UL   /* 2MB (H743) */
     #define OS_RAM_SIZE         0x40000UL    /* 256KB typical (H743 = 1MB across DTCM+AXI+SRAM1-4) */
     #define OS_NVIC_PRIO_BITS   4
@@ -198,12 +325,10 @@
     #define OS_RCC_CSR_ADDR     0x580244D0UL /* H7 uses RCC->CSR */
 
 /* ── Cortex-M4F Low-Power ──────────────────────────── */
-#elif defined(STM32L4xx)
+#elif defined(OS_FAMILY_IS_STM32L4)
     #define OS_FAMILY_NAME      "STM32L4"
     #define OS_VECTOR_COUNT     82
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* L476/L496 have single-precision FPU */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x100000UL   /* 1MB (L496) */
     #define OS_RAM_SIZE         0x20000UL    /* 128KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -211,12 +336,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32L5xx)
+#elif defined(OS_FAMILY_IS_STM32L5)
     #define OS_FAMILY_NAME      "STM32L5"
     #define OS_VECTOR_COUNT     82
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* L552 has single-precision FPU */
-    #define OS_HAS_MPU_HW       1   /* L5 has TrustZone-aware MPU (PMSAv8) */
     #define OS_FLASH_SIZE       0x100000UL   /* 512KB */
     #define OS_RAM_SIZE         0x20000UL    /* 256KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -224,12 +347,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32U5xx)
+#elif defined(OS_FAMILY_IS_STM32U5)
     #define OS_FAMILY_NAME      "STM32U5"
     #define OS_VECTOR_COUNT     82
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* U575/U585 have double-precision FPU */
-    #define OS_HAS_MPU_HW       1   /* U5 has TrustZone-aware MPU (PMSAv8) */
     #define OS_FLASH_SIZE       0x200000UL   /* 2MB (U585) */
     #define OS_RAM_SIZE         0x20000UL    /* 256KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -237,12 +358,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32WBxx)
+#elif defined(OS_FAMILY_IS_STM32WB)
     #define OS_FAMILY_NAME      "STM32WB"
     #define OS_VECTOR_COUNT     66
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* WB55 has single-precision FPU (Cortex-M4) */
-    #define OS_HAS_MPU_HW       1
     #define OS_FLASH_SIZE       0x100000UL   /* 1MB (WB55) */
     #define OS_RAM_SIZE         0x40000UL    /* 256KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -250,12 +369,10 @@
     #define OS_IWDG_BASE_ADDR   0x40003000UL
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
-#elif defined(STM32WBAxx)
+#elif defined(OS_FAMILY_IS_STM32WBA)
     #define OS_FAMILY_NAME      "STM32WBA"
     #define OS_VECTOR_COUNT     82
     #define OS_SMP_CORES        1
-    #define OS_HAS_FPU_HW       1   /* WBA52 has single-precision FPU (Cortex-M33) */
-    #define OS_HAS_MPU_HW       1   /* M33 has PMSAv8 MPU */
     #define OS_FLASH_SIZE       0x200000UL   /* 1MB (WBA55) */
     #define OS_RAM_SIZE         0x40000UL    /* 256KB */
     #define OS_NVIC_PRIO_BITS   4
@@ -264,25 +381,13 @@
     #define OS_RCC_CSR_ADDR     0x40021024UL
 
 /* ── Fallback: unknown STM32 or generic Cortex-M ────
- * Uses __ARM_ARCH_* (set by -mcpu flag, NOT CMSIS) for architecture
- * features. No CMSIS device header dependency. */
+ * Only the peripheral-memory map is defaulted here; FPU/MPU capability is
+ * resolved afterwards from CMSIS/__ARM_ARCH_* for every target, including
+ * this one. */
 #else
     #define OS_FAMILY_NAME      "Generic Cortex-M"
     #define OS_VECTOR_COUNT     68
     #define OS_SMP_CORES        1
-    /* FPU: ARMv7E-M+ (M4F/M7) always has FPU; ARMv7-M (M3) and ARMv6-M (M0/M0+) do not */
-    #if defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__)
-        #define OS_HAS_FPU_HW   1
-    #else
-        #define OS_HAS_FPU_HW   0
-    #endif
-    /* MPU: ARMv7-M+ has MPU (optional on M0+); ARMv6-M (M0) does not */
-    #if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || \
-        defined(__ARM_ARCH_8M_BASE__) || defined(__ARM_ARCH_8M_MAIN__)
-        #define OS_HAS_MPU_HW   1
-    #else
-        #define OS_HAS_MPU_HW   0
-    #endif
     #define OS_FLASH_SIZE       0x20000UL
     #define OS_RAM_SIZE         0x5000UL
     #define OS_NVIC_PRIO_BITS   4
@@ -324,7 +429,6 @@
 
 #define OS_FLASH_START       0x08000000UL
 #define OS_RAM_START         0x20000000UL
-
 #define OS_RAM_TEST_SKIP     0x4000UL
 #define OS_RAM_TEST_START    (OS_RAM_START + OS_RAM_TEST_SKIP)
 /* RAM test covers the lower half of RAM. The upper half typically contains
@@ -338,8 +442,72 @@
 #define OS_RAM_TEST_END      (OS_RAM_START + (OS_RAM_SIZE / 2))
 #endif
 
+/* ═══════════════ CMSIS Device Header (capability source of truth) ═══════
+ * The device header defines __MPU_PRESENT and __FPU_PRESENT, which describe
+ * what the *silicon* actually contains.  Those two macros are authoritative
+ * and must be in scope before the capability block below runs, so we pull
+ * the header in here rather than relying on the application having included
+ * it first.
+ *
+ * The header is selected from the same STM32 family macro used above, so an
+ * application that only includes ZenOS.hpp still gets correct capability
+ * detection.  If the header cannot be found (a non-STM32 Cortex-M project,
+ * or a build that does not put the CMSIS device directory on the include
+ * path) we fall back to __ARM_ARCH_*, and the capability block reports the
+ * weaker evidence through #warning where it matters.
+ *
+ * HAL-INDEPENDENCE: when the project defines USE_HAL_DRIVER (as every
+ * STM32CubeMX project does), the ST device header itself pulls in the HAL
+ * ("stm32f1xx_hal.h").  The kernel does not want that dependency, so we
+ * temporarily undefine USE_HAL_DRIVER around the include and restore it
+ * afterwards.  The application still sees its original macro; only the
+ * kernel's view of the device header is kept HAL-free. */
+#ifndef OS_NO_CMSIS_DEVICE_HEADER
+    #ifdef USE_HAL_DRIVER
+        #define OS_USE_HAL_DRIVER_SAVED 1
+        #undef USE_HAL_DRIVER
+    #endif
+    #if defined(OS_FAMILY_IS_STM32F0)
+        #include "stm32f0xx.h"
+    #elif defined(OS_FAMILY_IS_STM32F1)
+        #include "stm32f1xx.h"
+    #elif defined(OS_FAMILY_IS_STM32F2)
+        #include "stm32f2xx.h"
+    #elif defined(OS_FAMILY_IS_STM32F3)
+        #include "stm32f3xx.h"
+    #elif defined(OS_FAMILY_IS_STM32F4)
+        #include "stm32f4xx.h"
+    #elif defined(OS_FAMILY_IS_STM32F7)
+        #include "stm32f7xx.h"
+    #elif defined(OS_FAMILY_IS_STM32G0)
+        #include "stm32g0xx.h"
+    #elif defined(OS_FAMILY_IS_STM32G4)
+        #include "stm32g4xx.h"
+    #elif defined(OS_FAMILY_IS_STM32H7)
+        #include "stm32h7xx.h"
+    #elif defined(OS_FAMILY_IS_STM32L0)
+        #include "stm32l0xx.h"
+    #elif defined(OS_FAMILY_IS_STM32L1)
+        #include "stm32l1xx.h"
+    #elif defined(OS_FAMILY_IS_STM32L4)
+        #include "stm32l4xx.h"
+    #elif defined(OS_FAMILY_IS_STM32L5)
+        #include "stm32l5xx.h"
+    #elif defined(OS_FAMILY_IS_STM32U5)
+        #include "stm32u5xx.h"
+    #elif defined(OS_FAMILY_IS_STM32WB)
+        #include "stm32wbxx.h"
+    #elif defined(OS_FAMILY_IS_STM32WBA)
+        #include "stm32wbaxx.h"
+    #endif
+    #ifdef OS_USE_HAL_DRIVER_SAVED
+        #undef OS_USE_HAL_DRIVER_SAVED
+        #define USE_HAL_DRIVER
+    #endif
+#endif /* OS_NO_CMSIS_DEVICE_HEADER */
+
 /* ═══════════════ ARM Architecture Detection ═══════════════
- * CMSIS defines these based on the -mcpu flag:
+ * The compiler defines exactly one of these from -mcpu (authoritative):
  *   __ARM_ARCH_6M__   — Cortex-M0, M0+, M1 (ARMv6-M)
  *   __ARM_ARCH_7M__   — Cortex-M3 (ARMv7-M)
  *   __ARM_ARCH_7EM__  — Cortex-M4, M7 (ARMv7E-M)
@@ -347,13 +515,128 @@
  *   __ARM_ARCH_8M_MAIN__ — Cortex-M33 (ARMv8-M Mainline)
  */
 
-/* MPU regions: architecture-dependent max */
-#if defined(__ARM_ARCH_8M_MAIN__)
-    #define OS_MPU_MAX_REGIONS  16   /* ARMv8-M Mainline: up to 16 regions */
-#elif defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_BASE__)
-    #define OS_MPU_MAX_REGIONS  8    /* ARMv7-M and ARMv8-M Baseline: 8 regions */
+/* ═══════════════ MPU Region Count (PMSAv7 / PMSAv8) ═══════════════
+ * Region-count is a property of the MPU *implementation*, not of the core
+ * revision, so it must be read from the device's CMSIS header when that
+ * header is available (__MPU_PRESENT == 1 implies <core>_MPU_TYPE / the
+ * CMSIS `MPU->TYPE` DREGION field).  Only when no CMSIS device header is
+ * in the include path do we fall back to the architecture maximum, which is
+ * a safe upper bound because the driver checks the live DREGION at runtime
+ * (see os_mpu_init). */
+#if defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
+    #define OS_MPU_MAX_REGIONS  16   /* PMSAv8: 0..15 architectural maximum */
 #else
-    #define OS_MPU_MAX_REGIONS  8    /* safe default */
+    #define OS_MPU_MAX_REGIONS  8    /* PMSAv7: 0..7 architectural maximum   */
+#endif
+
+/* ═══════════════ MPU Availability ═══════════════
+ * ARMv7-M (Cortex-M3/M4/M7) and ARMv8-M (Cortex-M23/M33) make the MPU an
+ * OPTIONAL component that the silicon vendor may or may not instantiate;
+ * ARMv6-M (Cortex-M0/M0+) has no PMSA MPU at all (the M0+ MPU is an
+ * implementation-defined extension that ST does not offer on any STM32).
+ *
+ * The authoritative source is the device's CMSIS header, which defines
+ * __MPU_PRESENT.  Using the core name alone is NOT sufficient — e.g.
+ * Cortex-M3 implies PMSAv7 hardware but STM32F1's device header still has
+ * to confirm it.  We therefore:
+ *   1. use __MPU_PRESENT when a CMSIS device header was included, and
+ *   2. otherwise derive from the architecture, with ARMv6-M always 0.
+ */
+#if defined(__MPU_PRESENT)
+    #define OS_HAS_MPU_HW   (__MPU_PRESENT ? 1 : 0)
+#elif defined(__ARM_ARCH_6M__)
+    #define OS_HAS_MPU_HW   0
+#else
+    #define OS_HAS_MPU_HW   1
+#endif
+
+/* Reject the configuration at compile time when the user asks for MPU
+ * protection on a core that has no MPU.  Silently compiling the PMSAv7
+ * path for Cortex-M0 would emit stores to 0xE000ED90 (which does not
+ * exist on ARMv6-M) and fault at the first context switch. */
+#if OS_SAFETY_MPU && !OS_HAS_MPU_HW
+    #error "[ZenOS] OS_SAFETY_MPU=1 but this target has no MPU (Cortex-M0/M0+ or device header reports __MPU_PRESENT=0). Set OS_SAFETY_MPU=0 or select a Cortex-M3/M4/M7/M23/M33 device."
+#endif
+
+/* Report an unverified MPU configuration.  When no CMSIS device header was
+ * included we cannot prove the MPU exists; the user must confirm it. */
+#if OS_SAFETY_MPU && !defined(__MPU_PRESENT)
+    #warning "[ZenOS] OS_SAFETY_MPU=1 without a CMSIS device header in the include path; MPU presence was assumed from __ARM_ARCH_* only. Include the device header or confirm __MPU_PRESENT for your part."
+#endif
+
+/* Whether user tasks actually run with an active MPU (the safety feature is
+   on AND the silicon has one).  Reported through os_get_capabilities(). */
+#if OS_SAFETY_MPU && OS_HAS_MPU_HW
+    #define OS_HAS_USER_MPU_ACTIVE 1
+#else
+    #define OS_HAS_USER_MPU_ACTIVE 0
+#endif
+
+/* ═══════════════ Peripheral Availability (CMSIS only) ═══════════════
+ * The CRC and IWDG blocks are absent on some STM32 parts (e.g. STM32F0/L0
+ * value lines).  Touching their registers on such a device faults, so the
+ * availability must be proven before the safety code is compiled in.
+ *
+ * The authoritative signal is the CMSIS *device* header, which either
+ * defines the peripheral base (CRC_BASE / IWDG_BASE) or omits it entirely.
+ * ZenOS deliberately does NOT use HAL_IWDG_MODULE_ENABLED /
+ * HAL_CRC_MODULE_ENABLED for this: those are HAL build-configuration
+ * switches, not statements about the silicon, and depending on them would
+ * couple the kernel API to the HAL.
+ *
+ * A project may override either flag explicitly with
+ *   -DOS_HAS_CRC_HW=0 / -DOS_HAS_IWDG_HW=1
+ * when building without the CMSIS device header (e.g. a bare-metal port),
+ * in which case the override is trusted. */
+#ifndef OS_HAS_CRC_HW
+    #if defined(CRC_BASE) || defined(CRC)
+        #define OS_HAS_CRC_HW  1
+    #else
+        #define OS_HAS_CRC_HW  0
+    #endif
+#endif
+
+#ifndef OS_HAS_IWDG_HW
+    #if defined(IWDG_BASE) || defined(IWDG)
+        #define OS_HAS_IWDG_HW 1
+    #else
+        #define OS_HAS_IWDG_HW 0
+    #endif
+#endif
+
+/* A safety feature that needs a peripheral the device does not have cannot
+ * be satisfied — fail loudly instead of emitting dead register accesses. */
+#if OS_SAFETY_CRC_CHECK && !OS_HAS_CRC_HW
+    #error "[ZenOS] OS_SAFETY_CRC_CHECK=1 but this device has no CRC peripheral (CRC_BASE is not defined by its CMSIS header). Set OS_SAFETY_CRC_CHECK=0 or select a part with a CRC unit."
+#endif
+
+#if OS_SAFETY_HW_WATCHDOG && !OS_HAS_IWDG_HW
+    #error "[ZenOS] OS_SAFETY_HW_WATCHDOG=1 but this device has no IWDG peripheral (IWDG_BASE is not defined by its CMSIS header). Set OS_SAFETY_HW_WATCHDOG=0 or select a part with an IWDG."
+#endif
+
+/* ═══════════════ Capability Bitmask (os_get_capabilities) ═══════════════
+ * Single numeric summary of everything detected at compile time, so an
+ * application can assert on the target instead of re-deriving it. */
+#define OS_CAP_MPU         (1UL << 0)   /* MPU hardware present on the silicon */
+#define OS_CAP_FPU         (1UL << 1)   /* FPU hardware present on the silicon */
+#define OS_CAP_MPU_ACTIVE  (1UL << 2)   /* OS_SAFETY_MPU=1 and MPU available  */
+#define OS_CAP_CRC_HW      (1UL << 3)   /* CRC peripheral available+enabled  */
+#define OS_CAP_IWDG_HW     (1UL << 4)   /* IWDG peripheral available+enabled */
+#define OS_CAP_CYCCNT      (1UL << 5)   /* DWT CYCCNT counter available      */
+#define OS_CAP_VTOR        (1UL << 6)   /* SCB->VTOR available               */
+#define OS_CAP_TICKLESS    (1UL << 7)   /* OS_TOOL_TICKLESS_IDLE compiled in */
+
+/* ═══════════════ FPU Availability ═══════════════
+ * Same rule as the MPU: a Cortex-M4F/M7F only has the FPU when the vendor
+ * instantiated it (STM32F303 is a Cortex-M4 *without* FPU).  The device
+ * header's __FPU_PRESENT is authoritative; otherwise ARMv7E-M/ARMv8-M
+ * Mainline is assumed to have one and ARMv6-M/ARMv7-M do not. */
+#if defined(__FPU_PRESENT)
+    #define OS_HAS_FPU_HW   (__FPU_PRESENT ? 1 : 0)
+#elif defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_8M_MAIN__)
+    #define OS_HAS_FPU_HW   1
+#else
+    #define OS_HAS_FPU_HW   0
 #endif
 
 /* Architecture family string (used in banners and fault output) */
@@ -503,31 +786,35 @@
  * either:
  *   (a) Set the SRAM region as non-cacheable via MPU, or
  *   (b) Call SCB_CleanDCache_by_Addr() after modifying TCBs.
- * This is a porting concern — see PORTING_GUIDE.md. */
-#define OS_HAS_CACHE  0  /* Default: assume no cache. Set to 1 in project
-                            defines if targeting STM32F7/H7 with cache enabled. */
+ * This is a porting concern — see PORTING_GUIDE.md.
+ *
+ * Only Cortex-M7 (and the M7-based STM32F7/H7 parts) has the data cache, so
+ * the flag defaults to 0 there and to 1 elsewhere is never needed.  A user
+ * targeting F7/H7 with the cache enabled MUST define OS_HAS_CACHE=1, so a
+ * configuration that leaves it at 0 on a cache-capable part is reported
+ * instead of silently running without the required cache maintenance. */
+#ifndef OS_HAS_CACHE
+    #if defined(STM32F7xx) || defined(STM32H7xx)
+        #define OS_HAS_CACHE  0
+    #else
+        #define OS_HAS_CACHE  0
+    #endif
+#endif
 
-/* ═══════════════ CubeMX Peripheral Consistency Checks ═══════════════
- * If CubeMX enables a peripheral (via HAL_IWDG_MODULE_ENABLED, etc.)
- * but the corresponding ZenOS safety feature is disabled, the peripheral
- * runs unsupervised — a safety hazard.
+#if OS_HAS_CACHE
+    #if !defined(STM32F7xx) && !defined(STM32H7xx) && !defined(__ARM_ARCH_7EM__)
+        #error "[ZenOS] OS_HAS_CACHE=1 but the selected target has no Cortex-M7 data cache. Clear OS_HAS_CACHE or select an STM32F7/H7 device."
+    #endif
+    #warning "[ZenOS] OS_HAS_CACHE=1: kernel TCB/stack memory is assumed non-cacheable (MPU-backed) or explicitly cleaned. Verify the MPU/cache configuration in PORTING_GUIDE.md."
+#endif
+
+/* ═══════════════ Peripheral Consistency — Application Layer ═══════════════
+ * The complementary check ("CubeMX enables IWDG/CRC but the matching ZenOS
+ * safety feature is off, so the peripheral runs unsupervised") needs to know
+ * the *project's* HAL configuration and therefore belongs to the application,
+ * not to the kernel.  ZenOS keeps no HAL/LL dependency: this header states
+ * only what the silicon provides (OS_HAS_IWDG_HW / OS_HAS_CRC_HW above).
  *
- * These checks use HAL_*_MODULE_ENABLED defines which are available when:
- *   - CubeMX project includes HAL headers (stm32f1xx_hal_conf.h), OR
- *   - User defines HAL_IWDG_MODULE_ENABLED in project preprocessor defines
- *
- * They are #ifdef-guarded so they are harmless when HAL is not used.
- * If you get a #error from these checks, either:
- *   (a) Enable the matching OS_SAFETY_* in ZenOS_Config.hpp, OR
- *   (b) Disable the peripheral in CubeMX .ioc file
+ * See Core/Src/main.cpp in the sample project for a working example of that
+ * application-side check.
  */
-#if defined(HAL_IWDG_MODULE_ENABLED) && !OS_SAFETY_HW_WATCHDOG
-#error "[ZenOS] IWDG enabled in CubeMX but OS_SAFETY_HW_WATCHDOG=0. \
-Enable OS_SAFETY_HW_WATCHDOG=1 or disable IWDG in CubeMX. \
-Running IWDG without kernel-managed feed causes spurious MCU resets."
-#endif
-
-#if defined(HAL_CRC_MODULE_ENABLED) && !OS_SAFETY_CRC_CHECK
-#error "[ZenOS] CRC enabled in CubeMX but OS_SAFETY_CRC_CHECK=0. \
-Enable OS_SAFETY_CRC_CHECK=1 or disable CRC in CubeMX."
-#endif

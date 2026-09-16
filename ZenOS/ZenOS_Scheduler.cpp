@@ -17,8 +17,8 @@
 #include "ZenOS_Internal.hpp"
 
 #if OS_KERNEL_MAX_PRIORITIES > 32
-volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
-TCB* volatile os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT] = {nullptr};
+volatile uint32_t _os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS] = {0};
+TCB* volatile _os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT] = {nullptr};
 #endif
 
 static inline bool _os_priority_valid(uint8_t prio) {
@@ -28,7 +28,7 @@ static inline bool _os_priority_valid(uint8_t prio) {
 static inline TCB* volatile* _os_pq_head_for(uint8_t prio) {
     if (prio < 32) return &os_pq_head[prio];
 #if OS_KERNEL_MAX_PRIORITIES > 32
-    return &os_pq_head_ext[prio - 32];
+    return &_os_pq_head_ext[prio - 32];
 #else
     return nullptr;
 #endif
@@ -42,7 +42,7 @@ static inline void _os_pq_set_bit(uint8_t prio) {
     }
 #if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
-    os_ready_bitmap_ext[p >> 5] |= (1UL << (p & 31));
+    _os_ready_bitmap_ext[p >> 5] |= (1UL << (p & 31));
 #endif
 }
 
@@ -54,7 +54,7 @@ static inline void _os_pq_clear_bit(uint8_t prio) {
     }
 #if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
-    os_ready_bitmap_ext[p >> 5] &= ~(1UL << (p & 31));
+    _os_ready_bitmap_ext[p >> 5] &= ~(1UL << (p & 31));
 #endif
 }
 
@@ -63,7 +63,7 @@ static inline bool _os_pq_bit_is_set(uint8_t prio) {
     if (prio < 32) return (os_ready_bitmap & (1UL << prio)) != 0;
 #if OS_KERNEL_MAX_PRIORITIES > 32
     uint8_t p = (uint8_t)(prio - 32);
-    return (os_ready_bitmap_ext[p >> 5] & (1UL << (p & 31))) != 0;
+    return (_os_ready_bitmap_ext[p >> 5] & (1UL << (p & 31))) != 0;
 #else
     return false;
 #endif
@@ -72,7 +72,7 @@ static inline bool _os_pq_bit_is_set(uint8_t prio) {
 static inline uint8_t _os_pq_highest_prio(void) {
 #if OS_KERNEL_MAX_PRIORITIES > 32
     for (int word = (int)OS_PRIORITY_EXTRA_WORDS - 1; word >= 0; --word) {
-        uint32_t bits = os_ready_bitmap_ext[word];
+        uint32_t bits = _os_ready_bitmap_ext[word];
         if (bits != 0) {
             uint32_t lz;
             __asm volatile("clz %0, %1" : "=r"(lz) : "r"(bits));
@@ -93,13 +93,13 @@ static inline uint8_t _os_pq_highest_prio(void) {
 void _os_pq_add(TCB* task) {
     if (!task) return;
     /* Priority 0 is reserved: the idle task is NEVER enqueued and must not
-       touch scheduler storage.  os_start() calls this with &idle_tcb AFTER
+       touch scheduler storage.  os_start() calls this with &_os_idle_tcb AFTER
        all application tasks are queued — resetting the queues here (the old
        lifecycle-reset behavior) unlinked every READY task and stalled the
        scheduler at boot.  Queue reset belongs to os_init() and to
-       _os_task_create_internal() when task_count == 0, which cover the
+       _os_task_create_internal() when _os_task_count == 0, which cover the
        previous-lifecycle cleanup this used to guard. */
-    if (task == &idle_tcb) return;
+    if (task == &_os_idle_tcb) return;
     if (!_os_priority_valid(task->priority)) return;
     uint8_t p = task->priority;
     TCB* volatile* head = _os_pq_head_for(p);
@@ -151,9 +151,9 @@ extern "C" void _os_priority_queues_init(void) {
 
 #if OS_KERNEL_MAX_PRIORITIES > 32
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_WORDS; ++i)
-        os_ready_bitmap_ext[i] = 0;
+        _os_ready_bitmap_ext[i] = 0;
     for (uint32_t i = 0; i < OS_PRIORITY_EXTRA_COUNT; ++i)
-        os_pq_head_ext[i] = nullptr;
+        _os_pq_head_ext[i] = nullptr;
 #endif
 }
 
@@ -316,7 +316,7 @@ void _os_wake_task(TCB* t, uint8_t result) {
        atomic with respect to any other context. ldrex/strex is not an
        option here: ARMv6-M (Cortex-M0/M0+) has no exclusive access
        instructions. */
-    if (blocked_count > 0) blocked_count--;
+    if (_os_blocked_count > 0) _os_blocked_count--;
     _os_pq_add(t);
 }
 
@@ -333,7 +333,7 @@ bool _os_block_current(TaskState state, void* blocking_on,
     /* All callers hold the PRIMASK critical section (os_delay_ms,
        os_event_wait, os_mutex_block_on), so a plain increment is atomic.
        ARMv6-M has no ldrex/strex. */
-    blocked_count++;
+    _os_blocked_count++;
     return true;
 }
 
@@ -355,20 +355,20 @@ extern "C" int8_t _os_task_create_internal(
     uint8_t priority,
     uint32_t period_ms)
 {
-    if (os_started) { _os_report_error(OSError::TASK_AFTER_START); return -1; }
+    if (_os_started) { _os_report_error(OSError::TASK_AFTER_START); return -1; }
     if (!task || !stack_mem || !entry) return -1;
     if (_os_find_task_by_entry(entry)) return -1;
     if (priority == 0) priority = 1;
     if (!_os_priority_valid(priority)) return -1;
     if (stack_size < 64) stack_size = 64;
-    if (task_count >= 255) { _os_report_error(OSError::TASK_AFTER_START); return -1; } /* ID is uint8_t */
+    if (_os_task_count >= 255) { _os_report_error(OSError::TASK_AFTER_START); return -1; } /* ID is uint8_t */
 
-    /* os_init() clears task_count. Reset scheduler storage before the first
+    /* os_init() clears _os_task_count. Reset scheduler storage before the first
        task of a new lifecycle is inserted, so no stale >32-priority state
        can survive a reinitialization. */
-    if (task_count == 0) _os_priority_queues_init();
+    if (_os_task_count == 0) _os_priority_queues_init();
 
-    task->id = task_count++;
+    task->id = _os_task_count++;
     task->name = name;
     task->entry = entry;
     task->priority = priority;
@@ -411,21 +411,21 @@ extern "C" int8_t _os_task_create_internal(
 #endif
     task->stack_base = (uint32_t*)addr;
     _os_stack_init(task);
-    task->next = task_list;
-    task_list = task;
+    task->next = _os_task_list;
+    _os_task_list = task;
     _os_pq_add(task);
     return (int8_t)task->id;
 }
 
 TCB* _os_find_task_by_entry(void(*entry)(void)) {
     if (!entry) return nullptr;
-    for (TCB* t = task_list; t; t = t->next)
+    for (TCB* t = _os_task_list; t; t = t->next)
         if (t->entry == entry) return t;
     return nullptr;
 }
 
 TCB* _os_find_task_by_id(uint8_t id) {
-    for (TCB* t = task_list; t; t = t->next)
+    for (TCB* t = _os_task_list; t; t = t->next)
         if (t->id == id) return t;
     return nullptr;
 }
@@ -449,7 +449,7 @@ TCB* _os_find_task_by_id(uint8_t id) {
 extern "C" void os_task_stop(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = _os_find_task_by_entry(entry);
-    if (t && t != &idle_tcb) {
+    if (t && t != &_os_idle_tcb) {
         TaskState st = t->state;
         if (st == TaskState::READY || st == TaskState::RUNNING) {
             _os_pq_remove(t);
@@ -458,13 +458,13 @@ extern "C" void os_task_stop(void(*entry)(void)) {
         } else if (st == TaskState::BLOCKED) {
             /* Abort the wait cleanly: clear blocking_on so the IPC object
                can be safely destroyed when the current scope exits.
-               Decrement blocked_count since we're removing it from the
+               Decrement _os_blocked_count since we're removing it from the
                blocked set. Do NOT call _os_wake_task() here because that
                would enqueue the task as READY — we want SUSPENDED. */
             t->wait_result = 0;
             t->blocking_on = nullptr;
             t->block_timeout = 0;
-            if (blocked_count > 0) blocked_count--;
+            if (_os_blocked_count > 0) _os_blocked_count--;
             t->state = TaskState::SUSPENDED;
         }
     }
@@ -486,7 +486,7 @@ extern "C" void os_task_stop(void(*entry)(void)) {
 extern "C" void os_task_start(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = _os_find_task_by_entry(entry);
-    if (t && t != &idle_tcb) {
+    if (t && t != &_os_idle_tcb) {
         if (t->state == TaskState::SUSPENDED) {
             /* After H3 fix, os_task_stop always clears blocking_on, so a
                SUSPENDED task is always clean.  Reset mutex_nesting and
@@ -547,8 +547,8 @@ extern "C" uint8_t os_get_task_priority(void(*entry)(void)) {
 bool _os_tickless_process(uint32_t skip) {
     tick_count += skip;
     bool woke = false;
-    if (blocked_count > 0) {
-        for (TCB* task = task_list; task; task = task->next) {
+    if (_os_blocked_count > 0) {
+        for (TCB* task = _os_task_list; task; task = task->next) {
             if (task->state != TaskState::BLOCKED) continue;
             if (task->delay_ticks > 0) {
                 if (task->delay_ticks <= skip) {
@@ -602,7 +602,7 @@ extern "C" uint32_t os_get_tick(void) { return tick_count; }
 
    os_get_us() — wrap-safe extension of the DWT cycle counter.
    CYCCNT is only 32-bit (wraps every ~59.6 s at 72 MHz), so a raw read
-   cannot measure beyond one wrap period.  os_us_accumulated holds the µs
+   cannot measure beyond one wrap period.  _os_us_accumulated holds the µs
    folded in by os_time_fold() (called from os_tick, os_time_reset and the
    lazy path below); this function simply folds what is pending and returns
    the accumulator.  All state changes happen inside the critical section,
@@ -616,7 +616,7 @@ extern "C" uint32_t os_get_tick(void) { return tick_count; }
 extern "C" uint32_t os_get_us(void) {
 #if OS_HAS_CYCLE_COUNTER
     _os_time_fold();          /* lazy sample — same path os_tick uses */
-    return os_us_accumulated;
+    return _os_us_accumulated;
 #else
     /* No DWT: scale the kernel tick (resolution = OS_KERNEL_TICK_PERIOD_US,
        wraps mod 2^32 µs like the ms counter above). */
@@ -628,6 +628,43 @@ extern "C" uint32_t os_get_ms(void) {
     return tick_count / OS_TICKS_PER_MS;
 }
 
-extern "C" uint16_t os_get_task_count(void) { return task_count; }
+extern "C" uint16_t os_get_task_count(void) { return _os_task_count; }
 extern "C" uint32_t os_get_version(void) { return OS_VERSION_PACKED; }
 extern "C" const char* os_get_version_string(void) { return OS_VERSION_STRING; }
+
+/* ── Platform description ──
+   These expose the values ZenOS_Config/Port derive automatically, so an
+   application can report or assert on the detected target instead of
+   hard-coding the MCU name.  os_get_capabilities() returns a bitmask of the
+   compile-time capability detection documented in ZenOS_Port.hpp. */
+extern "C" const char* os_get_family_name(void) { return OS_FAMILY_NAME; }
+extern "C" const char* os_get_arch_name(void)   { return OS_ARCH_NAME; }
+
+extern "C" uint32_t os_get_capabilities(void) {
+    uint32_t caps = 0;
+#if OS_HAS_MPU_HW
+    caps |= OS_CAP_MPU;
+#endif
+#if OS_HAS_FPU_HW
+    caps |= OS_CAP_FPU;
+#endif
+#if OS_HAS_USER_MPU_ACTIVE
+    caps |= OS_CAP_MPU_ACTIVE;
+#endif
+#if OS_HAS_CRC_HW
+    caps |= OS_CAP_CRC_HW;
+#endif
+#if OS_HAS_IWDG_HW
+    caps |= OS_CAP_IWDG_HW;
+#endif
+#if OS_HAS_CYCLE_COUNTER
+    caps |= OS_CAP_CYCCNT;
+#endif
+#if OS_HAS_VTOR
+    caps |= OS_CAP_VTOR;
+#endif
+#if OS_TOOL_TICKLESS_IDLE
+    caps |= OS_CAP_TICKLESS;
+#endif
+    return caps;
+}

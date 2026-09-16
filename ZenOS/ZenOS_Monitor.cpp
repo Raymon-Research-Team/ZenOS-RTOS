@@ -56,7 +56,7 @@ extern "C" uint32_t os_get_stack_watermark_percent(uint8_t task_id) {
 extern "C" uint8_t os_get_stack_report_count(void) {
     uint8_t n = 0;
     uint32_t cs = os_critical_enter();
-    for (TCB* t = task_list; t; t = t->next)
+    for (TCB* t = _os_task_list; t; t = t->next)
         if (t->stack_base) n++;
     os_critical_exit(cs);
     return n;
@@ -66,7 +66,7 @@ extern "C" bool os_get_stack_report(uint8_t index, os_stack_report_entry_t* out)
     if (!out) return false;
     uint32_t cs = os_critical_enter();
     uint8_t i = 0;
-    for (TCB* t = task_list; t; t = t->next) {
+    for (TCB* t = _os_task_list; t; t = t->next) {
         if (!t->stack_base) continue;
         if (i == index) {
             out->name       = t->name;
@@ -89,7 +89,7 @@ extern "C" bool os_get_stack_report(uint8_t index, os_stack_report_entry_t* out)
 extern "C" uint8_t os_get_cpu_usage(void) {
     uint32_t cs = os_critical_enter();
     static uint32_t lt = 0, li = 0;
-    uint32_t t = tick_count, i = idle_ticks;
+    uint32_t t = tick_count, i = _os_idle_ticks;
     uint32_t dt = t - lt, di = i - li;
     lt = t; li = i;
     os_critical_exit(cs);
@@ -101,7 +101,7 @@ extern "C" uint8_t os_get_cpu_usage(void) {
 extern "C" uint8_t os_get_cpu_usage_total(void) {
     uint32_t cs = os_critical_enter();
     uint32_t t = tick_count;
-    uint32_t i = idle_ticks;
+    uint32_t i = _os_idle_ticks;
     os_critical_exit(cs);
     if (t == 0) return 0;
     uint32_t u = 100UL - (uint32_t)(((uint64_t)i * 100UL) / t);
@@ -117,7 +117,7 @@ extern "C" uint32_t os_get_stack_usage(void(*entry)(void)) {
 extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
     uint32_t cs = os_critical_enter();
     TCB* t = _os_find_task_by_entry(entry);
-    if (!t || t == &idle_tcb) { os_critical_exit(cs); return 0; }
+    if (!t || t == &_os_idle_tcb) { os_critical_exit(cs); return 0; }
     uint32_t total = tick_count;
     uint32_t task_ticks = t->cpu_ticks;
     os_critical_exit(cs);

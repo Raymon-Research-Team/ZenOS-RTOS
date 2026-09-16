@@ -68,6 +68,11 @@ void     os_error_expect_end(void);
 uint32_t    os_get_version(void);
 const char* os_get_version_string(void);
 
+/* Platform / capability discovery (OS_CAP_* bitmask — see ZenOS_Port.hpp) */
+const char* os_get_family_name(void);
+const char* os_get_arch_name(void);
+uint32_t    os_get_capabilities(void);
+
 /* ISR handlers (used by the vector table) */
 void OS_PendSV_Handler(void);
 void OS_Fault_Handler(void);
@@ -92,16 +97,22 @@ uint8_t  os_get_task_cpu_usage(void(*entry)(void));
 uint32_t os_get_stack_watermark(uint8_t task_id);
 uint32_t os_get_stack_watermark_percent(uint8_t task_id);
 /* Per-task stack usage report — same OS_MONITOR_ENABLED guard as the
-   definitions in ZenOS_Monitor.cpp. */
-typedef struct {
+   definitions in ZenOS_Monitor.cpp.
+   The struct is tagged and the typedef name is guarded so this header can be
+   included in the same translation unit as ZenOS.hpp (which declares the
+   identical type) without a redefinition error. */
+#if !defined(OS_STACK_REPORT_ENTRY_T_DEFINED)
+#define OS_STACK_REPORT_ENTRY_T_DEFINED 1
+typedef struct os_stack_report_entry_t {
     const char* name;        /* task name ("idle" for the idle task) */
     uint8_t     id;          /* task ID */
     uint32_t    size_bytes;  /* total stack size */
     uint32_t    peak_bytes;  /* peak usage since last start/reset */
 } os_stack_report_entry_t;
+#endif /* OS_STACK_REPORT_ENTRY_T_DEFINED */
 uint8_t  os_get_stack_report_count(void);
 bool     os_get_stack_report(uint8_t index, os_stack_report_entry_t* out);
-#endif
+#endif /* OS_MONITOR_* */
 
 /* Deadline monitoring */
 #if OS_MONITOR_DEADLINE

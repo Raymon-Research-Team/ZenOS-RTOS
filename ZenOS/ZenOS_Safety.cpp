@@ -16,29 +16,29 @@
 /* Error counters are touched from ISR context (os_tick reports DEADLINE_MISS /
    TASK_STUCK / STACK_OVERFLOW) and read from task context — volatile too. */
 
-uint32_t os_get_wdg_reset_count(void)      { return wdg_reset_count; }
-/* stack_recovery_count: legacy counter. Per-task recovery now uses
+uint32_t os_get_wdg_reset_count(void)      { return _os_wdg_reset_count; }
+/* _os_stack_recovery_count: legacy counter. Per-task recovery now uses
    task->wdg_retries (unified with soft watchdog). This global counter
    is kept for backward compatibility but incremented only by the
    soft watchdog path in os_tick. */
-uint32_t os_get_stack_recovery_count(void) { return stack_recovery_count; }
+uint32_t os_get_stack_recovery_count(void) { return _os_stack_recovery_count; }
 
-uint32_t os_get_error_count(void)            { return error_total; }
-uint32_t os_get_expected_error_count(void)   { return error_expected; }
-uint32_t os_get_unexpected_error_count(void) { return error_total - error_expected; }
-OSError  os_get_last_error(void)             { return error_last; }
+uint32_t os_get_error_count(void)            { return _os_error_total; }
+uint32_t os_get_expected_error_count(void)   { return _os_error_expected; }
+uint32_t os_get_unexpected_error_count(void) { return _os_error_total - _os_error_expected; }
+OSError  os_get_last_error(void)             { return _os_error_last; }
 uint32_t os_in_safe(void)                    { return os_safe_depth; }
 
 /* Mark a region whose errors are deliberate (test fault injection): errors
    reported inside are excluded from os_get_unexpected_error_count(). */
-extern "C" void os_error_expect_begin(void) { error_expect_depth++; }
-extern "C" void os_error_expect_end(void)   { if (error_expect_depth > 0) error_expect_depth--; }
+extern "C" void os_error_expect_begin(void) { _os_error_expect_depth++; }
+extern "C" void os_error_expect_end(void)   { if (_os_error_expect_depth > 0) _os_error_expect_depth--; }
 
 /* _os_report_error — no CS needed (error path only, last-writer-wins) */
 void _os_report_error(OSError code) {
-    error_total++;
-    if (error_expect_depth > 0) error_expected++;
-    error_last = code;
+    _os_error_total++;
+    if (_os_error_expect_depth > 0) _os_error_expected++;
+    _os_error_last = code;
 #if OS_MONITOR_ERROR_LOG
     /* Automatically log errors to the ring buffer.
        Severity mapping: critical errors get CRITICAL, others get WARNING. */
@@ -58,8 +58,8 @@ void _os_report_error(OSError code) {
  * On detection, the task is removed from the scheduler and either
  * reset or disabled based on recovery count. */
 void _os_stack_check_all(void) {
-    for (TCB* task = task_list; task; task = task->next) {
-        if (task == &idle_tcb) continue;
+    for (TCB* task = _os_task_list; task; task = task->next) {
+        if (task == &_os_idle_tcb) continue;
         if (task->state == TaskState::INACTIVE) continue;
         if (!task->stack_base) continue;
 
@@ -90,8 +90,8 @@ void _os_stack_check_all(void) {
         _os_pq_remove(task);
         /* _os_stack_check_all runs inside the os_tick critical section, so a
            plain decrement is atomic. ARMv6-M has no ldrex/strex. */
-        if (task->state == TaskState::BLOCKED && blocked_count > 0) {
-            blocked_count--;
+        if (task->state == TaskState::BLOCKED && _os_blocked_count > 0) {
+            _os_blocked_count--;
         }
 
 #if OS_MONITOR_TCB_INTEGRITY
@@ -159,7 +159,7 @@ extern "C" void OS_Fault_C_Handler(void) {
     __asm volatile("mrs %0, PSP"     : "=r"(os_last_fault.psp));
 
     TCB* fault_task = current_task;
-    if (fault_task && fault_task != &idle_tcb) {
+    if (fault_task && fault_task != &_os_idle_tcb) {
         os_last_fault.task_name       = fault_task->name;
         os_last_fault.task_id         = fault_task->id;
         os_last_fault.task_stack_top  = fault_task->stack_top;
@@ -205,8 +205,8 @@ extern "C" void OS_Fault_C_Handler(void) {
         /* ── Disable the offending task ── */
         /* OS_Fault_Handler enters with cpsid i, so we are inside a critical
            section: a plain decrement is atomic. ARMv6-M has no ldrex/strex. */
-        if (fault_task->state == TaskState::BLOCKED && blocked_count > 0) {
-            blocked_count--;
+        if (fault_task->state == TaskState::BLOCKED && _os_blocked_count > 0) {
+            _os_blocked_count--;
         }
         fault_task->state = TaskState::INACTIVE;
     }
@@ -214,18 +214,18 @@ extern "C" void OS_Fault_C_Handler(void) {
     current_task = nullptr;
 
     /* ── Reset idle task for recovery ── */
-    _os_stack_init(&idle_tcb);
-    idle_tcb.state         = TaskState::READY;
-    idle_tcb.delay_ticks   = 0;
-    idle_tcb.blocking_on   = nullptr;
-    idle_tcb.block_timeout = 0;
-    idle_tcb.wait_result   = 0;
-    idle_tcb.last_yield_tick = tick_count;
-    idle_tcb.mutex_nesting = 0;
-    idle_tcb.base_priority = 0;
+    _os_stack_init(&_os_idle_tcb);
+    _os_idle_tcb.state         = TaskState::READY;
+    _os_idle_tcb.delay_ticks   = 0;
+    _os_idle_tcb.blocking_on   = nullptr;
+    _os_idle_tcb.block_timeout = 0;
+    _os_idle_tcb.wait_result   = 0;
+    _os_idle_tcb.last_yield_tick = tick_count;
+    _os_idle_tcb.mutex_nesting = 0;
+    _os_idle_tcb.base_priority = 0;
 
-    __asm volatile("msr psp, %0" :: "r"(idle_tcb.stack_top) : "memory");
-    /* DSB: ensure idle_tcb and current_task writes are visible before PendSV */
+    __asm volatile("msr psp, %0" :: "r"(_os_idle_tcb.stack_top) : "memory");
+    /* DSB: ensure _os_idle_tcb and current_task writes are visible before PendSV */
     __asm volatile("dsb" ::: "memory");
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
 }
@@ -518,6 +518,15 @@ extern "C" uint32_t os_get_crc_error_count(void) { return 0; }
  * ══════════════════════════════════════════════════════════════════════ */
 #if OS_SAFETY_MPU
 
+/* ── Access-permission codes ──
+ * These are NOT the raw register encodings: os_mpu_set_region() maps them to
+ * the PMSAv7 RASR.AP or PMSAv8 RLAR.AP field as required.  They are defined
+ * once, outside the per-variant branches, because os_mpu_init() and
+ * os_mpu_configure_task() use them regardless of which MPU revision the
+ * target implements. */
+#define MPU_AP_FULL_ACCESS  3   /* privileged + unprivileged: read/write */
+#define MPU_AP_READONLY     5   /* privileged + unprivileged: read-only  */
+
 /* ── PMSAv7 Implementation ── */
 #if OS_MPU_PMSAv7
 #define OS_MPU_CTRL_ENABLE_Msk     (1UL)
@@ -526,8 +535,6 @@ extern "C" uint32_t os_get_crc_error_count(void) { return 0; }
 #define MPU_RASR_AP_Pos         24
 #define MPU_RASR_SIZE_Pos       1
 #define MPU_RASR_XN_Pos         28
-#define MPU_AP_FULL_ACCESS  3   /* RW for both privilege levels */
-#define MPU_AP_READONLY     5   /* RO for both privilege levels */
 
 /* Program one PMSAv7 MPU region. Caller must keep the MPU disabled (CTRL=0)
    while reprogramming — required by ARMv7-M. */
@@ -568,18 +575,43 @@ static void os_mpu_set_region(uint8_t region, uint32_t base,
 #define OS_MPU_CTRL_ENABLE_Msk     (1UL)
 #define OS_MPU_CTRL_PRIVDEFENA_Msk (1UL << 2)
 
+/* Translate the generic permission codes into the PMSAv8 RLAR.AP field.
+ * PMSAv8 uses a 2-bit encoding, which is NOT the PMSAv7 3-bit one:
+ *   0 = privileged RW, unprivileged no access
+ *   1 = privileged RW, unprivileged RO
+ *   2 = privileged RO, unprivileged RO
+ *   3 = privileged RW, unprivileged RW   (the only true full-access code)
+ * PMSAv7 code 3 (RW/RW) and 5 (RO/RO) therefore become 3 and 2 here. */
+static inline uint32_t os_mpu_ap_encode(uint32_t ap) {
+    switch (ap) {
+        case MPU_AP_READONLY: return 2;   /* RO/RO */
+        default:              return 3;   /* RW/RW */
+    }
+}
+
 /* Program one PMSAv8 MPU region. */
 static void os_mpu_set_region(uint8_t region, uint32_t base,
                               uint32_t size_bytes, uint32_t ap, bool xn) {
     if (region >= OS_MPU_MAX_REGIONS) return;
-    /* Compute limit address (size must be power of 2) */
-    uint32_t limit = base + size_bytes - 1;
+    /* PMSAv8 requires a power-of-two size (RLAR.LIMIT encodes the last byte,
+       with the low log2(size) bits treated as don't-care). Round up so a
+       non-power-of-two request covers at least the requested range. */
+    if (size_bytes < 32) size_bytes = 32;
+    uint32_t size_log = 5;                        /* 32 bytes minimum */
+    while (size_log < 31 && ((1UL << (size_log + 1)) < size_bytes))
+        size_log++;
+    uint32_t region_size = 1UL << (size_log + 1);
+    if (region_size < size_bytes) return;         /* > 4 GB / 2 GB limit */
+    if ((base & (region_size - 1)) != 0) {        /* base must be aligned */
+        _os_report_error(OSError::MPU_CONFIG_ERROR);
+        return;
+    }
+    uint32_t limit = base + region_size - 1;
     /* AttrIndx = 0 (use default memory attributes from MAIR0/MAIR1)
        SH = 2 (Inner Shareable — needed for multi-master DMA coherency)
-       AP: PMSAv8 encoding (bit[3:1] of RLAR): 0=RW/RW, 1=RW/RO, 2=RO/RO
        EN = 1 (region enabled)
-       XN: bit[0] of RBAR (not available in RLAR for PMSAv8-MA) */
-    uint32_t rlar_ap = ap & 0x07UL;
+       XN: bit[0] of RBAR */
+    uint32_t rlar_ap = os_mpu_ap_encode(ap);
     OS_MPU_BASE->RNR  = region;
     OS_MPU_BASE->RBAR = (base & ~0x1FUL) | (xn ? 0x01UL : 0x00UL);  /* bit[0]=XN */
     OS_MPU_BASE->RLAR = (limit & ~0x1FUL) |

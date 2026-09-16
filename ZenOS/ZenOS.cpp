@@ -36,30 +36,30 @@ static uint32_t ram_vectors[OS_VECTOR_COUNT] OS_ALIGNED(512);
    -O2 the compiler otherwise keeps them cached in registers across the
    asm boundaries (os_yield, OS_PendSV_Handler) and the scheduler then
    switches to stale TCBs — the classic "works at -O0, corrupt at -O2". */
-TCB*              volatile task_list    = nullptr;
-uint16_t          volatile task_count   = 0;
+TCB*              volatile _os_task_list    = nullptr;
+uint16_t          volatile _os_task_count   = 0;
 TCB*              volatile current_task = nullptr;
 
-uint32_t          idle_stack[OS_IDLE_STACK_WORDS] OS_ALIGNED(8);
+uint32_t          _os_idle_stack[OS_IDLE_STACK_WORDS] OS_ALIGNED(8);
 volatile uint32_t tick_count = 0;
 
 #if OS_TOOL_EVENT
-ECB* volatile event_list = nullptr;
+ECB* volatile _os_event_list = nullptr;
 int16_t os_event_next_id = 0;
 #endif
 
-TCB idle_tcb;
-extern "C" TCB* const os_idle_tcb_ptr = &idle_tcb;
+TCB _os_idle_tcb;
+extern "C" TCB* const os_idle_tcb_ptr = &_os_idle_tcb;
 
-volatile uint32_t blocked_count   = 0;
+volatile uint32_t _os_blocked_count   = 0;
 
-volatile uint32_t idle_ticks      = 0;
-volatile bool     os_started      = false;
+volatile uint32_t _os_idle_ticks      = 0;
+volatile bool     _os_started      = false;
 
 volatile uint32_t os_ready_bitmap = 0;
 TCB* volatile os_pq_head[32] = {nullptr};
 
-volatile uint32_t os_syst_rvr_normal = 0;
+volatile uint32_t _os_syst_rvr_normal = 0;
 static uint32_t fault_stack[OS_FAULT_STACK_WORDS] OS_ALIGNED(8);
 
 volatile uint32_t os_safe_depth = 0;
@@ -68,27 +68,27 @@ volatile uint32_t os_safe_depth = 0;
    The DWT cycle counter is 32-bit and wraps (~59.6 s at 72 MHz), so raw
    CYCCNT reads cannot measure beyond one wrap period.  These three values
    form a wrap-safe µs accumulator:
-     os_us_cycles_pending — CYCCNT value at the last fold (wrap baseline)
-     os_us_remainder      — fractional µs not yet convertible, carried in
+     _os_us_cycles_pending — CYCCNT value at the last fold (wrap baseline)
+     _os_us_remainder      — fractional µs not yet convertible, carried in
                             cycle·µs units (cycles × 10^6) so per-fold
                             truncation cannot accumulate into drift
-     os_us_accumulated    — µs since os_init()/_os_time_reset()
+     _os_us_accumulated    — µs since os_init()/_os_time_reset()
    Conversion is exact for ANY SystemCoreClock via µs = cycles × 10^6 /
    SystemCoreClock, and a clock change automatically applies only to
    subsequent windows.  _os_time_fold() is the single writer (os_tick,
    _os_time_reset and the lazy path in os_get_us all route through it);
    _os_time_reset() reinitializes the domain.  All state is guarded by
    os_critical_enter/exit at every call site. */
-volatile uint32_t os_us_cycles_pending = 0;
-volatile uint32_t os_us_remainder      = 0;
-volatile uint32_t os_us_accumulated    = 0;
+volatile uint32_t _os_us_cycles_pending = 0;
+volatile uint32_t _os_us_remainder      = 0;
+volatile uint32_t _os_us_accumulated    = 0;
 
-volatile uint32_t error_total = 0;
-volatile OSError  error_last  = OSError::NONE;
-volatile uint32_t error_expected     = 0;
-volatile uint32_t error_expect_depth = 0;
-volatile uint32_t wdg_reset_count      = 0;
-volatile uint32_t stack_recovery_count = 0;
+volatile uint32_t _os_error_total = 0;
+volatile OSError  _os_error_last  = OSError::NONE;
+volatile uint32_t _os_error_expected     = 0;
+volatile uint32_t _os_error_expect_depth = 0;
+volatile uint32_t _os_wdg_reset_count      = 0;
+volatile uint32_t _os_stack_recovery_count = 0;
 
 
 /* ═══════════════ Critical Section ═══════════════ */
@@ -131,7 +131,7 @@ extern "C" void os_delay_us(uint32_t us) {
 
     if (us >= 1000UL) { os_delay_ms(us / 1000UL); return; }
 
-    if (os_syst_rvr_normal == 0) {
+    if (_os_syst_rvr_normal == 0) {
         volatile uint32_t n = us;
         while (n--) {
             for (volatile uint32_t i = 0; i < 10; i++)
@@ -191,7 +191,7 @@ extern "C" void os_tick(void) {
 
     /* ═══════ C2 fix: one critical section for the whole tick path ═══════
        _os_tickless_process() and _os_stack_check_all() mutate global
-       scheduler state (priority queues, bitmap, blocked_count). They must
+       scheduler state (priority queues, bitmap, _os_blocked_count). They must
        run with interrupts disabled, otherwise a higher-priority ISR
        (e.g. EXTI calling os_event_signal_from_isr) can corrupt that state
        concurrently with the µs sampler below. */
@@ -201,7 +201,7 @@ extern "C" void os_tick(void) {
 
     tick_count++;
 
-    if (current_task == &idle_tcb) idle_ticks++;
+    if (current_task == &_os_idle_tcb) _os_idle_ticks++;
     else if (current_task && current_task->state == TaskState::RUNNING) {
         current_task->cpu_ticks++;
 #if OS_MONITOR_ENABLED
@@ -214,13 +214,13 @@ extern "C" void os_tick(void) {
 #if OS_SAFETY_SOFT_WATCHDOG
     /* Check every 1ms (OS_TICKS_PER_MS ticks) to reduce overhead */
     if ((tick_count % OS_TICKS_PER_MS) == 0 &&
-        current_task && current_task != &idle_tcb &&
+        current_task && current_task != &_os_idle_tcb &&
         current_task->state == TaskState::RUNNING) {
         uint32_t elapsed = tick_count - current_task->last_yield_tick;
         uint32_t max_ticks = OS_SAFETY_SOFT_WDG_TIMEOUT_MS * OS_TICKS_PER_MS;
         if (elapsed > max_ticks) {
             _os_report_error(OSError::TASK_STUCK);
-            wdg_reset_count++;
+            _os_wdg_reset_count++;
             /* O(1) scheduler: remove from pq before reset */
             _os_pq_remove(current_task);
             if (current_task->wdg_retries < OS_SAFETY_TASK_MAX_RECOVERY) {
@@ -236,7 +236,7 @@ extern "C" void os_tick(void) {
 
 #if OS_MONITOR_DEADLINE
     /* Deadline monitoring — only flag the miss; PendSV handles action */
-    if (current_task && current_task != &idle_tcb &&
+    if (current_task && current_task != &_os_idle_tcb &&
         current_task->state == TaskState::RUNNING &&
         current_task->deadline_ticks > 0) {
         uint32_t elapsed = tick_count - current_task->last_yield_tick;
@@ -250,8 +250,8 @@ extern "C" void os_tick(void) {
     }
 #endif
 
-    if (blocked_count > 0) {
-        for (TCB* task = task_list; task; task = task->next) {
+    if (_os_blocked_count > 0) {
+        for (TCB* task = _os_task_list; task; task = task->next) {
             if (task->state != TaskState::BLOCKED) continue;
 
             if (task->delay_ticks > 0) {
@@ -287,7 +287,7 @@ extern "C" void os_tick(void) {
 /* ═══════════════ Tickless Idle ═════════════════════════════════ */
 #if OS_TOOL_TICKLESS_IDLE
 static bool os_idle_tickless(void) {
-    uint32_t saved_rvr = os_syst_rvr_normal;
+    uint32_t saved_rvr = _os_syst_rvr_normal;
     if (saved_rvr == 0) return false;
 
     uint32_t ticks_per_os_tick = saved_rvr + 1;
@@ -302,8 +302,8 @@ static bool os_idle_tickless(void) {
         if (max_sleep == 0) max_sleep = 1;
         sleep = max_sleep;
 
-        if (blocked_count > 0) {
-            for (TCB* t = task_list; t; t = t->next) {
+        if (_os_blocked_count > 0) {
+            for (TCB* t = _os_task_list; t; t = t->next) {
                 if (t->state == TaskState::BLOCKED) {
                     if (t->delay_ticks > 0 && t->delay_ticks < sleep)
                         sleep = t->delay_ticks;
@@ -367,7 +367,7 @@ static bool os_idle_tickless(void) {
                    to the next SysTick loses time whenever another IRQ (e.g.
                    the HAL TIM1 time base) wakes us repeatedly before that
                    SysTick fires, because tick_skip would be overwritten. */
-                idle_ticks += skip;
+                _os_idle_ticks += skip;
                 if (_os_tickless_process(skip)) {
                     /* A task expired while we slept — reschedule now */
                     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
@@ -413,19 +413,24 @@ static void os_idle_task(void) {
 extern "C" void os_init(void) {
     /* SystemCoreClock is set by SystemInit() (CubeMX) before main(). */
 
+    /* os_event_next_id only exists when the event feature is compiled in;
+       ZenOS.cpp is built for every configuration, so the reset must be
+       guarded or OS_TOOL_EVENT=0 fails to compile. */
+#if OS_TOOL_EVENT
     os_event_next_id = 0;
-    task_list = nullptr; task_count = 0; current_task = nullptr;
-    tick_count = 0; blocked_count = 0;
+#endif
+    _os_task_list = nullptr; _os_task_count = 0; current_task = nullptr;
+    tick_count = 0; _os_blocked_count = 0;
 
-    /* idle_tcb: safe defaults for fault recovery before os_start */
-    idle_tcb.id = 255; idle_tcb.name = "idle"; idle_tcb.entry = nullptr;
-    idle_tcb.priority = 0; idle_tcb.base_priority = 0;
-    idle_tcb.state = TaskState::INACTIVE;
-    idle_tcb.next = nullptr;
-    os_safe_depth = 0; error_total = 0; error_expected = 0;
-    error_expect_depth = 0; error_last = OSError::NONE;
-    idle_ticks = 0; wdg_reset_count = 0; stack_recovery_count = 0;
-    os_syst_rvr_normal = 0;
+    /* _os_idle_tcb: safe defaults for fault recovery before os_start */
+    _os_idle_tcb.id = 255; _os_idle_tcb.name = "idle"; _os_idle_tcb.entry = nullptr;
+    _os_idle_tcb.priority = 0; _os_idle_tcb.base_priority = 0;
+    _os_idle_tcb.state = TaskState::INACTIVE;
+    _os_idle_tcb.next = nullptr;
+    os_safe_depth = 0; _os_error_total = 0; _os_error_expected = 0;
+    _os_error_expect_depth = 0; _os_error_last = OSError::NONE;
+    _os_idle_ticks = 0; _os_wdg_reset_count = 0; _os_stack_recovery_count = 0;
+    _os_syst_rvr_normal = 0;
     /* O(1) scheduler: initialize ALL priority bitmap and queues
        (including extension storage for >32 priorities) */
     _os_priority_queues_init();
@@ -463,7 +468,7 @@ extern "C" void os_init(void) {
    µs accumulator that survives wraparound indefinitely:
 
    _os_time_sample()  — folds the DWT cycles elapsed since the previous
-                       sample into os_us_accumulated.  Conversion is exact
+                       sample into _os_us_accumulated.  Conversion is exact
                        for any SystemCoreClock via cycles × 10^6 / clock,
                        and the carried remainder prevents truncation from
                        accumulating into drift across folds.
@@ -474,12 +479,12 @@ extern "C" void os_init(void) {
    from task context, SysTick and the tickless-idle wake path. */
 void _os_time_reset(void) {
     uint32_t cs = os_critical_enter();
-    os_us_accumulated = 0;
-    os_us_remainder   = 0;
+    _os_us_accumulated = 0;
+    _os_us_remainder   = 0;
 #if OS_HAS_CYCLE_COUNTER
-    os_us_cycles_pending = OS_DWT_CYCCNT;
+    _os_us_cycles_pending = OS_DWT_CYCCNT;
 #else
-    os_us_cycles_pending = 0;
+    _os_us_cycles_pending = 0;
 #endif
     os_critical_exit(cs);
 }
@@ -495,26 +500,26 @@ void _os_time_sample(void) {
 
 /* ═══════════════ Start ═══════════════ */
 extern "C" void os_start(void) {
-    idle_tcb.id = 255; idle_tcb.name = "idle"; idle_tcb.entry = os_idle_task;
-    idle_tcb.priority = 0; idle_tcb.state = TaskState::READY;
+    _os_idle_tcb.id = 255; _os_idle_tcb.name = "idle"; _os_idle_tcb.entry = os_idle_task;
+    _os_idle_tcb.priority = 0; _os_idle_tcb.state = TaskState::READY;
     /* Use the configured idle stack size, NOT a hardcoded 64, so that
        changing OS_IDLE_STACK_WORDS in ZenOS_Config.hpp/Port.hpp actually
        takes effect.  A mismatch here would make _os_stack_check_all()
        report the idle task as overflowing (or under-check it). */
-    idle_tcb.stack_base = idle_stack; idle_tcb.stack_size = OS_IDLE_STACK_WORDS;
-    idle_tcb.period_ticks = 0; idle_tcb.next_run_time = 0;
-    idle_tcb.delay_ticks = 0; idle_tcb.blocking_on = nullptr;
-    idle_tcb.block_timeout = 0; idle_tcb.wait_result = 0;
-    idle_tcb.last_yield_tick = tick_count;
-    idle_tcb.mutex_nesting = 0; idle_tcb.base_priority = 0;
-    idle_tcb.mutex_held_count = 0;
-    idle_tcb.next = task_list;
-    task_list = &idle_tcb;
-    _os_stack_init(&idle_tcb);
+    _os_idle_tcb.stack_base = _os_idle_stack; _os_idle_tcb.stack_size = OS_IDLE_STACK_WORDS;
+    _os_idle_tcb.period_ticks = 0; _os_idle_tcb.next_run_time = 0;
+    _os_idle_tcb.delay_ticks = 0; _os_idle_tcb.blocking_on = nullptr;
+    _os_idle_tcb.block_timeout = 0; _os_idle_tcb.wait_result = 0;
+    _os_idle_tcb.last_yield_tick = tick_count;
+    _os_idle_tcb.mutex_nesting = 0; _os_idle_tcb.base_priority = 0;
+    _os_idle_tcb.mutex_held_count = 0;
+    _os_idle_tcb.next = _os_task_list;
+    _os_task_list = &_os_idle_tcb;
+    _os_stack_init(&_os_idle_tcb);
     /* Priority 0 is reserved: idle is never enqueued.  PendSV falls back to
        os_idle_tcb_ptr when no priority queue has an eligible task.  This call
        is a no-op guard — it must NOT reset scheduler state. */
-    _os_pq_add(&idle_tcb);
+    _os_pq_add(&_os_idle_tcb);
 
 
 #if OS_HAS_VTOR
@@ -546,7 +551,7 @@ extern "C" void os_start(void) {
     uint32_t reload = (SystemCoreClock / 1000000UL) * OS_KERNEL_TICK_PERIOD_US;
     if (reload == 0) reload = 1;
     if (reload > 0x00FFFFFFUL) reload = 0x00FFFFFFUL;
-    os_syst_rvr_normal = reload - 1;
+    _os_syst_rvr_normal = reload - 1;
     OS_SYST_RVR = reload - 1;
 
     OS_PENDSV_PRIO  = 0xFE;
@@ -561,14 +566,14 @@ extern "C" void os_start(void) {
         __asm volatile("msr msp, %0" :: "r"(msp_val));
     }
 
-    __asm volatile("msr psp, %0" :: "r"(idle_tcb.stack_top));
+    __asm volatile("msr psp, %0" :: "r"(_os_idle_tcb.stack_top));
     __asm volatile("msr control, %0" :: "r"(0x02));
     __asm volatile("isb");
 
     OS_SYST_CSR = 0x07;
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
     _os_hw_enable_irq();
-    os_started = true;
+    _os_started = true;
 
     while (1) __asm volatile("wfi");
 }

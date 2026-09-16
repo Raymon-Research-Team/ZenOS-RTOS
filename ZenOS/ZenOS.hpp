@@ -168,6 +168,14 @@ void os_error_expect_end(void);
 uint32_t os_get_version(void);
 const char* os_get_version_string(void);
 
+/* Platform / capability discovery — reports what ZenOS detected at compile
+   time (see ZenOS_Port.hpp).  os_get_capabilities() returns a bitmask of
+   OS_CAP_* flags; it is the supported way for an application to branch on
+   MPU/FPU/CRC/IWDG/CYCCNT availability instead of assuming an MCU name. */
+const char* os_get_family_name(void);
+const char* os_get_arch_name(void);
+uint32_t    os_get_capabilities(void);
+
 /* ISR Handlers */
 void OS_PendSV_Handler(void);
 void OS_Fault_Handler(void);
@@ -279,13 +287,18 @@ extern "C" {
 /* ── Monitor (requires at least one OS_MONITOR_* feature enabled) ── */
 #if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
 
-/* One entry of the per-task stack usage report (os_get_stack_report) */
-typedef struct {
+/* One entry of the per-task stack usage report (os_get_stack_report).
+   Tagged + guarded so ZenOS_c.h can be included alongside this header in the
+   same translation unit without a redefinition error. */
+#if !defined(OS_STACK_REPORT_ENTRY_T_DEFINED)
+#define OS_STACK_REPORT_ENTRY_T_DEFINED 1
+typedef struct os_stack_report_entry_t {
     const char* name;        /* task name ("idle" for the idle task) */
     uint8_t     id;          /* task ID */
     uint32_t    size_bytes;  /* total stack size */
     uint32_t    peak_bytes;  /* peak usage since last start/reset */
 } os_stack_report_entry_t;
+#endif
 
 extern "C" {
     uint8_t  os_get_cpu_usage(void);
@@ -722,6 +735,17 @@ public:
  *  OS_QUEUE — Bounded FIFO for Inter-Task Data Transfer
  * ============================================================================ */
 
+/* OS_QUEUE depends on OS_MUTEX and OS_EVENT (it holds one mutex and two
+   events).  A configuration that enables the queue while either dependency
+   is compiled out cannot build, so reject it explicitly instead of emitting
+   a cascade of "'OS_EVENT' does not name a type" errors. */
+#if OS_TOOL_QUEUE && !OS_TOOL_MUTEX
+#error "[ZenOS] OS_TOOL_QUEUE requires OS_TOOL_MUTEX=1 (the queue guards its buffer with a mutex)"
+#endif
+#if OS_TOOL_QUEUE && !OS_TOOL_EVENT
+#error "[ZenOS] OS_TOOL_QUEUE requires OS_TOOL_EVENT=1 (the queue signals not_full/not_empty)"
+#endif
+
 #if OS_TOOL_QUEUE
 
 template <typename T, uint32_t Capacity>
@@ -827,6 +851,14 @@ public:
 /* ============================================================================
  *  OS_SEMAPHORE — Counting Semaphore
  * ============================================================================ */
+
+/* OS_SEMAPHORE depends on OS_MUTEX (count guard) and OS_EVENT (waiter signal). */
+#if OS_TOOL_SEMAPHORE && !OS_TOOL_MUTEX
+#error "[ZenOS] OS_TOOL_SEMAPHORE requires OS_TOOL_MUTEX=1 (the count is guarded by a mutex)"
+#endif
+#if OS_TOOL_SEMAPHORE && !OS_TOOL_EVENT
+#error "[ZenOS] OS_TOOL_SEMAPHORE requires OS_TOOL_EVENT=1 (waiters are signalled through an event)"
+#endif
 
 #if OS_TOOL_SEMAPHORE
 

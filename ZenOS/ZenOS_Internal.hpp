@@ -18,26 +18,26 @@
 #include "ZenOS.hpp"
 
 /* ═══════════════ Shared Globals (internal) ═══════════════ */
-extern TCB*              volatile task_list;
-extern uint16_t          volatile task_count;
+extern TCB*              volatile _os_task_list;
+extern uint16_t          volatile _os_task_count;
 extern TCB*              volatile current_task;
 extern volatile uint32_t tick_count;
 extern volatile uint32_t os_safe_depth;
 
-extern uint32_t          idle_stack[];
-extern TCB               idle_tcb;
+extern uint32_t          _os_idle_stack[];
+extern TCB               _os_idle_tcb;
 extern "C" TCB* const    os_idle_tcb_ptr;
 
-extern volatile uint32_t blocked_count;
-extern volatile uint32_t idle_ticks;  /* defined in ZenOS.cpp */
-extern volatile bool     os_started;
+extern volatile uint32_t _os_blocked_count;
+extern volatile uint32_t _os_idle_ticks;  /* defined in ZenOS.cpp */
+extern volatile bool     _os_started;
 
-extern volatile uint32_t error_total;
-extern volatile OSError  error_last;
-extern volatile uint32_t error_expected;
-extern volatile uint32_t error_expect_depth;
-extern volatile uint32_t wdg_reset_count;
-extern volatile uint32_t stack_recovery_count;
+extern volatile uint32_t _os_error_total;
+extern volatile OSError  _os_error_last;
+extern volatile uint32_t _os_error_expected;
+extern volatile uint32_t _os_error_expect_depth;
+extern volatile uint32_t _os_wdg_reset_count;
+extern volatile uint32_t _os_stack_recovery_count;
 
 /* The first 32 priorities keep the original scalar bitmap and queue-head
    storage, so the default configuration has no additional scheduler RAM.
@@ -45,14 +45,14 @@ extern volatile uint32_t stack_recovery_count;
 extern volatile uint32_t os_ready_bitmap;
 extern TCB* volatile     os_pq_head[32];
 #if OS_KERNEL_MAX_PRIORITIES > 32
-extern volatile uint32_t os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS];
-extern TCB* volatile     os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
+extern volatile uint32_t _os_ready_bitmap_ext[OS_PRIORITY_EXTRA_WORDS];
+extern TCB* volatile     _os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
 #endif
 
-extern volatile uint32_t os_syst_rvr_normal;
+extern volatile uint32_t _os_syst_rvr_normal;
 
 #if OS_TOOL_EVENT
-extern ECB* volatile     event_list;
+extern ECB* volatile     _os_event_list;
 extern int16_t           os_event_next_id;
 #endif
 
@@ -91,9 +91,9 @@ TCB* _os_find_task_by_entry(void(*entry)(void));
 TCB* _os_find_task_by_id(uint8_t id);
 
 /* ═══════════════ Microsecond Time Extension (internal) ═══════════════ */
-extern volatile uint32_t os_us_cycles_pending;
-extern volatile uint32_t os_us_remainder;
-extern volatile uint32_t os_us_accumulated;
+extern volatile uint32_t _os_us_cycles_pending;
+extern volatile uint32_t _os_us_remainder;
+extern volatile uint32_t _os_us_accumulated;
 void _os_time_reset(void);
 void _os_time_sample(void);
 
@@ -101,12 +101,12 @@ void _os_time_sample(void);
 inline void _os_time_fold(void) {
     uint32_t cs  = os_critical_enter();
     uint32_t now = OS_DWT_CYCCNT;
-    uint32_t delta = now - os_us_cycles_pending;
-    os_us_cycles_pending = now;
-    uint64_t units = (uint64_t)delta * 1000000ULL + os_us_remainder;
+    uint32_t delta = now - _os_us_cycles_pending;
+    _os_us_cycles_pending = now;
+    uint64_t units = (uint64_t)delta * 1000000ULL + _os_us_remainder;
     uint32_t clk   = (SystemCoreClock != 0UL) ? SystemCoreClock : 1UL;
-    os_us_accumulated += (uint32_t)(units / clk);
-    os_us_remainder    = (uint32_t)(units % clk);
+    _os_us_accumulated += (uint32_t)(units / clk);
+    _os_us_remainder    = (uint32_t)(units % clk);
     os_critical_exit(cs);
 }
 #else

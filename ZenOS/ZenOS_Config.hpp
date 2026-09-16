@@ -74,7 +74,7 @@
  *          requires analysis of resource usage.  IEC 61508 Part 3 §7.4.3
  *          requires stack depth analysis for all execution paths. */
 #ifndef OS_KERNEL_STACK_SIZE
-#define OS_KERNEL_STACK_SIZE  512
+#define OS_KERNEL_STACK_SIZE  512 // Default=256
 #endif
 
 
@@ -96,7 +96,7 @@
  */
 
 #ifndef OS_KERNEL_MAX_PRIORITIES
-#define OS_KERNEL_MAX_PRIORITIES 32
+#define OS_KERNEL_MAX_PRIORITIES 32 // Default=32
 #endif
 
 #if (OS_KERNEL_MAX_PRIORITIES < 2) || (OS_KERNEL_MAX_PRIORITIES > 256)
@@ -113,9 +113,13 @@
 /* Inter-task signaling (binary/counting events)
  * [MED-B] [MED-C] [IND-2] Required for inter-task communication
  *          in systems with more than one active task.
- *          IEC 62304 §5.4.5 — data integrity between software items. */
+ *          IEC 62304 §5.4.5 — data integrity between software items.
+ * DEPENDENCY: OS_TOOL_QUEUE and OS_TOOL_SEMAPHORE are implemented on top of
+ *          OS_EVENT.  Setting OS_TOOL_EVENT=0 therefore also requires
+ *          OS_TOOL_QUEUE=0 and OS_TOOL_SEMAPHORE=0; the build fails with an
+ *          explicit #error otherwise. */
 #ifndef OS_TOOL_EVENT
-#define OS_TOOL_EVENT          1
+#define OS_TOOL_EVENT          1 // Default=1
 #endif
 
 /* Mutual exclusion with priority inheritance
@@ -123,32 +127,37 @@
  *          share resources (hardware peripherals, shared memory).
  *          Priority inheritance prevents unbounded priority inversion,
  *          which is a safety hazard in real-time systems.
- *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock. */
+ *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock.
+ * DEPENDENCY: OS_TOOL_QUEUE and OS_TOOL_SEMAPHORE guard their shared state
+ *          with OS_MUTEX (`OS_LOCK`).  Setting OS_TOOL_MUTEX=0 therefore
+ *          also requires OS_TOOL_QUEUE=0 and OS_TOOL_SEMAPHORE=0. */
 #ifndef OS_TOOL_MUTEX
-#define OS_TOOL_MUTEX          1
+#define OS_TOOL_MUTEX          1 // Default=1
 #endif
 
 /* Bounded FIFO queue (template-based, compile-time capacity)
  * [MED-B] [IND-2] Recommended for typed, bounded data transfer between
  *          tasks.  Compile-time capacity enforces resource bounds.
- *          IEC 62304 §5.4.4 — defined data interfaces between modules. */
+ *          IEC 62304 §5.4.4 — defined data interfaces between modules.
+ * REQUIRES: OS_TOOL_EVENT=1 and OS_TOOL_MUTEX=1. */
 #ifndef OS_TOOL_QUEUE
-#define OS_TOOL_QUEUE          1
+#define OS_TOOL_QUEUE          1 // Default=1
 #endif
 
 /* Counting semaphore with max-count
  * [MED-B] [IND-2] Recommended for resource pool management and ISR-to-task
  *          signaling.  Max-count prevents unbounded resource allocation.
- *          IEC 61508 Part 3 §7.4.11 — resource usage must be bounded. */
+ *          IEC 61508 Part 3 §7.4.11 — resource usage must be bounded.
+ * REQUIRES: OS_TOOL_EVENT=1 and OS_TOOL_MUTEX=1. */
 #ifndef OS_TOOL_SEMAPHORE
-#define OS_TOOL_SEMAPHORE      1
+#define OS_TOOL_SEMAPHORE      1 // Default=1
 #endif
 
 /* Tickless idle: WFI-based sleep for power savings
  * [MED-A] Optional — power management is application-specific.
  *          Disable if deterministic power profile is required. */
 #ifndef OS_TOOL_TICKLESS_IDLE
-#define OS_TOOL_TICKLESS_IDLE  1
+#define OS_TOOL_TICKLESS_IDLE  1 // Default=1
 #endif
 
 
@@ -166,7 +175,7 @@
  *          of software execution timing.  Deadline misses indicate a
  *          potential failure of the safety function. */
 #ifndef OS_MONITOR_DEADLINE
-#define OS_MONITOR_DEADLINE    1
+#define OS_MONITOR_DEADLINE    1 // Default=0
 #endif
 
 /* TCB integrity: magic-number check for memory corruption detection
@@ -175,7 +184,7 @@
  * [IND-3] REQUIRED — IEC 61508 Part 2 Table 3: random hardware fault
  *          metrics apply to data corruption in control structures. */
 #ifndef OS_MONITOR_TCB_INTEGRITY
-#define OS_MONITOR_TCB_INTEGRITY  1
+#define OS_MONITOR_TCB_INTEGRITY  1 // Default=0
 #endif
 
 /* Error log: circular buffer recording errors with timestamp and task ID
@@ -195,7 +204,7 @@
  *          capture all errors during a worst-case operating cycle.
  *          32 entries is a starting point; increase for long cycle times. */
 #ifndef OS_MONITOR_ERROR_LOG_SIZE
-#define OS_MONITOR_ERROR_LOG_SIZE  32
+#define OS_MONITOR_ERROR_LOG_SIZE  32 // Default=32
 #endif
 
 
@@ -215,7 +224,7 @@
  * NOTE: This test is non-destructive but may produce false positives
  *       during active DMA transfers.  Call from idle task only. */
 #ifndef OS_SAFETY_RAM_TEST
-#define OS_SAFETY_RAM_TEST     0
+#define OS_SAFETY_RAM_TEST     0 // Default=0
 #endif
 
 /* MPU: hardware memory protection per task (Cortex-M3/M4/M7)
@@ -240,7 +249,7 @@
  * NOTE: Configure IWDG timeout via CubeMX.  The feed task must run
  *       at ≤ 50% of the IWDG timeout to prevent spurious resets. */
 #ifndef OS_SAFETY_HW_WATCHDOG
-#define OS_SAFETY_HW_WATCHDOG  1
+#define OS_SAFETY_HW_WATCHDOG  1 // Default=0
 #endif
 
 /* CRC check: ROM integrity verification via CRC peripheral
@@ -252,7 +261,7 @@
  * NOTE: Do not write to flash while CRC check is in progress;
  *       this causes false positives. */
 #ifndef OS_SAFETY_CRC_CHECK
-#define OS_SAFETY_CRC_CHECK    1
+#define OS_SAFETY_CRC_CHECK    1 // Default=0
 #endif
 
 /* Software watchdog: detect stuck tasks and recover
@@ -276,7 +285,7 @@
  *          Option 1 (reset) enables recovery; option 2 (disable)
  *          enters a safe state. */
 #ifndef OS_SAFETY_DEADLINE_ACTION
-#define OS_SAFETY_DEADLINE_ACTION  1
+#define OS_SAFETY_DEADLINE_ACTION  1 // Default=1
 #endif
 
 /* Max task recovery attempts before permanent disable
@@ -286,7 +295,7 @@
  *          rather than continue attempting recovery indefinitely.
  *          Set to 0 to disable recovery (immediate safe state). */
 #ifndef OS_SAFETY_TASK_MAX_RECOVERY
-#define OS_SAFETY_TASK_MAX_RECOVERY  3
+#define OS_SAFETY_TASK_MAX_RECOVERY  3 // Default=3
 #endif
 
 /* Software watchdog timeout in milliseconds
@@ -298,7 +307,7 @@
  *          Common values: 500 ms (motor control), 3000 ms (slow process).
  *          Reduce for faster-responding safety functions. */
 #ifndef OS_SAFETY_SOFT_WDG_TIMEOUT_MS
-#define OS_SAFETY_SOFT_WDG_TIMEOUT_MS  3000UL
+#define OS_SAFETY_SOFT_WDG_TIMEOUT_MS  3000UL // Default=3000UL
 #endif
 
 /* Max duration (us) allowed inside OS_SAFE before reporting error
@@ -308,7 +317,7 @@
  *          must be bounded and documented.
  *          Set to 0 to disable the check. */
 #ifndef OS_SAFETY_MAX_CRITICAL_US
-#define OS_SAFETY_MAX_CRITICAL_US  1000UL
+#define OS_SAFETY_MAX_CRITICAL_US  1000UL // Default=1000UL
 #endif
 
 /* ============================================================================

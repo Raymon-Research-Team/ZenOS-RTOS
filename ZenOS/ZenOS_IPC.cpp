@@ -29,7 +29,7 @@ extern "C" void _os_event_register(ECB* e) {
     int16_t id = -1;
     int16_t candidate = (int16_t)(watermark % 32);
     bool in_use = false;
-    for (ECB* cur = event_list; cur; cur = cur->next) {
+    for (ECB* cur = _os_event_list; cur; cur = cur->next) {
         if (cur->in_use && cur->id == candidate) { in_use = true; break; }
     }
     if (!in_use) {
@@ -38,7 +38,7 @@ extern "C" void _os_event_register(ECB* e) {
         /* watermark-derived ID collides — first-fit from 0 */
         for (candidate = 0; candidate < 32; candidate++) {
             in_use = false;
-            for (ECB* cur = event_list; cur; cur = cur->next) {
+            for (ECB* cur = _os_event_list; cur; cur = cur->next) {
                 if (cur->in_use && cur->id == candidate) { in_use = true; break; }
             }
             if (!in_use) { id = candidate; break; }
@@ -47,7 +47,7 @@ extern "C" void _os_event_register(ECB* e) {
     if (id < 0) { os_critical_exit(cs); return; }
     watermark++;
     e->id = id; e->in_use = 1; e->count = 0;
-    e->next = event_list; event_list = e;
+    e->next = _os_event_list; _os_event_list = e;
     os_critical_exit(cs);
 }
 
@@ -60,23 +60,23 @@ extern "C" void _os_event_unregister(ECB* e) {
        But if os_task_stop ran while the event was being destroyed
        concurrently (shouldn't happen in single-threaded teardown, but
        defensive), we still check both states. */
-    for (TCB* t = task_list; t; t = t->next) {
+    for (TCB* t = _os_task_list; t; t = t->next) {
         if (t->blocking_on == e &&
             (t->state == TaskState::BLOCKED || t->state == TaskState::SUSPENDED)) {
             _os_wake_task(t, 0);
         }
     }
     /* Remove from list */
-    ECB* prev = nullptr; ECB* cur = event_list;
+    ECB* prev = nullptr; ECB* cur = _os_event_list;
     while (cur) { if (cur == e) break; prev = cur; cur = cur->next; }
-    if (cur) { if (prev) prev->next = cur->next; else event_list = cur->next; }
+    if (cur) { if (prev) prev->next = cur->next; else _os_event_list = cur->next; }
     e->in_use = 0;
     os_critical_exit(cs);
 }
 
 extern "C" void _os_event_destroy(int16_t id) {
     uint32_t cs = os_critical_enter();
-    ECB* e = event_list;
+    ECB* e = _os_event_list;
     while (e) { if (e->id == id && e->in_use) break; e = e->next; }
     if (!e) { os_critical_exit(cs); _os_report_error(OSError::INVALID_EVENT_ID); return; }
     _os_event_unregister(e);
@@ -84,7 +84,7 @@ extern "C" void _os_event_destroy(int16_t id) {
 }
 
 static ECB* _os_find_event(int16_t id) {
-    ECB* e = event_list;
+    ECB* e = _os_event_list;
     while (e) { if (e->id == id && e->in_use) return e; e = e->next; }
     return nullptr;
 }
@@ -94,8 +94,8 @@ extern "C" void _os_event_signal(int16_t id) {
     ECB* e = _os_find_event(id);
     if (!e) { os_critical_exit(cs); _os_report_error(OSError::INVALID_EVENT_ID); return; }
     bool woke = false;
-    if (blocked_count > 0) {
-        for (TCB* t = task_list; t; t = t->next) {
+    if (_os_blocked_count > 0) {
+        for (TCB* t = _os_task_list; t; t = t->next) {
             if (t->state == TaskState::BLOCKED && t->blocking_on == e) {
                 _os_wake_task(t, 1); woke = true; break;
             }
@@ -115,7 +115,7 @@ extern "C" void _os_event_signal(int16_t id) {
 extern "C" void _os_event_signal_from_isr(uint32_t mask) {
     bool woke = false;
     uint32_t cs = os_critical_enter();
-    ECB* e = event_list;
+    ECB* e = _os_event_list;
     while (e && mask) {
         /* Mask is 32-bit; events with id >= 32 are not addressable here
            (signal them individually instead) */
@@ -124,8 +124,8 @@ extern "C" void _os_event_signal_from_isr(uint32_t mask) {
             if (mask & bit) {
                 mask &= ~bit;
                 bool e_woke = false;
-                if (blocked_count > 0) {
-                    for (TCB* t = task_list; t; t = t->next) {
+                if (_os_blocked_count > 0) {
+                    for (TCB* t = _os_task_list; t; t = t->next) {
                         if (t->state == TaskState::BLOCKED && t->blocking_on == e) {
                             _os_wake_task(t, 1); e_woke = true; break;
                         }
@@ -202,7 +202,7 @@ extern "C" int _os_mutex_check_and_clear_result(void) {
 extern "C" TCB* _os_mutex_handoff(void* mutex_obj) {
     TCB* best = nullptr;
     uint8_t best_prio = 0;
-    for (TCB* t = task_list; t; t = t->next) {
+    for (TCB* t = _os_task_list; t; t = t->next) {
         if (t->state == TaskState::BLOCKED && t->blocking_on == mutex_obj) {
             if (t->priority >= best_prio) {
                 best_prio = t->priority;
@@ -326,7 +326,7 @@ OS_MUTEX::~OS_MUTEX() {
     }
     /* Wake every task blocked on this mutex so they don't stay
        stuck on a destroyed object. */
-    for (TCB* t = task_list; t; t = t->next) {
+    for (TCB* t = _os_task_list; t; t = t->next) {
         if (t->blocking_on == this &&
             (t->state == TaskState::BLOCKED || t->state == TaskState::SUSPENDED)) {
             _os_wake_task(t, 0);
