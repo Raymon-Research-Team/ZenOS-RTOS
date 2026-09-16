@@ -139,31 +139,21 @@ unpredictable.
 
 ---
 
-## 5. GPIO Pin Allocation Contract
+## 5. UART Ownership
 
-**Rule:** ZenOS debug UART uses specific pins. Do not reconfigure them.
+**Rule:** ZenOS does not own any UART. The kernel has no debug UART and no
+printf-style logging path; the earlier `OS_DEBUG_UART` debug subsystem is not
+part of the current source tree. Every UART belongs to the application.
 
-### Default Pin Allocation (STM32F1)
-
-| Pin  | Function | Owner |
-|------|----------|-------|
-| PA9  | USART1_TX | ZenOS debug (when OS_DEBUG_UART=1) |
-| PA10 | USART1_RX | Free (ZenOS TX-only) |
-
-### Custom Pin Override
-
-```c
-// In project defines (-D):
-#define OS_DEBUG_USART_BASE   0x40004400UL  // USART2
-#define OS_DEBUG_TX_GPIO_BASE 0x40010800UL  // GPIOA
-#define OS_DEBUG_TX_PIN       2             // PA2
-```
-
-### Conflict Detection
-
-If CubeMX configures the same USART for application use, a compile-time
-check should prevent the conflict. This is a planned feature
-(`OS_DEBUG_USART_CONFLICT_CHECK`).
+- Configure and use USARTs through CubeMX/HAL exactly as you would without
+  ZenOS. No pins are reserved by the kernel.
+- Use `os_log_error()` / `os_get_error_log_entry()` for structured kernel
+  error reporting (RAM ring buffer, see `OS_MONITOR_ERROR_LOG`); the
+  application is responsible for forwarding those entries to a console if
+  it wants textual output.
+- The sample application (`Core/Src/main.cpp`) implements its own small
+  `uart_send_str()`/`uart_send_uint()` helpers over `HAL_UART_Transmit`;
+  copy that pattern rather than expecting a kernel API.
 
 ---
 
@@ -206,9 +196,9 @@ After integration, verify:
 - [ ] PendSV priority = 0xFE, SysTick priority = 0xFF
 - [ ] No HAL ISR has priority ≥ 0xFE
 - [ ] IWDG feed is owned by exactly one subsystem
-- [ ] Debug UART pins are not reconfigured by CubeMX
-- [ ] Build succeeds with `-Wall -Wextra -Werror`
-- [ ] `os_debug_boot_banner()` prints correct family, version, clock
+- [ ] Application UARTs are initialised after `os_start()` is not required
+      (init them before, as in the sample)
+- [ ] Build succeeds with `-Wall -Wextra` (kernel sources are warning-clean)
 
 ---
 

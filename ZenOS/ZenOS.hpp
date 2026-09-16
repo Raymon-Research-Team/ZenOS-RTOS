@@ -62,7 +62,27 @@
  *  Idle & Fault Stacks (fixed sizes)
  * ============================================================================ */
 
-#define OS_IDLE_STACK_WORDS     64
+/* Idle task stack size in words.
+ *
+ * The idle task is NOT a trivial WFI loop: on every iteration it runs
+ * os_hw_watchdog_check(), os_crc_check_step() and os_idle_tickless()
+ * (which itself calls _os_tickless_process() -> _os_wake_task() ->
+ * _os_pq_add()).  On top of that call chain, any interrupt that arrives
+ * while idle is parked in WFI pushes a full exception frame onto this
+ * stack, and nested interrupts push more.
+ *
+ * At -O0 the measured idle peak is already ~200 bytes, so the original
+ * 64-word (256-byte) stack left only ~56 bytes of margin and overflowed
+ * intermittently — silently corrupting the adjacent .bss (TCBs, scheduler
+ * queues) and eventually producing a HardFault with CFSR=0x00060500 and a
+ * corrupted return address.  _os_stack_check_all() deliberately skips the
+ * idle task, so the overflow was never reported.
+ *
+ * 256 words (1 KB) keeps the peak near 20% and matches the safety margin
+ * used for OS_KERNEL_STACK_SIZE.  Override with -DOS_IDLE_STACK_WORDS=n. */
+#ifndef OS_IDLE_STACK_WORDS
+#define OS_IDLE_STACK_WORDS     256
+#endif
 #define OS_IDLE_STACK_SIZE      (OS_IDLE_STACK_WORDS * 4)
 
 #define OS_FAULT_STACK_WORDS    128

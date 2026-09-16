@@ -182,25 +182,9 @@ extern "C" int _os_event_wait(int16_t id, uint32_t timeout_ms) {
 #if OS_TOOL_MUTEX
 extern "C" TCB* _os_get_current_task(void) { return current_task; }
 
-/* Debug counters removed for production builds.
- * Use OS_DEBUG_ENABLED=1 in ZenOS_Config.hpp to re-enable. */
-#if OS_DEBUG_ENABLED
-volatile uint32_t dbg_lock_calls = 0;
-volatile uint32_t dbg_ceiling_boosts = 0;
-volatile uint32_t dbg_unlock_calls = 0;
-volatile uint32_t dbg_restores = 0;
-volatile uint32_t dbg_handoff_finds = 0;
-volatile uint32_t dbg_block_on_calls = 0;
-volatile uint32_t dbg_wait_result_ok = 0;
-volatile uint32_t dbg_wait_result_fail = 0;
-#endif
-
 extern "C" void _os_mutex_block_on(void* obj, uint32_t timeout_ticks) {
     /* Blocking from an ISR would corrupt the scheduler — refuse */
     if (_os_in_isr()) { _os_report_error(OSError::SAFE_MUTEX_LOCK); return; }
-#if OS_DEBUG_ENABLED
-    dbg_block_on_calls++;
-#endif
     uint32_t cs = os_critical_enter();
     _os_block_current(TaskState::BLOCKED, obj, timeout_ticks, 0);
     os_critical_exit(cs);
@@ -227,9 +211,6 @@ extern "C" TCB* _os_mutex_handoff(void* mutex_obj) {
         }
     }
     if (best) {
-#if OS_DEBUG_ENABLED
-        dbg_handoff_finds++;
-#endif
         _os_wake_task(best, 1);
         /* DSB: ensure _os_wake_task writes are visible before PendSV */
         __asm volatile("dsb" ::: "memory");
@@ -365,9 +346,6 @@ bool OS_MUTEX::lock(uint32_t timeout_ms) {
         uint32_t cs = os_critical_enter();
 
         if (!locked) {
-#if OS_DEBUG_ENABLED
-            dbg_lock_calls++;
-#endif
             locked = 1;
             TCB* self = _os_get_current_task();
             if (self) {
@@ -377,9 +355,6 @@ bool OS_MUTEX::lock(uint32_t timeout_ms) {
                     self->base_priority = self->priority;
                     /* IPC: immediately boost to ceiling priority */
                     if (ceiling_priority > self->priority) {
-#if OS_DEBUG_ENABLED
-                        dbg_ceiling_boosts++;
-#endif
                         if (self->state != TaskState::BLOCKED &&
                             self->state != TaskState::INACTIVE)
                             _os_pq_remove(self);
@@ -416,13 +391,8 @@ bool OS_MUTEX::lock(uint32_t timeout_ms) {
         _os_mutex_block_on(this, tt);
 
         int result = _os_mutex_check_and_clear_result();
-#if OS_DEBUG_ENABLED
-        if (result) { dbg_wait_result_ok++; return true; }
-        if (timeout_ms != OS_WAIT_FOREVER) { dbg_wait_result_fail++; return false; }
-#else
         if (result) return true;
         if (timeout_ms != OS_WAIT_FOREVER) return false;
-#endif
     }
 }
 
@@ -436,9 +406,6 @@ void OS_MUTEX::unlock() {
             os_critical_exit(cs);
             return;
         }
-#if OS_DEBUG_ENABLED
-        dbg_unlock_calls++;
-#endif
         owner->mutex_held_count--;
 
         /* IPC: restore priority to max(base_priority, ceiling of remaining held mutexs).
@@ -446,9 +413,6 @@ void OS_MUTEX::unlock() {
            If other mutexs are still held, the ceiling of those mutexs will be
            applied when they were locked (base_priority tracks the original). */
         if (priority_boosted) {
-#if OS_DEBUG_ENABLED
-            dbg_restores++;
-#endif
             if (owner->state != TaskState::BLOCKED &&
                 owner->state != TaskState::INACTIVE)
                 _os_pq_remove(owner);

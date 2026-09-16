@@ -118,7 +118,14 @@ void _os_pq_remove(TCB* task) {
         if (*pp == task) {
             *pp = task->queue_next;
             task->queue_next = nullptr;
-            if (!*pp) _os_pq_clear_bit(p);
+            /* The ready bit must reflect whether the QUEUE is empty, not
+               whether the predecessor's link is null.  When the removed
+               task is the tail, *pp becomes null while the head and the
+               tasks before it are still linked — clearing the bit there
+               starved every remaining task at that priority level
+               (the scheduler only ever looks at priorities whose bit is
+               set).  Re-read the priority head instead. */
+            if (*_os_pq_head_for(p) == nullptr) _os_pq_clear_bit(p);
             return;
         }
         pp = &(*pp)->queue_next;
@@ -157,7 +164,6 @@ extern "C" void _os_priority_queues_init(void) {
 /* os_ready_level_count removed — was unused dead code. */
 
 extern "C" TCB* _os_pq_next(void) {
-    os_debug_pq_next_calls++;
     const uint32_t now = tick_count;
 
     /* O(1) selection: use the bitmap to find the highest priority with
@@ -197,11 +203,8 @@ extern "C" TCB* _os_pq_next(void) {
             selected->queue_next = head;
             *_os_pq_head_for(prio) = selected;
         }
-        os_debug_sel_id[selected->id]++;
-        os_debug_sel_prio[prio < 32 ? prio : 0]++;
         return selected;
     }
-    os_debug_pq_next_null++;
     return nullptr;
 }
 
@@ -217,8 +220,7 @@ extern "C" void _os_pq_rotate(void) {
             continue;
         }
         for (TCB* t = *_os_pq_head_for(prio); t; t = t->queue_next) {
-            if (t->period_ticks == 0 ||
-                ((int32_t)(now - t->next_run_time) >= 0)) {
+            if ((int32_t)(now - t->next_run_time) >= 0) {
                 p = prio;
                 break;
             }
@@ -590,41 +592,6 @@ bool _os_tickless_process(uint32_t skip) {
     return woke;
 }
 #endif
-
-extern "C" volatile uint32_t os_debug_pendsv_count = 0;
-extern "C" volatile uint32_t os_debug_pq_next_calls = 0;
-extern "C" volatile uint32_t os_debug_pq_next_null = 0;
-extern "C" volatile uint32_t os_debug_blocked_count = 0;
-extern "C" volatile uint32_t os_debug_bitmap = 0;
-extern "C" volatile uint32_t os_debug_sel_id[256] = {0};
-extern "C" volatile uint32_t os_debug_sel_prio[32] = {0};
-
-extern "C" uint8_t _os_debug_snapshot(ZenOS_TaskSnapshot* out, uint8_t max) {
-    uint8_t n = 0;
-    for (TCB* t = task_list; t && n < max; t = t->next) {
-        out[n].id = t->id;
-        out[n].state = (uint8_t)t->state;
-        out[n].priority = t->priority;
-        out[n].base_priority = t->base_priority;
-        out[n].next_run_time = t->next_run_time;
-        out[n].delay_ticks = t->delay_ticks;
-        out[n].period_ticks = t->period_ticks;
-        out[n].queue_next_lo = (uint32_t)t->queue_next;
-        out[n].blocking_on = (uint32_t)t->blocking_on;
-        out[n].in_pq = _os_pq_bit_is_set(t->priority) ? 1 : 0;
-        n++;
-    }
-    return n;
-}
-
-extern "C" uint8_t _os_debug_pq_dump(uint8_t prio, uint8_t* ids, uint8_t max) {
-    uint8_t n = 0;
-    if (prio >= 32) return 0;
-    for (TCB* t = os_pq_head[prio]; t && n < max; t = t->queue_next) {
-        ids[n++] = t->id;
-    }
-    return n;
-}
 
 extern "C" uint32_t os_get_tick(void) { return tick_count; }
 

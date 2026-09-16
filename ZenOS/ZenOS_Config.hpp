@@ -158,14 +158,6 @@
  *  1 = enabled, 0 = disabled.  Each feature compiles independently.
  * ============================================================================ */
 
-/* Debug counters: performance and diagnostic counters for IPC operations.
- * 0 = disabled (production), 1 = enabled (development/debug).
- * These counters track mutex lock/unlock, ceiling boosts, handoff finds, etc.
- * They consume 32 bytes of RAM when enabled. */
-#ifndef OS_DEBUG_ENABLED
-#define OS_DEBUG_ENABLED     0
-#endif
-
 /* Deadline monitoring: detect and act on task deadline misses
  * [MED-B] [MED-C] REQUIRED — IEC 62304 §5.4.3 requires timing analysis;
  *          runtime deadline monitoring provides evidence that timing

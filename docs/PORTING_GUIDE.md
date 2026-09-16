@@ -83,7 +83,9 @@ Create `STM32xxxx_FLASH.ld` with:
 2. **LED test**: Create a minimal `main()` that toggles an LED via raw registers
 3. **SysTick test**: Verify `os_get_tick()` increments correctly
 4. **Task test**: Create two tasks with different priorities, verify preemption
-5. **UART test**: Enable `OS_DEBUG_UART=1` and verify boot banner appears
+5. **Console test**: Initialise a UART with the HAL (or raw registers) and send
+   a short string from a task. ZenOS has no built-in debug UART — the
+   application owns its console.
 
 ## Optional: Enable Advanced Features
 
@@ -93,5 +95,12 @@ Create `STM32xxxx_FLASH.ld` with:
 | Hardware watchdog | `OS_SAFETY_HW_WATCHDOG=1` | Configure IWDG timeout in CubeMX/init |
 | CRC integrity | `OS_SAFETY_CRC_CHECK=1` | Must match flash contents |
 | RAM test | `OS_SAFETY_RAM_TEST=1` | Call `os_ram_test_step()` from idle |
-| Debug UART | `OS_DEBUG_UART=1` | Set USART base + baudrate in defines |
-| Tickless idle | `OS_TOOL_TICKLESS_IDLE=1` | Power savings via WFI |
+| Tickless idle | `OS_TOOL_TICKLESS_IDLE=1` | Power savings via WFI; see the idle-stack note below |
+
+## Idle stack sizing
+
+`OS_IDLE_STACK_WORDS` (default 256 words = 1 KB) sizes the idle task stack.
+The idle loop is not a bare `wfi` — it runs the hardware-watchdog check, the
+CRC step and the tickless-idle path, and any interrupt taken while idle pushes
+a full exception frame onto the same stack. Measure the idle peak with
+`os_get_stack_watermark(255)` on the target before reducing this value.

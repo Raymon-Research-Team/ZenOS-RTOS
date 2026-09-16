@@ -4,6 +4,66 @@ All notable changes to ZenOS are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] — 2026-09-16
+
+### Removed
+- **Debug subsystem (`os_debug`, `OS_DEBUG_ENABLED`, `dbg_*`):** The optional
+  IPC debug-counter block and the `OS_DEBUG_ENABLED` configuration switch were
+  removed entirely. They were compile-time dead by default (`OS_DEBUG_ENABLED=0`)
+  and are not part of the production API. The IPC paths (`_os_mutex_block_on`,
+  `_os_mutex_handoff`, `OS_MUTEX::lock`, `OS_MUTEX::unlock`) no longer carry any
+  conditional counter code, so the mutex fast path is free of `#if` branches.
+  The historical `ZenOS_Debug.hpp/.cpp` UART subsystem referenced by earlier
+  changelog entries is not part of the current source tree and no longer appears
+  in `ZenOS_Config.hpp`; the corresponding instructions were removed from
+  `INTEGRATION_CUBEMX.md` and `PORTING_GUIDE.md`.
+
+### Fixed (Critical — kernel)
+- **Idle task stack overflow (silent memory corruption):** `OS_IDLE_STACK_WORDS`
+  was 64 words (256 bytes). The idle loop is not a bare `wfi`: it calls
+  `os_hw_watchdog_check()`, `os_crc_check_step()` and `os_idle_tickless()`
+  (→ `_os_tickless_process()` → `_os_wake_task()` → `_os_pq_add()`), and any IRQ
+  taken while idle adds a full exception frame on top. Measured peak at `-O0`
+  was ~200 bytes (78 %), leaving almost no margin; overflow intermittently
+  corrupted adjacent `.bss` and eventually produced a HardFault with
+  `CFSR=0x00060500` and a corrupted return address. `_os_stack_check_all()`
+  skips the idle task, so the overflow was never reported. Raised to 256 words
+  (1 KB) and made overridable with `-DOS_IDLE_STACK_WORDS=n`. Verified: at 32
+  words the fault reproduces deterministically; at 256 words the suite is stable
+  across repeated runs and all optimization levels.
+- **`_os_pq_remove()` cleared the ready bit for the wrong reason:**
+  the function cleared a priority's ready bit whenever the removed task's
+  predecessor link became null. When the removed task was the queue *tail*,
+  `*pp` became null while the head and earlier tasks were still linked, so the
+  bit was cleared with tasks still queued — permanently starving that priority
+  level (the scheduler only scans priorities whose bit is set). Now the bit is
+  cleared only when the priority's queue head is actually null.
+
+### Fixed (Critical — sample application)
+- **`HAL_IWDG_Refresh(&hiwdg)` called with an uninitialised handle:** the sample
+  `MX_IWDG_Init()` had its body commented out, leaving `hiwdg.Instance == 0`.
+  The first `HAL_IWDG_Refresh()` therefore wrote to address 0 and raised a
+  BusFault (`CFSR=0x00040400`, IMPRECISERR+INVSTATE) that halted the test suite
+  after the timing section. The IWDG is now initialised
+  (`IWDG_PRESCALER_256`, reload 4095).
+
+### Fixed (test harness — Core/Src/main.cpp)
+- Helper tasks are created READY; they are now explicitly stopped after
+  creation so they cannot run (and starve lower-priority tasks) before the test
+  that owns them starts them.
+- The priority-inversion helper tasks (`task_pi_low/med/high`) were rewritten to
+  run one action per harness trigger and park by blocking, never by writing the
+  shared `pi_mtx`/`pi_release_evt` pointers. Previously a task suspended inside
+  `e->wait()` resumed a stale wait after `os_task_start()` and then called
+  `unlock()` on a destroyed mutex, corrupting the following test.
+- The `pi_high` ceiling test now also checks the holder's active priority while
+  the high-priority task is blocked (it must equal the ceiling).
+
+### Verified
+- Full test suite passes at `-O0`, `-O1`, `-O2`, `-O3`, `-Os` and `-Og` on
+  STM32F103C8T6 hardware (120 PASS / 0 FAIL / 1 interactive SKIP).
+- Kernel translation units compile clean with `-Wall -Wextra` at every level.
+
 ## [1.1.0] — 2026-09-14
 
 ### Fixed (Bug #1 — Critical)
