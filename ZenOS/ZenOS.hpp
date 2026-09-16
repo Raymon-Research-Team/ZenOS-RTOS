@@ -71,21 +71,24 @@
  * while idle is parked in WFI pushes a full exception frame onto this
  * stack, and nested interrupts push more.
  *
- * At -O0 the measured idle peak is already ~200 bytes, so the original
- * 64-word (256-byte) stack left only ~56 bytes of margin and overflowed
- * intermittently — silently corrupting the adjacent .bss (TCBs, scheduler
- * queues) and eventually producing a HardFault with CFSR=0x00060500 and a
- * corrupted return address.  _os_stack_check_all() deliberately skips the
- * idle task, so the overflow was never reported.
- *
- * 256 words (1 KB) keeps the peak near 20% and matches the safety margin
- * used for OS_KERNEL_STACK_SIZE.  Override with -DOS_IDLE_STACK_WORDS=n. */
+ * At -O0 the measured idle peak is ~200 bytes.  The previous default of
+ * 256 words (1 KB) gave a >5x margin that wasted RAM for no measurable
+ * benefit; 128 words (512 bytes) keeps a >2.5x margin over the measured
+ * peak, which matches the margin used for OS_KERNEL_STACK_SIZE.  Keep in
+ * mind that the actual peak scales with the ISR nesting depth of your
+ * application — increase this only if the stack report shows the idle task
+ * approaching 512 bytes.  Override with -DOS_IDLE_STACK_WORDS=n. */
 #ifndef OS_IDLE_STACK_WORDS
-#define OS_IDLE_STACK_WORDS     256
+#define OS_IDLE_STACK_WORDS     128
 #endif
 #define OS_IDLE_STACK_SIZE      (OS_IDLE_STACK_WORDS * 4)
 
-#define OS_FAULT_STACK_WORDS    128
+/* Fault-handler stack: used only to capture the fault context and recover
+   to the idle task (see OS_Fault_C_Handler).  The recovery path is shallow
+   (no deep HAL calls), so 64 words / 256 bytes is a generous margin. */
+#ifndef OS_FAULT_STACK_WORDS
+#define OS_FAULT_STACK_WORDS    64
+#endif
 #define OS_FAULT_STACK_SIZE     (OS_FAULT_STACK_WORDS * 4)
 
 /* ============================================================================

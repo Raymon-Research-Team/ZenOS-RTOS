@@ -74,7 +74,7 @@
  *          requires analysis of resource usage.  IEC 61508 Part 3 §7.4.3
  *          requires stack depth analysis for all execution paths. */
 #ifndef OS_KERNEL_STACK_SIZE
-#define OS_KERNEL_STACK_SIZE  512 // Default=256
+#define OS_KERNEL_STACK_SIZE  128 // Default=128
 #endif
 
 
@@ -96,7 +96,7 @@
  */
 
 #ifndef OS_KERNEL_MAX_PRIORITIES
-#define OS_KERNEL_MAX_PRIORITIES 32 // Default=32
+#define OS_KERNEL_MAX_PRIORITIES 16 // Default=16
 #endif
 
 #if (OS_KERNEL_MAX_PRIORITIES < 2) || (OS_KERNEL_MAX_PRIORITIES > 256)
@@ -202,9 +202,12 @@
 /* Error log capacity (number of entries)
  * [MED-C] [IND-2] [IND-3] Minimum capacity should be sufficient to
  *          capture all errors during a worst-case operating cycle.
- *          32 entries is a starting point; increase for long cycle times. */
+ *          16 entries (128 bytes of RAM) is the default: it captures a full
+ *          fault burst of a typical safety cycle while keeping the RAM cost
+ *          low on small parts (F103 = 20 KB).  Increase for long cycle
+ *          times or higher diagnostic coverage requirements. */
 #ifndef OS_MONITOR_ERROR_LOG_SIZE
-#define OS_MONITOR_ERROR_LOG_SIZE  32 // Default=32
+#define OS_MONITOR_ERROR_LOG_SIZE  16 // Default=16
 #endif
 
 
