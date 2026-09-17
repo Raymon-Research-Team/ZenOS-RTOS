@@ -105,59 +105,38 @@
 
 
 /* ============================================================================
- *  OS_TOOL — Scheduling and Communication Primitives
+ *  OS_TOOLS — Unified Scheduling and Communication Primitives
  * -------------------------------------------------------------------------- *
- *  1 = enabled, 0 = disabled.  Each feature compiles independently.
+ *  One macro to rule them all: enables all inter-task communication features.
+ *
+ *  1 = enabled (EVENT + MUTEX + QUEUE + SEMAPHORE)
+ *  0 = disabled (all IPC reduced to no-op functions)
+ *
+ *  This replaces the old separate macros:
+ *    OS_TOOL_EVENT, OS_TOOL_MUTEX, OS_TOOL_QUEUE, OS_TOOL_SEMAPHORE
+ *
+ *  Compile-time validation:
+ *   OS_TOOL_EVENT    ⊆ OS_TOOLS (always implied when OS_TOOLS=1)
+ *   OS_TOOL_MUTEX    ⊆ OS_TOOLS (always implied when OS_TOOLS=1)
+ *   OS_TOOL_QUEUE    ⊆ OS_TOOLS (requires OS_TOOL_MUTEX + OS_TOOL_EVENT)
+ *   OS_TOOL_SEMAPHORE ⊆ OS_TOOLS (requires OS_TOOL_MUTEX + OS_TOOL_EVENT)
+ *
+ *  IEC 62304/Medical & IEC 61508/Industrial safety standards:
+ *   [MED-B] [MED-C] [IND-2] [IND-3] Inter-task communication primitives
+ *          are required when multiple tasks share resources or need
+ *          coordinated execution.  Priority inheritance (OS_MUTEX) is
+ *          required to prevent unbounded priority inversion.
+ *          IEC 62304 §5.4.5 — data integrity between software items.
+ *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock.
  * ============================================================================ */
 
-/* Inter-task signaling (binary/counting events)
- * [MED-B] [MED-C] [IND-2] Required for inter-task communication
- *          in systems with more than one active task.
- *          IEC 62304 §5.4.5 — data integrity between software items.
- * DEPENDENCY: OS_TOOL_QUEUE and OS_TOOL_SEMAPHORE are implemented on top of
- *          OS_EVENT.  Setting OS_TOOL_EVENT=0 therefore also requires
- *          OS_TOOL_QUEUE=0 and OS_TOOL_SEMAPHORE=0; the build fails with an
- *          explicit #error otherwise. */
-#ifndef OS_TOOL_EVENT
-#define OS_TOOL_EVENT          1 // Default=1
+#ifndef OS_TOOLS
+#define OS_TOOLS               1 // Default=1 (ENABLE ALL IPC)
 #endif
 
-/* Mutual exclusion with priority inheritance
- * [MED-B] [MED-C] [IND-2] [IND-3] Required when multiple tasks
- *          share resources (hardware peripherals, shared memory).
- *          Priority inheritance prevents unbounded priority inversion,
- *          which is a safety hazard in real-time systems.
- *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock.
- * DEPENDENCY: OS_TOOL_QUEUE and OS_TOOL_SEMAPHORE guard their shared state
- *          with OS_MUTEX (`OS_LOCK`).  Setting OS_TOOL_MUTEX=0 therefore
- *          also requires OS_TOOL_QUEUE=0 and OS_TOOL_SEMAPHORE=0. */
-#ifndef OS_TOOL_MUTEX
-#define OS_TOOL_MUTEX          1 // Default=1
-#endif
-
-/* Bounded FIFO queue (template-based, compile-time capacity)
- * [MED-B] [IND-2] Recommended for typed, bounded data transfer between
- *          tasks.  Compile-time capacity enforces resource bounds.
- *          IEC 62304 §5.4.4 — defined data interfaces between modules.
- * REQUIRES: OS_TOOL_EVENT=1 and OS_TOOL_MUTEX=1. */
-#ifndef OS_TOOL_QUEUE
-#define OS_TOOL_QUEUE          1 // Default=1
-#endif
-
-/* Counting semaphore with max-count
- * [MED-B] [IND-2] Recommended for resource pool management and ISR-to-task
- *          signaling.  Max-count prevents unbounded resource allocation.
- *          IEC 61508 Part 3 §7.4.11 — resource usage must be bounded.
- * REQUIRES: OS_TOOL_EVENT=1 and OS_TOOL_MUTEX=1. */
-#ifndef OS_TOOL_SEMAPHORE
-#define OS_TOOL_SEMAPHORE      1 // Default=1
-#endif
-
-/* Tickless idle: WFI-based sleep for power savings
- * [MED-A] Optional — power management is application-specific.
- *          Disable if deterministic power profile is required. */
-#ifndef OS_TOOL_TICKLESS_IDLE
-#define OS_TOOL_TICKLESS_IDLE  1 // Default=1
+/* Tickless idle: separate kernel-level flag for power management */
+#ifndef OS_KERNEL_TICKLESS_IDLE
+#define OS_KERNEL_TICKLESS_IDLE  1 // Default=1 (runs in idle task)
 #endif
 
 

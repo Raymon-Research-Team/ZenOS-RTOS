@@ -285,7 +285,7 @@ extern "C" void os_tick(void) {
 
 
 /* ═══════════════ Tickless Idle ═════════════════════════════════ */
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
 static bool os_idle_tickless(void) {
     uint32_t saved_rvr = _os_syst_rvr_normal;
     if (saved_rvr == 0) return false;
@@ -385,10 +385,10 @@ static bool os_idle_tickless(void) {
 
     return true;
 }
-#endif /* OS_TOOL_TICKLESS_IDLE */
+#endif /* OS_KERNEL_TICKLESS_IDLE */
 
 /* Forward declaration for tickless processing (in ZenOS_Scheduler.cpp) */
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
 extern bool _os_tickless_process(uint32_t skip);
 #endif
 
@@ -402,7 +402,7 @@ static void os_idle_task(void) {
 #if OS_SAFETY_CRC_CHECK
         os_crc_check_step();    /* check ROM in background */
 #endif
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
         os_idle_tickless();
 #endif
         __asm volatile("wfi");
