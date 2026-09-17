@@ -132,7 +132,7 @@ extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
 extern "C" void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_ms) {
     TCB* t = _os_find_task_by_entry(entry);
     if (!t) return;
-    /* deadline_ms == 0 disables the deadline. os_ms_to_ticks(0) would
+    /* deadline_ms == 0 disables the deadline. _os_ms_to_ticks(0) would
        otherwise return 1 (its "at least one tick" guard), turning a reset
        into a 1-tick deadline that streams DEADLINE_MISS on every tick. */
     uint32_t deadline_ticks = (deadline_ms == 0) ? 0 : _os_ms_to_ticks(deadline_ms);

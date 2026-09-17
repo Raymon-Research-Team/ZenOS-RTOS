@@ -304,8 +304,13 @@ static bool      ram_test_complete_flag = false;
 
 extern "C" void os_ram_test_step(void) {
     if (ram_test_complete_flag) return;
-    if (!ram_test_current) {
+	if (!ram_test_current) {
         ram_test_current = (uint32_t*)(uintptr_t)OS_RAM_TEST_START;
+        /* Runtime guard: verify the test region is valid */
+        if ((uintptr_t)ram_test_current >= (uintptr_t)OS_RAM_TEST_END) {
+            ram_test_complete_flag = true;
+            return;
+        }
     }
     if ((uintptr_t)ram_test_current >= (uintptr_t)OS_RAM_TEST_END) {
         ram_test_complete_flag = true;
@@ -323,12 +328,14 @@ extern "C" void os_ram_test_step(void) {
 }
 
 extern "C" uint8_t os_ram_test_progress(void) {
-    /* Use integer arithmetic to avoid pointer-subtraction warnings */
-    uint32_t total = OS_RAM_TEST_END - OS_RAM_TEST_START;  /* bytes */
+    /* Byte-based arithmetic: cast both pointers to uintptr_t so the
+       subtraction yields bytes, not element count (which would divide
+       by sizeof(*ptr) on some compilers). */
+    uint32_t total = (uint32_t)((uintptr_t)OS_RAM_TEST_END - (uintptr_t)OS_RAM_TEST_START);
     if (total == 0) return 100;
-    uint32_t done = 0;
+	uint32_t done = 0;
     if (ram_test_current) {
-        done = (uint32_t)((uintptr_t)ram_test_current - OS_RAM_TEST_START);
+        done = (uint32_t)((uintptr_t)ram_test_current - (uintptr_t)OS_RAM_TEST_START);
         if (done > total) done = total;
     }
     return (uint8_t)((done * 100UL) / total);
@@ -360,7 +367,7 @@ extern "C" bool os_ram_test_complete(void) { return true; }
  *  os_hw_watchdog_feed() — unconditional feed (call when system is healthy)
  *  os_hw_watchdog_check() — conditional feed (skip if errors detected)
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_SAFETY_HW_WATCHDOG
+#if OS_SAFETY_HW_WATCHDOG_CHECK
 static volatile uint32_t hw_wdg_reset_count_var = 0;
 
 extern "C" void os_hw_watchdog_feed(void) {
@@ -399,7 +406,7 @@ extern "C" uint32_t os_get_hw_wdg_reset_count(void) {
 extern "C" void os_hw_watchdog_feed(void) {}
 extern "C" void os_hw_watchdog_check(void) {}
 extern "C" uint32_t os_get_hw_wdg_reset_count(void) { return 0; }
-#endif /* OS_SAFETY_HW_WATCHDOG */
+#endif /* OS_SAFETY_HW_WATCHDOG_CHECK */
 
 
 /* ══════════════════════════════════════════════════════════════════════

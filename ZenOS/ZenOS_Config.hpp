@@ -9,7 +9,7 @@
  *
  * Naming convention:
  *   OS_KERNEL_*   — core timing and memory
- *   OS_TOOL_*     — scheduling and communication primitives
+ *   OS_IPC_TOOLS  — scheduling and communication primitives
  *   OS_MONITOR_*  — runtime observability
  *   OS_SAFETY_*   — fault detection and hardware protection
  *
@@ -104,6 +104,13 @@
 #endif
 
 
+/* Tickless idle: separate kernel-level flag for power management */
+#ifndef OS_KERNEL_TICKLESS_IDLE
+#define OS_KERNEL_TICKLESS_IDLE  1 // Default=1 (runs in idle task)
+#endif
+
+
+
 /* ============================================================================
  *  OS_TOOLS — Unified Scheduling and Communication Primitives
  * -------------------------------------------------------------------------- *
@@ -111,15 +118,6 @@
  *
  *  1 = enabled (EVENT + MUTEX + QUEUE + SEMAPHORE)
  *  0 = disabled (all IPC reduced to no-op functions)
- *
- *  This replaces the old separate macros:
- *    OS_TOOL_EVENT, OS_TOOL_MUTEX, OS_TOOL_QUEUE, OS_TOOL_SEMAPHORE
- *
- *  Compile-time validation:
- *   OS_TOOL_EVENT    ⊆ OS_TOOLS (always implied when OS_TOOLS=1)
- *   OS_TOOL_MUTEX    ⊆ OS_TOOLS (always implied when OS_TOOLS=1)
- *   OS_TOOL_QUEUE    ⊆ OS_TOOLS (requires OS_TOOL_MUTEX + OS_TOOL_EVENT)
- *   OS_TOOL_SEMAPHORE ⊆ OS_TOOLS (requires OS_TOOL_MUTEX + OS_TOOL_EVENT)
  *
  *  IEC 62304/Medical & IEC 61508/Industrial safety standards:
  *   [MED-B] [MED-C] [IND-2] [IND-3] Inter-task communication primitives
@@ -130,14 +128,10 @@
  *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock.
  * ============================================================================ */
 
-#ifndef OS_TOOLS
-#define OS_TOOLS               1 // Default=1 (ENABLE ALL IPC)
+#ifndef OS_IPC_TOOLS
+#define OS_IPC_TOOLS               1 // Default=1 (ENABLE ALL IPC)
 #endif
 
-/* Tickless idle: separate kernel-level flag for power management */
-#ifndef OS_KERNEL_TICKLESS_IDLE
-#define OS_KERNEL_TICKLESS_IDLE  1 // Default=1 (runs in idle task)
-#endif
 
 
 /* ============================================================================
@@ -206,7 +200,7 @@
  * NOTE: This test is non-destructive but may produce false positives
  *       during active DMA transfers.  Call from idle task only. */
 #ifndef OS_SAFETY_RAM_TEST
-#define OS_SAFETY_RAM_TEST     0 // Default=0
+#define OS_SAFETY_RAM_TEST     1 // Default=0
 #endif
 
 /* MPU: hardware memory protection per task (Cortex-M3/M4/M7)
@@ -230,8 +224,8 @@
  *          IEC 61508 Part 3 §7.4.14: external monitoring device.
  * NOTE: Configure IWDG timeout via CubeMX.  The feed task must run
  *       at ≤ 50% of the IWDG timeout to prevent spurious resets. */
-#ifndef OS_SAFETY_HW_WATCHDOG
-#define OS_SAFETY_HW_WATCHDOG  1 // Default=0
+#ifndef OS_SAFETY_HW_WATCHDOG_CHECK
+#define OS_SAFETY_HW_WATCHDOG_CHECK  1 // Default=0
 #endif
 
 /* CRC check: ROM integrity verification via CRC peripheral
@@ -255,7 +249,7 @@
  * NOTE: The timeout must be set to ≤ the process safety time.
  *       Tasks that legitimately run long must yield periodically. */
 #ifndef OS_SAFETY_SOFT_WATCHDOG
-#define OS_SAFETY_SOFT_WATCHDOG  0 // Default=0
+#define OS_SAFETY_SOFT_WATCHDOG  1 // Default=0
 #endif
 
 /* Action on deadline miss: 0 = log only, 1 = reset task, 2 = disable task
@@ -393,8 +387,8 @@
 /* ── Class C: fault detection + tolerance + memory protection required ── */
 #if (OS_TARGET_MEDICAL >= 3)
 
-#if !OS_SAFETY_HW_WATCHDOG
-#error "[IEC 62304 Class C] OS_SAFETY_HW_WATCHDOG must be enabled — HW watchdog is required for fault tolerance"
+#if !OS_SAFETY_HW_WATCHDOG_CHECK
+#error "[IEC 62304 Class C] OS_SAFETY_HW_WATCHDOG_CHECK must be enabled — HW watchdog is required for fault tolerance"
 #endif
 
 #if !OS_MONITOR_TCB_INTEGRITY
@@ -440,12 +434,12 @@
 #error "[IEC 61508 SIL 2+] OS_MONITOR_DEADLINE must be enabled — timing diagnostics required"
 #endif
 
-#if !OS_TOOL_MUTEX
-#error "[IEC 61508 SIL 2+] OS_TOOL_MUTEX must be enabled — mutual exclusion required for shared resources"
+#if !OS_TOOLS
+#error "[IEC 61508 SIL 2+] OS_TOOLS must be enabled — mutual exclusion required for shared resources"
 #endif
 
-#if !OS_SAFETY_HW_WATCHDOG
-#error "[IEC 61508 SIL 2+] OS_SAFETY_HW_WATCHDOG must be enabled — external monitoring device required"
+#if !OS_SAFETY_HW_WATCHDOG_CHECK
+#error "[IEC 61508 SIL 2+] OS_SAFETY_HW_WATCHDOG_CHECK must be enabled — external monitoring device required"
 #endif
 
 #if (OS_SAFETY_DEADLINE_ACTION < 1)

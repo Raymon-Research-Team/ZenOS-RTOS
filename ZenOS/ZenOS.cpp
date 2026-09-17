@@ -43,7 +43,7 @@ TCB*              volatile current_task = nullptr;
 uint32_t          _os_idle_stack[OS_IDLE_STACK_WORDS] OS_ALIGNED(8);
 volatile uint32_t tick_count = 0;
 
-#if OS_TOOL_EVENT
+#if OS_IPC_TOOLS
 ECB* volatile _os_event_list = nullptr;
 int16_t os_event_next_id = 0;
 #endif
@@ -385,18 +385,17 @@ static bool os_idle_tickless(void) {
 
     return true;
 }
-#endif /* OS_KERNEL_TICKLESS_IDLE */
 
 /* Forward declaration for tickless processing (in ZenOS_Scheduler.cpp) */
-#if OS_KERNEL_TICKLESS_IDLE
 extern bool _os_tickless_process(uint32_t skip);
 #endif
+
 
 
 /* ═══════════════ Idle ═══════════════ */
 static void os_idle_task(void) {
     while (1) {
-#if OS_SAFETY_HW_WATCHDOG
+#if OS_SAFETY_HW_WATCHDOG_CHECK
         os_hw_watchdog_check();  /* feed if healthy */
 #endif
 #if OS_SAFETY_CRC_CHECK
@@ -415,8 +414,8 @@ extern "C" void os_init(void) {
 
     /* os_event_next_id only exists when the event feature is compiled in;
        ZenOS.cpp is built for every configuration, so the reset must be
-       guarded or OS_TOOL_EVENT=0 fails to compile. */
-#if OS_TOOL_EVENT
+       guarded or OS_IPC_TOOLS=0 fails to compile. */
+#if OS_IPC_TOOLS
     os_event_next_id = 0;
 #endif
     _os_task_list = nullptr; _os_task_count = 0; current_task = nullptr;

@@ -311,7 +311,7 @@ void _os_wake_task(TCB* t, uint8_t result) {
        delay rate instead of their period rate. */
     t->last_yield_tick = tick_count;
     /* Every caller of _os_wake_task holds the PRIMASK critical section
-       (os_tick, os_event_signal[_from_isr], os_event_unregister,
+       (os_tick, _os_event_signal[_from_isr], os_event_unregister,
        os_mutex_handoff, os_tickless_process), so a plain decrement is
        atomic with respect to any other context. ldrex/strex is not an
        option here: ARMv6-M (Cortex-M0/M0+) has no exclusive access
@@ -543,7 +543,7 @@ extern "C" uint8_t os_get_task_priority(void(*entry)(void)) {
     return result;
 }
 
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
 bool _os_tickless_process(uint32_t skip) {
     tick_count += skip;
     bool woke = false;
@@ -663,7 +663,7 @@ extern "C" uint32_t os_get_capabilities(void) {
 #if OS_HAS_VTOR
     caps |= OS_CAP_VTOR;
 #endif
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
     caps |= OS_CAP_TICKLESS;
 #endif
     return caps;

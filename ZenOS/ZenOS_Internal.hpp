@@ -51,13 +51,10 @@ extern TCB* volatile     _os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
 
 extern volatile uint32_t _os_syst_rvr_normal;
 
-#if OS_TOOL_EVENT
+#if (OS_IPC_TOOLS)
 extern ECB* volatile     _os_event_list;
 extern int16_t           os_event_next_id;
-#endif
-
 /* ═══════════════ IPC Functions (internal) ═══════════════ */
-#if OS_TOOL_EVENT
 extern "C" void _os_event_signal(int16_t id);
 extern "C" void _os_event_signal_from_isr(uint32_t mask);
 #endif
@@ -113,7 +110,7 @@ inline void _os_time_fold(void) {
 inline void _os_time_fold(void) { /* no DWT — tick-derived domain */ }
 #endif
 
-#if OS_TOOL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE
 bool _os_tickless_process(uint32_t skip);
 #endif
 

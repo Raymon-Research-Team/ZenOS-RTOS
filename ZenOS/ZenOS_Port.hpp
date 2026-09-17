@@ -429,8 +429,11 @@
 
 #define OS_FLASH_START       0x08000000UL
 #define OS_RAM_START         0x20000000UL
-#define OS_RAM_TEST_SKIP     0x4000UL
-#define OS_RAM_TEST_START    (OS_RAM_START + OS_RAM_TEST_SKIP)
+/* RAM test start: derived from linker symbol __bss_end__ so the test
+   always begins AFTER all static variables, avoiding corruption of
+   live OS data (.data, .bss, stack). */
+extern uint32_t __bss_end__;
+#define OS_RAM_TEST_START    ((uintptr_t)&__bss_end__)
 /* RAM test covers the lower half of RAM. The upper half typically contains
    active stack and heap — a destructive March-C test there would corrupt
    live data. For IEC 62304 Class C / IEC 61508 SIL 3+ full coverage,
@@ -441,6 +444,9 @@
 #ifndef OS_RAM_TEST_END
 #define OS_RAM_TEST_END      (OS_RAM_START + (OS_RAM_SIZE / 2))
 #endif
+
+/* Runtime guard: OS_RAM_TEST_START must fall below OS_RAM_TEST_END.
+   Checked in os_ram_test_step() on first call. */
 
 /* ═══════════════ CMSIS Device Header (capability source of truth) ═══════
  * The device header defines __MPU_PRESENT and __FPU_PRESENT, which describe
@@ -610,8 +616,8 @@
     #error "[ZenOS] OS_SAFETY_CRC_CHECK=1 but this device has no CRC peripheral (CRC_BASE is not defined by its CMSIS header). Set OS_SAFETY_CRC_CHECK=0 or select a part with a CRC unit."
 #endif
 
-#if OS_SAFETY_HW_WATCHDOG && !OS_HAS_IWDG_HW
-    #error "[ZenOS] OS_SAFETY_HW_WATCHDOG=1 but this device has no IWDG peripheral (IWDG_BASE is not defined by its CMSIS header). Set OS_SAFETY_HW_WATCHDOG=0 or select a part with an IWDG."
+#if OS_SAFETY_HW_WATCHDOG_CHECK && !OS_HAS_IWDG_HW
+#error "[ZenOS] OS_SAFETY_HW_WATCHDOG_CHECK=1 but this device has no IWDG peripheral (IWDG_BASE is not defined by its CMSIS header). Set OS_SAFETY_HW_WATCHDOG_CHECK=0 or select a part with an IWDG."
 #endif
 
 /* ═══════════════ Capability Bitmask (os_get_capabilities) ═══════════════
@@ -624,7 +630,7 @@
 #define OS_CAP_IWDG_HW     (1UL << 4)   /* IWDG peripheral available+enabled */
 #define OS_CAP_CYCCNT      (1UL << 5)   /* DWT CYCCNT counter available      */
 #define OS_CAP_VTOR        (1UL << 6)   /* SCB->VTOR available               */
-#define OS_CAP_TICKLESS    (1UL << 7)   /* OS_TOOL_TICKLESS_IDLE compiled in */
+#define OS_CAP_TICKLESS    (1UL << 7)   /* OS_KERNEL_TICKLESS_IDLE compiled in */
 
 /* ═══════════════ FPU Availability ═══════════════
  * Same rule as the MPU: a Cortex-M4F/M7F only has the FPU when the vendor

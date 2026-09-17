@@ -463,7 +463,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  Hardware Watchdog API — always declared, no-op if OS_SAFETY_HW_WATCHDOG=0
+ *  Hardware Watchdog API — always declared, no-op if OS_SAFETY_HW_WATCHDOG_CHECK=0
  * ============================================================================ */
 
 extern "C" {
@@ -643,7 +643,7 @@ public:
 
 
 /* --- OS_EVENT --- */
-#if OS_TOOL_EVENT
+#if OS_IPC_TOOLS
 
 struct ECB { volatile uint32_t count; volatile uint32_t in_use; int16_t id; ECB* next; };
 
@@ -688,12 +688,7 @@ static inline uint32_t operator|(const OS_EVENT& a, const OS_EVENT& b) {
     return m;
 }
 
-#endif /* OS_TOOL_EVENT */
-
-
 /* --- OS_MUTEX --- */
-#if OS_TOOL_MUTEX
-
 extern "C" {
     TCB* _os_get_current_task(void);
     TCB* _os_mutex_handoff(void* mutex_obj);
@@ -730,26 +725,11 @@ public:
 };
 
 #define OS_LOCK(mtx) for (_OsLockGuard _os_l(mtx); _os_l.once(); )
-
-#endif /* OS_TOOL_MUTEX */
-
+#define OS_LOCK_T(mtx , timo) for (_OsLockGuard _os_l(mtx,timo); _os_l.once(); )
 
 /* ============================================================================
  *  OS_QUEUE — Bounded FIFO for Inter-Task Data Transfer
  * ============================================================================ */
-
-/* OS_QUEUE depends on OS_MUTEX and OS_EVENT (it holds one mutex and two
-   events).  A configuration that enables the queue while either dependency
-   is compiled out cannot build, so reject it explicitly instead of emitting
-   a cascade of "'OS_EVENT' does not name a type" errors. */
-#if OS_TOOL_QUEUE && !OS_TOOL_MUTEX
-#error "[ZenOS] OS_TOOL_QUEUE requires OS_TOOL_MUTEX=1 (the queue guards its buffer with a mutex)"
-#endif
-#if OS_TOOL_QUEUE && !OS_TOOL_EVENT
-#error "[ZenOS] OS_TOOL_QUEUE requires OS_TOOL_EVENT=1 (the queue signals not_full/not_empty)"
-#endif
-
-#if OS_TOOL_QUEUE
 
 template <typename T, uint32_t Capacity>
 class OS_QUEUE {
@@ -848,22 +828,10 @@ public:
     OS_QUEUE& operator=(const OS_QUEUE&) = delete;
 };
 
-#endif /* OS_TOOL_QUEUE */
-
 
 /* ============================================================================
  *  OS_SEMAPHORE — Counting Semaphore
  * ============================================================================ */
-
-/* OS_SEMAPHORE depends on OS_MUTEX (count guard) and OS_EVENT (waiter signal). */
-#if OS_TOOL_SEMAPHORE && !OS_TOOL_MUTEX
-#error "[ZenOS] OS_TOOL_SEMAPHORE requires OS_TOOL_MUTEX=1 (the count is guarded by a mutex)"
-#endif
-#if OS_TOOL_SEMAPHORE && !OS_TOOL_EVENT
-#error "[ZenOS] OS_TOOL_SEMAPHORE requires OS_TOOL_EVENT=1 (waiters are signalled through an event)"
-#endif
-
-#if OS_TOOL_SEMAPHORE
 
 class OS_SEMAPHORE {
     uint32_t count;
@@ -925,7 +893,7 @@ public:
     OS_SEMAPHORE& operator=(const OS_SEMAPHORE&) = delete;
 };
 
-#endif /* OS_TOOL_SEMAPHORE */
+#endif 
 
 
 #endif /* __cplusplus */
