@@ -543,7 +543,7 @@ extern "C" uint8_t os_get_task_priority(void(*entry)(void)) {
     return result;
 }
 
-#if OS_KERNEL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE_EN
 bool _os_tickless_process(uint32_t skip) {
     tick_count += skip;
     bool woke = false;

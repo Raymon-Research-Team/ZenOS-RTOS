@@ -160,7 +160,7 @@
  *         affected task is deactivated instead of reset
  *
  *    3. Error log (RAM ring buffer)
- *       - OS_MONITORING_LOG_SIZE entries, each with timestamp, error code,
+ *       - OS_MONITORING_ERROR_LOG_SIZE entries, each with timestamp, error code,
  *         task ID and severity
  *       - _os_report_error() logs every kernel error automatically
  *       - query API: os_log_error(), os_get_error_log_entry(),
@@ -179,7 +179,7 @@
  *  calls with #if OS_MONITORING_EN).
  *
  *  RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log
- *  entry (OS_MONITORING_LOG_SIZE entries) + 16 bytes per task (deadline,
+ *  entry (OS_MONITORING_ERROR_LOG_SIZE entries) + 16 bytes per task (deadline,
  *  magic and watermark fields).
  *
  *  IEC enforcement: OS_TARGET_MEDICAL_CLASS >= 2 and OS_TARGET_INDUSTRIAL_SIL >= 1
@@ -196,7 +196,7 @@
  * ============================================================================ */
 
 #ifndef OS_MONITORING_EN
-#define OS_MONITORING_EN             0 // Default=0
+#define OS_MONITORING_EN             1 // Default=0
 #endif
 //-----------------------------------------------------------------------------
 /* Reaction to a detected deadline miss (sub-option of OS_MONITORING_EN):
@@ -225,12 +225,12 @@
  *          full fault burst of a typical safety cycle while keeping the
  *          RAM cost low on small parts (F103 = 20 KB).  Increase for long
  *          cycle times or higher diagnostic coverage requirements. */
-#ifndef OS_MONITORING_LOG_SIZE
-#define OS_MONITORING_LOG_SIZE    16 // Default=16
+#ifndef OS_MONITORING_ERROR_LOG_SIZE
+#define OS_MONITORING_ERROR_LOG_SIZE    16 // Default=16
 #endif
 
-#if OS_MONITORING_LOG_SIZE < 1
-#error "OS_MONITORING_LOG_SIZE must be at least 1"
+#if OS_MONITORING_ERROR_LOG_SIZE < 1
+#error "OS_MONITORING_ERROR_LOG_SIZE must be at least 1"
 #endif
 
 /* ============================================================================

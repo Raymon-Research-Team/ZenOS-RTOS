@@ -250,7 +250,7 @@ extern "C" OS_NAKED OS_USED void OS_Fault_Handler(void) {
  *  Error Log System
  * ══════════════════════════════════════════════════════════════════════ */
 #if OS_MONITORING_EN
-static OSErrorEntry error_log[OS_MONITORING_LOG_SIZE] OS_ALIGNED(4);
+static OSErrorEntry error_log[OS_MONITORING_ERROR_LOG_SIZE] OS_ALIGNED(4);
 static uint32_t error_log_head = 0;
 static uint32_t error_log_count = 0;
 static uint32_t error_log_total = 0;
@@ -262,8 +262,8 @@ extern "C" void os_log_error(OSError code, uint8_t severity) {
     e->code = code;
     e->task_id = current_task ? current_task->id : 0xFF;
     e->severity = (ErrorSeverity)severity;
-    error_log_head = (error_log_head + 1) % OS_MONITORING_LOG_SIZE;
-    if (error_log_count < OS_MONITORING_LOG_SIZE) error_log_count++;
+    error_log_head = (error_log_head + 1) % OS_MONITORING_ERROR_LOG_SIZE;
+    if (error_log_count < OS_MONITORING_ERROR_LOG_SIZE) error_log_count++;
     error_log_total++;
     os_critical_exit(cs);
 }
@@ -272,7 +272,7 @@ extern "C" OSErrorEntry os_get_error_log_entry(uint32_t index) {
     OSErrorEntry empty = {};
     if (index >= error_log_count) return empty;
     uint32_t cs = os_critical_enter();
-    uint32_t pos = (error_log_head + OS_MONITORING_LOG_SIZE - 1 - index) % OS_MONITORING_LOG_SIZE;
+    uint32_t pos = (error_log_head + OS_MONITORING_ERROR_LOG_SIZE - 1 - index) % OS_MONITORING_ERROR_LOG_SIZE;
     OSErrorEntry result = error_log[pos];
     os_critical_exit(cs);
     return result;
