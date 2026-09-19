@@ -44,6 +44,7 @@ typedef struct {
 
 /* ICSR bit masks */
 #define OS_ICSR_PENDSVSET_Msk (1UL << 28)
+#define OS_ICSR_PENDSTCLR_Msk (1UL << 25)   /* Clear pending SysTick exception */
 
 /* ═══════════════ SysTick Timer ═══════════════
  * Base: 0xE000E010 (ARMv7-M / ARMv8-M)

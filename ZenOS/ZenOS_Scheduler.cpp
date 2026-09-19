@@ -392,19 +392,19 @@ extern "C" int8_t _os_task_create_internal(
     task->core_id = 0;
     task->_pad[0] = task->_pad[1] = task->_pad[2] = 0;
 #endif
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
     task->peak_sp = task->stack_top;
 #endif
-#if OS_MONITOR_TCB_INTEGRITY
+#if OS_MONITORING_EN
     task->magic = OS_TCB_MAGIC;
     task->overflow_count = 0;
 #endif
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     task->mpu_region_count = 0;
 #endif
 
     uintptr_t addr = (uintptr_t)stack_mem;
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     addr = (addr + 31) & ~31;
 #else
     addr = (addr + 7) & ~7;
@@ -663,7 +663,7 @@ extern "C" uint32_t os_get_capabilities(void) {
 #if OS_HAS_VTOR
     caps |= OS_CAP_VTOR;
 #endif
-#if OS_KERNEL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE_EN
     caps |= OS_CAP_TICKLESS;
 #endif
     return caps;

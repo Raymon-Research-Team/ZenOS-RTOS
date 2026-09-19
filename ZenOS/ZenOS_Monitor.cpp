@@ -15,7 +15,7 @@
 /* ═══════════════ Stack Watermarking ═══════════════
    Canary pattern: 0xA5A5A5A5 (set in os_stack_init).
    Scan from stack_base upward to find first non-canary word = peak usage. ═══════════════ */
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
 uint32_t _os_stack_watermark_scan(const TCB* task) {
     if (!task || !task->stack_base || task->stack_size == 0) return 0;
     const uint32_t* base = task->stack_base;
@@ -81,11 +81,11 @@ extern "C" bool os_get_stack_report(uint8_t index, os_stack_report_entry_t* out)
     os_critical_exit(cs);
     return false;
 }
-#endif /* OS_MONITOR_ENABLED */
+#endif /* OS_MONITORING_EN */
 
 
 /* ═══════════════ CPU Usage ═══════════════ */
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
 extern "C" uint8_t os_get_cpu_usage(void) {
     uint32_t cs = os_critical_enter();
     static uint32_t lt = 0, li = 0;
@@ -125,10 +125,10 @@ extern "C" uint8_t os_get_task_cpu_usage(void(*entry)(void)) {
     uint32_t percent = (task_ticks * 100UL) / total;
     return (percent > 100) ? 100 : (uint8_t)percent;
 }
-#endif /* OS_MONITOR_ENABLED */
+#endif /* OS_MONITORING_EN */
 
 /* ═══════════════ Deadline ═══════════════ */
-#if OS_MONITOR_DEADLINE
+#if OS_MONITORING_EN
 extern "C" void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_ms) {
     TCB* t = _os_find_task_by_entry(entry);
     if (!t) return;

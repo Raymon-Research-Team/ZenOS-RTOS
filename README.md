@@ -6,7 +6,7 @@
 **Real-Time operating system for ARM Cortex-M — written in C++11.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.1-green.svg?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.1.0-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
@@ -58,7 +58,7 @@ It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes 
 | **IPC ceiling** | **Mutex IPC ceiling support** | Depends on configuration/API | Depends on configuration/API |
 | **C++** | **C++11 kernel API** | C/C++ APIs | C/C++ APIs |
 
-> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) · [Current implementation reference](docs/CURRENT_IMPLEMENTATION.md)
+> 📖 [Full technical comparison → ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md)
 
 ### 🖥️ Supported Families
 
@@ -146,10 +146,12 @@ For the full API guide → [API_TUTORIAL.md](docs/API_TUTORIAL.md) | [راهنم
 | ⚙️ [CONFIG_GUIDE_FA.md](docs/CONFIG_GUIDE_FA.md) | راهنمای کامل پیکربندی (فارسی) |
 | 📘 [API_TUTORIAL.md](docs/API_TUTORIAL.md) | Complete API guide with examples (English) |
 | 📗 [API_TUTORIAL_FA.md](docs/API_TUTORIAL_FA.md) | Complete API guide with examples (Persian) |
-| 🤝 [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| 🏛️ [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Kernel internals — scheduler, context switch, fault handling |
+| 🤝 [INTEGRATION_CUBEMX.md](docs/INTEGRATION_CUBEMX.md) | ZenOS + CubeMX/HAL coexistence contract |
+| 🔧 [PORTING_GUIDE.md](docs/PORTING_GUIDE.md) | Adding a new STM32 family |
 | ⚡ [ZENOS_ADVANTAGES.md](docs/ZENOS_ADVANTAGES.md) | Technical comparison and design characteristics |
+| 📜 [CHANGELOG.md](docs/CHANGELOG.md) | Release history |
 | ⚙️ [ZenOS_Config.hpp](ZenOS/ZenOS_Config.hpp) | Source-of-truth configuration header |
-| 🧭 [CURRENT_IMPLEMENTATION.md](docs/CURRENT_IMPLEMENTATION.md) | Current kernel behavior and configuration facts |
 
 ---
 
@@ -159,15 +161,16 @@ Safety and monitoring mechanisms are **configurable** in `ZenOS_Config.hpp`; the
 
 | Mechanism | Config Macro | What it does |
 |:----------|:-------------|:-------------|
-| 🔍 Stack Canary | stack canary and stack-pointer checks (implemented by the safety layer) | Stack canary / bounds diagnostics when enabled |
-| 🔐 TCB Integrity | `OS_MONITOR_TCB_INTEGRITY` | Detects TCB corruption when enabled |
-| ⏱️ Deadline Monitor | `OS_MONITOR_DEADLINE` | Detects deadline misses when enabled |
-| 📋 Error Log | `OS_MONITOR_ERROR_LOG` | Records kernel error diagnostics |
-| 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG` | Hardware watchdog integration when enabled |
-| 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG` | Software watchdog monitoring when enabled |
-| 🧪 RAM Test | `OS_SAFETY_RAM_TEST` | RAM integrity testing when enabled |
-| ✅ CRC Check | `OS_SAFETY_CRC_CHECK` | Flash/integrity checking when enabled |
-| 🛡️ MPU | `OS_SAFETY_MPU` | Memory protection when supported and enabled |
+| 🔍 Stack Canary | always active | Canary words + stack-pointer checks for every task (checked every 16 ticks) |
+| 🔐 TCB Integrity | `OS_MONITORING_EN` | Magic-number validation of task control blocks |
+| ⏱️ Deadline Monitor | `OS_MONITORING_EN` | Detects deadline misses; reaction via `OS_MONITORING_DEADLINE_ACTION` |
+| 📋 Error Log | `OS_MONITORING_EN` | RAM ring buffer with timestamp, task ID and severity (`OS_MONITORING_LOG_SIZE`) |
+| 📊 CPU & Stack Stats | `OS_MONITORING_EN` | CPU usage, per-task stack watermark and stack report |
+| 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG_EN` | STM32 IWDG conditional feed when enabled |
+| 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG_EN` | Stuck-task detection with `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` |
+| 🧪 RAM Test | `OS_SAFETY_RAM_TEST_EN` | Background March-C SRAM integrity test |
+| ✅ CRC Check | `OS_SAFETY_CRC_EN` | Flash integrity checking through the CRC peripheral |
+| 🛡️ MPU | `OS_SAFETY_MPU_EN` | Per-task memory protection (PMSAv7/PMSAv8) when supported and enabled |
 
 ---
 

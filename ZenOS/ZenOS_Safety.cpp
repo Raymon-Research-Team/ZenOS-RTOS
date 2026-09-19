@@ -39,7 +39,7 @@ void _os_report_error(OSError code) {
     _os_error_total++;
     if (_os_error_expect_depth > 0) _os_error_expected++;
     _os_error_last = code;
-#if OS_MONITOR_ERROR_LOG
+#if OS_MONITORING_EN
     /* Automatically log errors to the ring buffer.
        Severity mapping: critical errors get CRITICAL, others get WARNING. */
     uint8_t sev = (code == OSError::HARDFAULT || code == OSError::STACK_OVERFLOW ||
@@ -94,7 +94,7 @@ void _os_stack_check_all(void) {
             _os_blocked_count--;
         }
 
-#if OS_MONITOR_TCB_INTEGRITY
+#if OS_MONITORING_EN
         /* TCB corrupted too — too risky to reset, deactivate instead */
         if (!_os_tcb_check_magic(task)) {
             task->state = TaskState::INACTIVE;
@@ -249,8 +249,8 @@ extern "C" OS_NAKED OS_USED void OS_Fault_Handler(void) {
 /* ══════════════════════════════════════════════════════════════════════
  *  Error Log System
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_MONITOR_ERROR_LOG
-static OSErrorEntry error_log[OS_MONITOR_ERROR_LOG_SIZE] OS_ALIGNED(4);
+#if OS_MONITORING_EN
+static OSErrorEntry error_log[OS_MONITORING_LOG_SIZE] OS_ALIGNED(4);
 static uint32_t error_log_head = 0;
 static uint32_t error_log_count = 0;
 static uint32_t error_log_total = 0;
@@ -262,8 +262,8 @@ extern "C" void os_log_error(OSError code, uint8_t severity) {
     e->code = code;
     e->task_id = current_task ? current_task->id : 0xFF;
     e->severity = (ErrorSeverity)severity;
-    error_log_head = (error_log_head + 1) % OS_MONITOR_ERROR_LOG_SIZE;
-    if (error_log_count < OS_MONITOR_ERROR_LOG_SIZE) error_log_count++;
+    error_log_head = (error_log_head + 1) % OS_MONITORING_LOG_SIZE;
+    if (error_log_count < OS_MONITORING_LOG_SIZE) error_log_count++;
     error_log_total++;
     os_critical_exit(cs);
 }
@@ -272,7 +272,7 @@ extern "C" OSErrorEntry os_get_error_log_entry(uint32_t index) {
     OSErrorEntry empty = {};
     if (index >= error_log_count) return empty;
     uint32_t cs = os_critical_enter();
-    uint32_t pos = (error_log_head + OS_MONITOR_ERROR_LOG_SIZE - 1 - index) % OS_MONITOR_ERROR_LOG_SIZE;
+    uint32_t pos = (error_log_head + OS_MONITORING_LOG_SIZE - 1 - index) % OS_MONITORING_LOG_SIZE;
     OSErrorEntry result = error_log[pos];
     os_critical_exit(cs);
     return result;
@@ -291,13 +291,13 @@ extern "C" void os_log_error(OSError, uint8_t) {}
 extern "C" OSErrorEntry os_get_error_log_entry(uint32_t) { return {}; }
 extern "C" uint32_t os_get_error_log_count(void) { return 0; }
 extern "C" uint32_t os_get_error_log_total(void) { return 0; }
-#endif /* OS_MONITOR_ERROR_LOG */
+#endif /* OS_MONITORING_EN */
 
 
 /* ══════════════════════════════════════════════════════════════════════
  *  RAM Test (Background March-C)
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_SAFETY_RAM_TEST
+#if OS_SAFETY_RAM_TEST_EN
 static uint32_t* ram_test_current = nullptr;
 static uint32_t  ram_test_errors = 0;
 static bool      ram_test_complete_flag = false;
@@ -354,7 +354,7 @@ extern "C" void os_ram_test_step(void) {}
 extern "C" uint8_t os_ram_test_progress(void) { return 100; }
 extern "C" uint32_t os_get_ram_test_error_count(void) { return 0; }
 extern "C" bool os_ram_test_complete(void) { return true; }
-#endif /* OS_SAFETY_RAM_TEST */
+#endif /* OS_SAFETY_RAM_TEST_EN */
 
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -367,7 +367,7 @@ extern "C" bool os_ram_test_complete(void) { return true; }
  *  os_hw_watchdog_feed() — unconditional feed (call when system is healthy)
  *  os_hw_watchdog_check() — conditional feed (skip if errors detected)
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_SAFETY_HW_WATCHDOG_CHECK
+#if OS_SAFETY_HW_WATCHDOG_EN
 static volatile uint32_t hw_wdg_reset_count_var = 0;
 
 extern "C" void os_hw_watchdog_feed(void) {
@@ -406,7 +406,7 @@ extern "C" uint32_t os_get_hw_wdg_reset_count(void) {
 extern "C" void os_hw_watchdog_feed(void) {}
 extern "C" void os_hw_watchdog_check(void) {}
 extern "C" uint32_t os_get_hw_wdg_reset_count(void) { return 0; }
-#endif /* OS_SAFETY_HW_WATCHDOG_CHECK */
+#endif /* OS_SAFETY_HW_WATCHDOG_EN */
 
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -423,7 +423,7 @@ extern "C" uint32_t os_get_hw_wdg_reset_count(void) { return 0; }
  *  the polynomial doesn't need to match across platforms — only the
  *  flash content must be identical between init and check.
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_SAFETY_CRC_CHECK
+#if OS_SAFETY_CRC_EN
 static uint32_t crc_expected = 0;
 static uint32_t crc_current_addr = 0;
 static uint32_t crc_error_count = 0;
@@ -504,7 +504,7 @@ extern "C" void os_crc_check_step(void) {}
 extern "C" uint8_t os_crc_check_progress(void) { return 100; }
 extern "C" bool os_crc_check_complete(void) { return true; }
 extern "C" uint32_t os_get_crc_error_count(void) { return 0; }
-#endif /* OS_SAFETY_CRC_CHECK */
+#endif /* OS_SAFETY_CRC_EN */
 
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -523,7 +523,7 @@ extern "C" uint32_t os_get_crc_error_count(void) { return 0; }
  *    - RLAR: [31:N] LIMIT, [8:6] AttrIndx, [5:4] SH, [3:1] AP, [0] EN
  *    - AP encoding: 0=RW/RW, 1=RW/RO, 2=RO/RO, 3=RO/RW (Priv RW, Unpriv RO)
  * ══════════════════════════════════════════════════════════════════════ */
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
 
 /* ── Access-permission codes ──
  * These are NOT the raw register encodings: os_mpu_set_region() maps them to
@@ -703,4 +703,4 @@ extern "C" void os_mpu_configure_task(void*) {}
 extern "C" void os_mpu_add_region(void*, uint32_t, uint32_t, uint32_t) {}
 extern "C" void os_mpu_disable(void) {}
 extern "C" void os_mpu_enable(void) {}
-#endif /* OS_SAFETY_MPU */
+#endif /* OS_SAFETY_MPU_EN */

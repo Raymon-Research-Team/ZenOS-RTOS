@@ -25,11 +25,9 @@
  *  Derived Constants (auto-calculated from config)
  * ============================================================================ */
 
-/* Any monitoring feature enabled */
-#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
-#define OS_MONITOR_ENABLED  1
-#else
-#define OS_MONITOR_ENABLED  0
+/* Monitoring master switch (single OS_MONITORING_EN — see ZenOS_Config.hpp) */
+#ifndef OS_MONITORING_EN
+#error "ZenOS_Config.hpp must be included before ZenOS.hpp"
 #endif
 
 /* ----------------------------------------------------------------------------
@@ -74,7 +72,7 @@
  * At -O0 the measured idle peak is ~200 bytes.  The previous default of
  * 256 words (1 KB) gave a >5x margin that wasted RAM for no measurable
  * benefit; 128 words (512 bytes) keeps a >2.5x margin over the measured
- * peak, which matches the margin used for OS_KERNEL_STACK_SIZE.  Keep in
+ * peak, which matches the margin used for OS_KERNEL_DEFAULT_STACK_SIZE.  Keep in
  * mind that the actual peak scales with the ISR nesting depth of your
  * application — increase this only if the stack report shows the idle task
  * approaching 512 bytes.  Override with -DOS_IDLE_STACK_WORDS=n. */
@@ -287,8 +285,8 @@ extern "C" {
     uint32_t os_get_stack_recovery_count(void);
 }
 
-/* ── Monitor (requires at least one OS_MONITOR_* feature enabled) ── */
-#if OS_MONITOR_DEADLINE || OS_MONITOR_TCB_INTEGRITY || OS_MONITOR_ERROR_LOG
+/* ── Monitor (requires OS_MONITORING_EN master switch) ── */
+#if OS_MONITORING_EN
 
 /* One entry of the per-task stack usage report (os_get_stack_report).
    Tagged + guarded so ZenOS_c.h can be included alongside this header in the
@@ -358,12 +356,12 @@ struct TCB {
     uint8_t     core_id;            /* [64] Assigned core (0=any, 1=core0, 2=core1) */
     uint8_t     _pad[3];            /* [65] Alignment padding */
 #endif
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
     uint32_t*   peak_sp;            /* Lowest SP observed (watermark) */
 #endif
 
     /* --- Optional Extensions (after assembly-critical fields) --- */
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     struct MPURegion {
         uint32_t base_address;
         uint32_t size;
@@ -372,12 +370,10 @@ struct TCB {
     MPURegion   mpu_regions[OS_MPU_MAX_REGIONS];
     uint8_t     mpu_region_count;
 #endif
-#if OS_MONITOR_DEADLINE
+#if OS_MONITORING_EN
     uint32_t    deadline_ticks;     /* Hard deadline (0=disabled) */
     uint32_t    deadline_miss_count;
-#endif
-#if OS_MONITOR_TCB_INTEGRITY
-    uint32_t    magic;              /* Must be OS_TCB_MAGIC */
+    uint32_t    magic;              /* Must be OS_TCB_MAGIC (OS_MONITORING_EN) */
     uint32_t    overflow_count;
 #endif
 };
@@ -433,10 +429,10 @@ static_assert(offsetof(TCB, queue_next)      == 60,                     "TCB lay
 
 
 /* ============================================================================
- *  Deadline API (optional)
+ *  Deadline API (optional — part of the OS_MONITORING_EN subsystem)
  * ============================================================================ */
 
-#if OS_MONITOR_DEADLINE
+#if OS_MONITORING_EN
 extern "C" {
     uint32_t os_get_deadline_miss_count(void(*entry)(void));
 }
@@ -444,7 +440,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  Error Log API — always declared, no-op if OS_MONITOR_ERROR_LOG=0
+ *  Error Log API — always declared, no-op if OS_MONITORING_EN=0
  * ============================================================================ */
 
 struct OSErrorEntry {
@@ -463,7 +459,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  Hardware Watchdog API — always declared, no-op if OS_SAFETY_HW_WATCHDOG_CHECK=0
+ *  Hardware Watchdog API — always declared, no-op if OS_SAFETY_HW_WATCHDOG_EN=0
  * ============================================================================ */
 
 extern "C" {
@@ -474,7 +470,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  RAM Test API — always declared, no-op if OS_SAFETY_RAM_TEST=0
+ *  RAM Test API — always declared, no-op if OS_SAFETY_RAM_TEST_EN=0
  * ============================================================================ */
 
 extern "C" {
@@ -486,7 +482,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  MPU API — always declared, no-op if OS_SAFETY_MPU=0
+ *  MPU API — always declared, no-op if OS_SAFETY_MPU_EN=0
  * ============================================================================ */
 
 extern "C" {
@@ -499,7 +495,7 @@ extern "C" {
 
 
 /* ============================================================================
- *  CRC Program Flow Monitoring API — always declared, no-op if OS_SAFETY_CRC_CHECK=0
+ *  CRC Program Flow Monitoring API — always declared, no-op if OS_SAFETY_CRC_EN=0
  * ============================================================================ */
 
 extern "C" {
@@ -547,7 +543,7 @@ extern "C" int8_t _os_task_create_internal(
  *      os_task_create_st(task_main, 10, 0, 256); // custom stack size
  * ============================================================================ */
 
-template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_STACK_SIZE>
+template <void(*Entry)(void), uint32_t StackBytes = OS_KERNEL_DEFAULT_STACK_SIZE>
 inline int8_t _os_task_create_impl(const char* name,
     uint8_t priority = 1, uint32_t period_ms = 0)
 {
@@ -559,7 +555,7 @@ inline int8_t _os_task_create_impl(const char* name,
        less than 256 bytes made the clamp write past this buffer and
        corrupt adjacent .bss (TCBs, os_pq_head, HAL handles) at every boot. */
     constexpr uint32_t StackBytesEff = (StackBytes < 256) ? 256 : StackBytes;
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     static_assert((StackBytes & (StackBytes - 1)) == 0, "MPU task stack size must be a power of two");
 #if defined(__ICCARM__)
     static uint32_t stack_raw[StackBytesEff / 4] OS_ALIGNED(StackBytesEff);
@@ -579,7 +575,7 @@ inline int8_t _os_task_create_impl(const char* name,
     created = true;
 
     uintptr_t addr = (uintptr_t)stack_raw;
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     addr = (addr + StackBytesEff - 1UL) & ~(StackBytesEff - 1UL);
 #else
     addr = (addr + 7UL) & ~7UL;
@@ -607,7 +603,7 @@ inline int8_t _os_task_create_impl(const char* name,
  *  Deadline Setter (post-creation)
  * ============================================================================ */
 
-#if OS_MONITOR_DEADLINE
+#if OS_MONITORING_EN
 extern "C" {
     void os_task_set_deadline_raw(void(*entry)(void), uint32_t deadline_ms);
 }
@@ -643,7 +639,7 @@ public:
 
 
 /* --- OS_EVENT --- */
-#if OS_IPC_TOOLS
+#if OS_IPC_TOOLS_EN
 
 struct ECB { volatile uint32_t count; volatile uint32_t in_use; int16_t id; ECB* next; };
 

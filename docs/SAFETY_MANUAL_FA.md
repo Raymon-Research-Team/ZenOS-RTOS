@@ -1,3 +1,5 @@
+<div dir="rtl">
+
 # راهنمای ایمنی ZenOS RTOS
 
 این سند مکانیسم‌های ایمنی، فرضیات یکپارچه‌سازی و محدودیت‌های پیاده‌سازی فعلی ZenOS را توضیح می‌دهد.
@@ -10,80 +12,101 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ## ۲. مدل زمان‌بند
 
-- اولویت `0` برای idle رزرو است.
+- اولویت `0` برای idle رزرو است و **پایین‌ترین** اولویت است.
+- **عدد بزرگ‌تر یعنی اولویت بالاتر** (قرارداد CMSIS-RTOS2 / FreeRTOS / ThreadX).
 - با `OS_KERNEL_MAX_PRIORITIES=256`، اولویت‌های کاربردی **`1..255`** هستند.
 - محدوده تنظیم تعداد اسلات‌های اولویت `2..256` است.
-- مقدار پیش‌فرض ۳۲ اسلات و محدوده کاربردی پیش‌فرض `1..31` است.
-- برای هر سطح اولویت صف آماده جداگانه وجود دارد.
+- مقدار پیش‌فرض ۱۶ اسلات و محدوده کاربردی پیش‌فرض `1..15` است.
+- برای هر سطح اولویت صف آماده جداگانه وجود دارد؛ اولویت‌های `0..31` از ذخیره‌سازی bitmap اسکالر و سطوح بالاتر از ذخیره‌سازی توسعه‌ای مشتق‌شده استفاده می‌کنند.
 - bitmap برای یافتن سطح اولویت فعال استفاده می‌شود.
-- scheduler پیش از انتخاب task، eligibility را بررسی می‌کند.
+- scheduler پیش از انتخاب task، eligibility (گیت انتشار) را بررسی می‌کند.
+- چرخش round-robin بین تسک‌های هم‌اولویت با `os_pq_rotate()` و گیت `next_run_time` تضمین می‌شود.
 - تسک دوره‌ای از `period_ticks` و `next_run_time` برای release gate استفاده می‌کند.
+- سوییچ زمینه Cortex-M از PendSV انجام می‌شود (واریانت آگاه از FPU برای Cortex-M4F/M7).
+
+زمان‌بند کل محدوده اولویت قابل استفاده را بدون جدول ثابت ۲۵۶ تایی تسک پشتیبانی می‌کند.
 
 ## ۳. منابع ایستا
 
-اندازه پیش‌فرض پشته هر تسک ۵۱۲ بایت است. پشته سفارشی از طریق `os_task_create_st()` قابل تعیین است.
+اندازه پیش‌فرض پشته هر تسک ۱۲۸ بایت (`OS_KERNEL_DEFAULT_STACK_SIZE`) است. پشته سفارشی از طریق `os_task_create_st()` قابل تعیین است. الگوی ایجاد تسک یک کف مؤثر ۲۵۶ بایتی اعمال می‌کند: راه‌اندازی پشته در هسته حداقل ۶۴ کلمه (۲۵۶ بایت) را پر می‌کند، بنابراین درخواست کمتر هم ۲۵۶ بایت فضا تخصیص می‌گیرد.
 
 اندازه پشته باید روی MCU، compiler و optimization نهایی اندازه‌گیری شود.
 
 ## ۴. مکانیسم‌های ایمنی
 
-### Stack protection
+### حفاظت پشته
 
-بررسی canary و محدوده SP برای تشخیص خطاهای پشته استفاده می‌شود. سیاست بازیابی با `OS_SAFETY_TASK_MAX_RECOVERY` و تنظیمات مربوط به واکنش به خطا کنترل می‌شود.
+کلمات canary پشته (`OS_STACK_CANARY`، ۸ کلمه در پایین هر پشته) و بررسی محدوده SP بخشی از لایه ایمنی هستند و همیشه فعال‌اند. `_os_stack_check_all()` هر ۱۶ تیک از مسیر تیک اجرا می‌شود و هم سرریز واقعی (SP پایین‌تر از ناحیه canary) و هم خرابی بیرونی (تغییر کلمات canary) را تشخیص می‌دهد.
 
-### TCB integrity
+با تشخیص خطا، تسک از زمان‌بند حذف و یا ریست و یا غیرفعال می‌شود: بازیابی از شمارنده `wdg_retries` هر تسک (مشترک با watchdog نرم‌افزاری) در برابر `OS_SAFETY_TASK_MAX_RECOVERY` استفاده می‌کند؛ پس از اتمام تلاش‌ها، تسک برای همیشه غیرفعال می‌شود. با `OS_MONITORING_EN`، TCB خراب (`TCB_CORRUPTED`) هرگز ریست نمی‌شود و فوراً غیرفعال می‌گردد.
 
-`OS_MONITOR_TCB_INTEGRITY` بررسی magic number در TCB را فعال می‌کند.
+### یکپارچگی TCB
+
+`OS_MONITORING_EN` بررسی عدد جادویی (`OS_TCB_MAGIC`) در TCB را فعال می‌کند. خرابی تشخیص‌داده‌شده از طریق سیستم خطا با کد `TCB_CORRUPTED` گزارش می‌شود.
 
 ### Deadline
 
-`OS_MONITOR_DEADLINE` پایش deadline را فعال می‌کند و واکنش با `OS_SAFETY_DEADLINE_ACTION` مشخص می‌شود:
+`OS_MONITORING_EN` پایش deadline را فعال می‌کند. برنامه با `os_task_set_deadline()` ددلاین تعیین می‌کند (مقدار ۰ غیرفعال می‌کند) و از دست رفتن‌ها را با `os_get_deadline_miss_count()` بررسی می‌کند. تشخیص در مسیر تیک انجام و به‌ازای هر تسک ثبت می‌شود.
+
+واکنش با `OS_MONITORING_DEADLINE_ACTION` مشخص می‌شود:
 
 - `0`: فقط ثبت خطا
 - `1`: reset تسک
-- `2`: غیرفعال‌کردن تسک
+- `2`: غیرفعال‌کردن تسک (حالت ایمن)
+
+مقادیر کمتر از `1` برای پروفایل‌های IEC 62304 کلاس B/C و IEC 61508 SIL 2+ در زمان کامپایل رد می‌شوند.
 
 ### Software watchdog
 
-`OS_SAFETY_SOFT_WATCHDOG` تسک‌هایی را که در بازه `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` واگذاری یا blocking مناسب ندارند تشخیص می‌دهد.
+`OS_SAFETY_SOFT_WATCHDOG_EN` تسک‌هایی را که در بازه `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` واگذاری یا blocking مناسب ندارند تشخیص می‌دهد. بررسی هر یک میلی‌ثانیه در مسیر تیک و بر اساس `last_yield_tick` تسک انجام می‌شود.
+
+تسکی که legitimately طولانی اجرا می‌شود باید به‌اندازه کافی yield یا block کند تا در مهلت پیکربندی‌شده بماند.
 
 ### Hardware watchdog
 
-`OS_SAFETY_HW_WATCHDOG` مسیر feed/check برای IWDG STM32 را فراهم می‌کند. خود IWDG باید برای سخت‌افزار هدف در CubeMX تنظیم شود.
+`OS_SAFETY_HW_WATCHDOG_EN` مسیر feed/check برای IWDG STM32 را فراهم می‌کند. `os_hw_watchdog_check()` فقط وقتی سیستم سالم است تغذیه می‌کند (شمار خطا کمتر از آستانه و زمان‌بند در حال اجرا)؛ ردکردن feed باعث ریست MCU توسط IWDG می‌شود. خود IWDG باید برای سخت‌افزار هدف در CubeMX تنظیم شود.
+
+تایم‌اوت watchdog و سیاست feed باید با توجه به زمان ایمنی واقعی برنامه طراحی شوند.
 
 ### MPU
 
-`OS_SAFETY_MPU` حفاظت حافظه تسک را روی Cortex-Mهایی که MPU مناسب دارند فعال می‌کند. تعداد region و محدودیت‌های آن وابسته به سخت‌افزار است.
+`OS_SAFETY_MPU_EN` حفاظت حافظه تسک را روی Cortex-Mهایی که MPU مناسب دارند فعال می‌کند (PMSAv7 روی M3/M4/M7، PMSAv8 روی M23/M33). نواحی ایستا (فلش فقط‌خواندنی، SRAM خواندن/نوشتن، پریفرال‌ها بدون اجرا) به‌همراه ناحیه پشته هر تسک توسط هسته برنامه‌ریزی می‌شوند؛ تسک‌های کاربر بدون امتیاز اجرا می‌شوند و هسته و ISRها با `PRIVDEFENA` از MPU عبور می‌کنند. تعداد region و محدودیت‌های آن وابسته به سخت‌افزار است و در زمان کامپایل با هدر CMSIS بررسی می‌شود.
 
 ### RAM test
 
-`OS_SAFETY_RAM_TEST` آزمون تدریجی incremental SRAM integrity routine را از طریق `os_ram_test_step()` فراهم می‌کند. اجرای آن باید با توجه به DMA و دسترسی همزمان به RAM طراحی شود.
+`OS_SAFETY_RAM_TEST_EN` آزمون تدریجی March-C را از طریق `os_ram_test_step()` فراهم می‌کند (در هر فراخوانی یک کلمه: خواندن → نوشتن مکمل → تأیید → بازگرداندن).
+
+محدوده آزمون از `__bss_end__` (نماد لینکر، تا داده‌های ایستا هرگز لمس نشوند) شروع و به‌طور پیش‌فرض نیمه پایین RAM را می‌پوشاند؛ آدرس پایان با `-DOS_RAM_TEST_END=<addr>` قابل بازنویسی است. نیمه بالایی معمولاً پشته فعال و heap را در بر می‌گیرد — آزمون مخرب آنجا داده‌های زنده را خراب می‌کند.
+
+اجرای آزمون باید از تسک idle (پس‌زمینه) انجام شود و با توجه به DMA و دسترسی همزمان به RAM طراحی شود.
 
 ### CRC
 
-`OS_SAFETY_CRC_CHECK` بررسی تدریجی integrity فلش را از طریق peripheral CRC فراهم می‌کند. حافظه برنامه هنگام بررسی نباید تغییر کند.
+`OS_SAFETY_CRC_EN` بررسی تدریجی یکپارچگی فلش را از طریق peripheral CRC فراهم می‌کند. `os_crc_init()` در بوت CRC مورد انتظار کل تصویر فلش را ثبت می‌کند؛ `os_crc_check_step()` (فراخوانی از idle) در هر گام ۶۴ کلمه را مجدداً محاسبه و در عدم تطابق `HARDFAULT` گزارش می‌کند. حافظه برنامه هنگام بررسی نباید تغییر کند.
 
 ### Error log
 
-`OS_MONITOR_ERROR_LOG` یک بافر حلقه‌ای RAM فراهم می‌کند. مقدار پیش‌فرض `OS_MONITOR_ERROR_LOG_SIZE` برابر ۳۲ ورودی است. این log با reset از بین می‌رود مگر برنامه آن را ذخیره کند.
+`OS_MONITORING_EN` یک بافر حلقه‌ای RAM با اندازه ثابت فراهم می‌کند. ظرفیت با `OS_MONITORING_LOG_SIZE` کنترل می‌شود (پیش‌فرض ۱۶ ورودی). هر خطای هسته که از `_os_report_error()` عبور کند خودکار ثبت می‌شود: زمان، کد خطا، شناسه تسک و شدت (کدهای بحرانی → `CRITICAL`، بقیه → `WARNING`).
+
+این log با reset از بین می‌رود مگر برنامه آن را ذخیره کند.
 
 ### Critical section
 
-`OS_SAFETY_MAX_CRITICAL_US` حد تشخیصی مدت اجرای `OS_SAFE` را تعیین می‌کند. بخش‌های بحرانی طولانی latency وقفه را افزایش می‌دهند.
+`OS_SAFETY_MAX_CRITICAL_US` حد تشخیصی مدت اجرای `OS_SAFE` را تعیین می‌کند: اگر گارد بیش از حد مجاز وقفه‌ها را نگه دارد (اندازه‌گیری با DWT CYCCNT در صورت وجود)، `SAFE_TOO_LONG` گزارش می‌شود. مقدار `0` بررسی را غیرفعال می‌کند. بخش‌های بحرانی طولانی latency وقفه را افزایش می‌دهند.
 
 ## ۵. مقادیر پیش‌فرض فعلی
 
 | گزینه | پیش‌فرض |
 |---|---:|
-| `OS_MONITOR_DEADLINE` | 0 |
-| `OS_MONITOR_TCB_INTEGRITY` | 0 |
-| `OS_MONITOR_ERROR_LOG` | 1 |
-| `OS_SAFETY_RAM_TEST` | 0 |
-| `OS_SAFETY_MPU` | 0 |
-| `OS_SAFETY_HW_WATCHDOG` | 0 |
-| `OS_SAFETY_CRC_CHECK` | 0 |
-| `OS_SAFETY_SOFT_WATCHDOG` | 0 |
-| `OS_SAFETY_DEADLINE_ACTION` | 1 |
+| `OS_MONITORING_EN` | 1 |
+| `OS_MONITORING_DEADLINE_ACTION` | 1 |
+| `OS_MONITORING_LOG_SIZE` | 16 |
+| `OS_IPC_TOOLS_EN` | 0 |
+| `OS_SAFETY_RAM_TEST_EN` | 0 |
+| `OS_SAFETY_MPU_EN` | 0 |
+| `OS_SAFETY_HW_WATCHDOG_EN` | 0 |
+| `OS_SAFETY_CRC_EN` | 0 |
+| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 |
 | `OS_SAFETY_TASK_MAX_RECOVERY` | 3 |
 | `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 |
 | `OS_SAFETY_MAX_CRITICAL_US` | 1000 |
@@ -94,15 +117,23 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ZenOS پروفایل‌های compile-time زیر را فراهم می‌کند:
 
-- `OS_TARGET_MEDICAL=1..3` برای Class A/B/C
-- `OS_TARGET_INDUSTRIAL=1..4` برای SIL 1..4
+- `OS_TARGET_MEDICAL_CLASS=1..3` برای Class A/B/C
+- `OS_TARGET_INDUSTRIAL_SIL=1..4` برای SIL 1..4
+
+| پروفایل | الزامات |
+|---|---|
+| کلاس B/C | `OS_MONITORING_EN`، `OS_SAFETY_SOFT_WATCHDOG_EN`، `OS_MONITORING_DEADLINE_ACTION >= 1` |
+| کلاس C | علاوه بر آن `OS_SAFETY_HW_WATCHDOG_EN`، `OS_SAFETY_MPU_EN`، `OS_SAFETY_CRC_EN`، `OS_SAFETY_RAM_TEST_EN` |
+| SIL 1+ | `OS_SAFETY_SOFT_WATCHDOG_EN`، `OS_MONITORING_EN` |
+| SIL 2+ | علاوه بر آن `OS_IPC_TOOLS_EN`، `OS_SAFETY_HW_WATCHDOG_EN`، `OS_MONITORING_DEADLINE_ACTION >= 1` |
+| SIL 3+ | علاوه بر آن `OS_SAFETY_MPU_EN`، `OS_SAFETY_RAM_TEST_EN`، `OS_SAFETY_CRC_EN` |
 
 این پروفایل‌ها کامل‌بودن تنظیمات ZenOS را بررسی می‌کنند و به‌تنهایی گواهی محصول نیستند.
 
 ## ۷. فرضیات یکپارچه‌سازی
 
 - همه تسک‌ها قبل از `os_start()` ساخته شوند.
-- در ISR از نسخه‌های ISR-safe مربوط به IPC استفاده شود.
+- در ISR از نسخه‌های ISR-safe مربوط به IPC استفاده شود (`signal_from_isr()`، `put_from_isr()`، `get_from_isr()`).
 - داخل `OS_SAFE` عملیات blocking انجام نشود.
 - سقف mutex برابر بالاترین اولویت تسک استفاده‌کننده باشد.
 - مصرف واقعی stack اندازه‌گیری شود.
@@ -117,13 +148,23 @@ ZenOS پروفایل‌های compile-time زیر را فراهم می‌کند:
 - stack check جایگزین طراحی صحیح stack نیست.
 - magic number همه انواع corruption را تشخیص نمی‌دهد.
 - deadline monitoring تکمیل منطقی کار را ثابت نمی‌کند.
-- RAM test همه انواع خطاهای RAM را پوشش نمی‌دهد.
+- RAM test فقط محدوده پیکربندی‌شده (به‌طور پیش‌فرض نیمه پایین RAM) را می‌پوشاند و باید با دقت با DMA هماهنگ شود.
 - CRC یک integrity check است، نه احراز هویت رمزنگاری‌شده.
 - MPU به قابلیت‌های سخت‌افزار و پیکربندی صحیح region وابسته است.
 - error log در RAM است و با reset از بین می‌رود.
 - watchdog reset وضعیت volatile را از بین می‌برد.
 
-## ۹. چک‌لیست پیش از استفاده در محصول
+## ۹. کدهای خطا
+
+هسته این کدهای خطا را تعریف و گزارش می‌کند (enum `OSError` در `ZenOS.hpp`):
+
+`SAFE_DELAY_MS`، `SAFE_YIELD`، `SAFE_EVENT_WAIT`، `STACK_OVERFLOW`، `INVALID_EVENT_ID`، `TASK_AFTER_START`، `TASK_STUCK`، `SAFE_TOO_LONG`، `HARDFAULT`، `DEADLINE_MISS`، `TCB_CORRUPTED`، `SAFE_MUTEX_LOCK`، `RAM_TEST_FAIL`، `MPU_CONFIG_ERROR`.
+
+مقادیر `PRIORITY_CONFLICT` و `SENSOR_TIMEOUT` برای استفاده سطح برنامه رزرو شده‌اند و خود هسته آن‌ها را گزارش نمی‌کند.
+
+برای جمع‌آوری شواهد سطح برنامه از `os_log_error()` و API پایش استفاده کنید.
+
+## ۱۰. چک‌لیست پیش از استفاده در محصول
 
 1. commit و toolchain نهایی را ثابت کنید.
 2. تنظیمات `ZenOS_Config.hpp` و target profile را ثابت کنید.
@@ -137,4 +178,6 @@ ZenOS پروفایل‌های compile-time زیر را فراهم می‌کند:
 
 ---
 
-**ZenOS RTOS v1.0.1 · MIT License · Raymon Research Team**
+**ZenOS RTOS v1.1.0 · MIT License · Raymon Research Team**
+
+</div>

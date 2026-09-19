@@ -38,7 +38,7 @@ This gives the application 255 usable numeric priority levels without requiring 
 
 ## 3. Static task resources
 
-The kernel task model uses statically sized TCBs and stacks rather than a general-purpose heap. The default task stack is 512 bytes and can be overridden per task.
+The kernel task model uses statically sized TCBs and stacks rather than a general-purpose heap. The default task stack request is 128 bytes (`OS_KERNEL_DEFAULT_STACK_SIZE`) with a 256-byte effective allocation floor enforced by the creation template, and can be overridden per task with `os_task_create_st()`.
 
 Benefits include:
 
@@ -87,22 +87,23 @@ The source tree provides independently configurable mechanisms including:
 
 | Mechanism | Configuration |
 |---|---|
-| Stack protection | `OS_SAFETY_SOFT_WATCHDOG` and stack checks |
-| TCB integrity | `OS_MONITOR_TCB_INTEGRITY` |
-| Deadline monitoring | `OS_MONITOR_DEADLINE` |
-| Error logging | `OS_MONITOR_ERROR_LOG` |
-| Software watchdog | `OS_SAFETY_SOFT_WATCHDOG` |
-| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG` |
-| MPU | `OS_SAFETY_MPU` |
-| RAM test | `OS_SAFETY_RAM_TEST` |
-| CRC | `OS_SAFETY_CRC_CHECK` |
+| Stack protection | always-active canary + SP checks (`_os_stack_check_all`) |
+| TCB integrity | `OS_MONITORING_EN` |
+| Deadline monitoring | `OS_MONITORING_EN` (+ `OS_MONITORING_DEADLINE_ACTION`) |
+| Error logging | `OS_MONITORING_EN` (`OS_MONITORING_LOG_SIZE`) |
+| CPU/stack statistics | `OS_MONITORING_EN` |
+| Software watchdog | `OS_SAFETY_SOFT_WATCHDOG_EN` |
+| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN` |
+| MPU | `OS_SAFETY_MPU_EN` |
+| RAM test | `OS_SAFETY_RAM_TEST_EN` |
+| CRC | `OS_SAFETY_CRC_EN` |
 | Critical-section diagnostic | `OS_SAFETY_MAX_CRITICAL_US` |
 
 These are engineering mechanisms, not a claim of safety certification.
 
 ## 7. Resource-aware scaling
 
-Increasing `OS_KERNEL_MAX_PRIORITIES` above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
+Increasing `OS_KERNEL_MAX_PRIORITIES` (default 16) above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
 
 | Priority slots | Usable application priorities | Queue heads | Bitmap |
 |---:|---:|---:|---:|
@@ -146,4 +147,4 @@ For any production comparison, measure the exact workload on the target MCU rath
 
 ---
 
-**ZenOS RTOS v1.0.1 · MIT License · Raymon Research Team**
+**ZenOS RTOS v1.1.0 · MIT License · Raymon Research Team**

@@ -9,7 +9,7 @@
  *
  * Naming convention:
  *   OS_KERNEL_*   — core timing and memory
- *   OS_IPC_TOOLS  — scheduling and communication primitives
+ *   OS_IPC_TOOLS_EN  — scheduling and communication primitives
  *   OS_MONITOR_*  — runtime observability
  *   OS_SAFETY_*   — fault detection and hardware protection
  *
@@ -18,11 +18,11 @@
  * relates to.  Two macros at the bottom of this file enable
  * compile-time enforcement of mandatory requirements:
  *
- *   OS_TARGET_MEDICAL  — IEC 62304 (SW lifecycle) + IEC 60601-1 (medical EE)
+ *   OS_TARGET_MEDICAL_CLASS  — IEC 62304 (SW lifecycle) + IEC 60601-1 (medical EE)
  *                        Software safety classes:  A (lowest risk)
  *                                                  B (non-serious injury)
  *                                                  C (death or serious injury)
- *   OS_TARGET_INDUSTRIAL — IEC 61508 (functional safety) + IEC 61511 (process)
+ *   OS_TARGET_INDUSTRIAL_SIL — IEC 61508 (functional safety) + IEC 61511 (process)
  *                          SIL levels: 1 (lowest) … 4 (highest)
  *
  * Legend for per-option annotations:
@@ -50,9 +50,17 @@
  *          Industrial: IEC 61508 Part 3 Table 4 — SW response time
  *          must be demonstrably less than the process safety time. */
 #ifndef OS_KERNEL_TICK_PERIOD_US
-#define OS_KERNEL_TICK_PERIOD_US  100UL
+#define OS_KERNEL_TICK_PERIOD_US  1000UL // Default=100
 #endif
 
+#if (OS_KERNEL_TICK_PERIOD_US < 100UL) || (OS_KERNEL_TICK_PERIOD_US > 1000UL)
+#error "OS_KERNEL_TICK_PERIOD_US must be 100..1000"
+#endif
+
+#if (1000UL % OS_KERNEL_TICK_PERIOD_US) != 0
+#error "OS_KERNEL_TICK_PERIOD_US must divide 1000 evenly"
+#endif
+//-----------------------------------------------------------------------------
 /* Compiler optimization level string for the banner.
    GCC's __OPTIMIZE__ macro is 1 for ALL levels >= O1 (O1, O2, O3, Og, Os),
    so it cannot distinguish between them.  Set this manually in your
@@ -73,11 +81,10 @@
  *          by static analysis or runtime measurement.  IEC 62304 §5.4.3
  *          requires analysis of resource usage.  IEC 61508 Part 3 §7.4.3
  *          requires stack depth analysis for all execution paths. */
-#ifndef OS_KERNEL_STACK_SIZE
-#define OS_KERNEL_STACK_SIZE  128 // Default=128
+#ifndef OS_KERNEL_DEFAULT_STACK_SIZE
+#define OS_KERNEL_DEFAULT_STACK_SIZE  128 // Default=128
 #endif
-
-
+//-----------------------------------------------------------------------------
 /**
  * Compile-time scheduler priority configuration
  *
@@ -94,19 +101,16 @@
  * Default: 32 slots (priorities 1..31, where 31 is highest).
  * Maximum: 256 slots (priorities 1..255, where 255 is highest).
  */
-
 #ifndef OS_KERNEL_MAX_PRIORITIES
 #define OS_KERNEL_MAX_PRIORITIES 16 // Default=16
 #endif
-
 #if (OS_KERNEL_MAX_PRIORITIES < 2) || (OS_KERNEL_MAX_PRIORITIES > 256)
 #error "OS_KERNEL_MAX_PRIORITIES must be between 2 and 256"
 #endif
-
-
+//-----------------------------------------------------------------------------
 /* Tickless idle: separate kernel-level flag for power management */
-#ifndef OS_KERNEL_TICKLESS_IDLE
-#define OS_KERNEL_TICKLESS_IDLE  1 // Default=1 (runs in idle task)
+#ifndef OS_KERNEL_TICKLESS_IDLE_EN
+#define OS_KERNEL_TICKLESS_IDLE_EN  1 // Default=1 (runs in idle task)
 #endif
 
 
@@ -128,61 +132,106 @@
  *          IEC 61508 Part 3 §7.4.13 — avoidance of deadlock and livelock.
  * ============================================================================ */
 
-#ifndef OS_IPC_TOOLS
-#define OS_IPC_TOOLS               1 // Default=1 (ENABLE ALL IPC)
+#ifndef OS_IPC_TOOLS_EN
+#define OS_IPC_TOOLS_EN    1 // Default=1 (ENABLE ALL IPC)
 #endif
-
-
 
 /* ============================================================================
- *  OS_MONITOR — Runtime Observability
+ *  OS_MONITORING_EN — Runtime Observability (single master switch)
  * -------------------------------------------------------------------------- *
- *  1 = enabled, 0 = disabled.  Each feature compiles independently.
+ *  One switch for the whole monitoring subsystem: 1 = enabled, 0 = disabled.
+ *  The previous per-feature switches (OS_MONITOR_DEADLINE,
+ *  OS_MONITOR_TCB_INTEGRITY, OS_MONITOR_ERROR_LOG) were merged into this
+ *  single macro — the features below are enabled and disabled together.
+ *
+ *  Setting OS_MONITORING_EN=1 compiles in and runs:
+ *
+ *    1. Deadline monitoring
+ *       - os_task_set_deadline() arms a per-task hard deadline (the TCB
+ *         gains deadline_ticks / deadline_miss_count fields)
+ *       - os_tick() detects misses, counts them and reports DEADLINE_MISS;
+ *         the reaction is configured by OS_MONITORING_DEADLINE_ACTION
+ *       - os_get_deadline_miss_count() exposes the per-task miss count
+ *
+ *    2. TCB integrity checking
+ *       - every TCB carries a magic number (OS_TCB_MAGIC) written at task
+ *         creation and verified before watchdog recovery actions
+ *       - a corrupted TCB is reported as OSError::TCB_CORRUPTED and the
+ *         affected task is deactivated instead of reset
+ *
+ *    3. Error log (RAM ring buffer)
+ *       - OS_MONITORING_LOG_SIZE entries, each with timestamp, error code,
+ *         task ID and severity
+ *       - _os_report_error() logs every kernel error automatically
+ *       - query API: os_log_error(), os_get_error_log_entry(),
+ *         os_get_error_log_count(), os_get_error_log_total()
+ *
+ *    4. CPU load and stack instrumentation
+ *       - os_get_cpu_usage() / os_get_cpu_usage_total() /
+ *         os_get_task_cpu_usage()
+ *       - per-task peak-SP watermark tracking, os_get_stack_watermark() /
+ *         os_get_stack_watermark_percent() and the os_get_stack_report()
+ *         table printed by the self-test
+ *
+ *  Setting OS_MONITORING_EN=0 removes all of the above from the build: the TCB
+ *  loses those fields, the error-log API becomes a no-op stub and the
+ *  monitor query functions are not compiled (application code guards its
+ *  calls with #if OS_MONITORING_EN).
+ *
+ *  RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log
+ *  entry (OS_MONITORING_LOG_SIZE entries) + 16 bytes per task (deadline,
+ *  magic and watermark fields).
+ *
+ *  IEC enforcement: OS_TARGET_MEDICAL_CLASS >= 2 and OS_TARGET_INDUSTRIAL_SIL >= 1
+ *  force this switch on at compile time (see Safety Standard Enforcement
+ *  at the bottom of this file).
+ *
+ *  [MED-B] [MED-C] REQUIRED — IEC 62304 §5.4.3 (timing analysis /
+ *          deadline evidence), §5.4.4 (control-data integrity) and
+ *          §5.5.4 (logging and tracing of safety-related events)
+ *          for Class B/C.
+ *  [IND-1] [IND-2] [IND-3] REQUIRED — IEC 61508 Part 1 §7.4.7 (event
+ *          recording), Part 2 Table 3 (control-data integrity) and
+ *          Part 3 Table 5 (timing diagnostics).
  * ============================================================================ */
 
-/* Deadline monitoring: detect and act on task deadline misses
- * [MED-B] [MED-C] REQUIRED — IEC 62304 §5.4.3 requires timing analysis;
- *          runtime deadline monitoring provides evidence that timing
- *          requirements are met in production.
- * [IND-2] [IND-3] REQUIRED — IEC 61508 Part 3 Table 5: diagnostic coverage
- *          of software execution timing.  Deadline misses indicate a
- *          potential failure of the safety function. */
-#ifndef OS_MONITOR_DEADLINE
-#define OS_MONITOR_DEADLINE    1 // Default=0
+#ifndef OS_MONITORING_EN
+#define OS_MONITORING_EN             0 // Default=0
+#endif
+//-----------------------------------------------------------------------------
+/* Reaction to a detected deadline miss (sub-option of OS_MONITORING_EN):
+ * 0 = log only, 1 = reset task, 2 = disable task (safe state)
+ * [MED-B] [MED-C] REQUIRED ≥ 1 — IEC 62304 §5.4.7: fault reaction.
+ *          Logging alone (0) is insufficient for Class B/C; the system
+ *          must take corrective action (reset or disable).
+ * [IND-2] [IND-3] REQUIRED ≥ 1 — IEC 61508 Part 1 §7.4.8:
+ *          safety function must respond to detected faults.
+ *          Option 1 (reset) enables recovery; option 2 (disable)
+ *          enters a safe state. */
+#ifndef OS_MONITORING_DEADLINE_ACTION
+#define OS_MONITORING_DEADLINE_ACTION      1 // Default=1
 #endif
 
-/* TCB integrity: magic-number check for memory corruption detection
- * [MED-C] REQUIRED — IEC 62304 §5.4.4: data integrity checks for
- *          safety-related software.  Detects corruption of control data.
- * [IND-3] REQUIRED — IEC 61508 Part 2 Table 3: random hardware fault
- *          metrics apply to data corruption in control structures. */
-#ifndef OS_MONITOR_TCB_INTEGRITY
-#define OS_MONITOR_TCB_INTEGRITY  1 // Default=0
+#if (OS_MONITORING_DEADLINE_ACTION < 0) || (OS_MONITORING_DEADLINE_ACTION > 2)
+#error "OS_MONITORING_DEADLINE_ACTION must be 0, 1, or 2"
 #endif
-
-/* Error log: circular buffer recording errors with timestamp and task ID
- * [MED-B] [MED-C] REQUIRED — IEC 62304 §5.5.4: logging and tracing
- *          of safety-related events.  Logs must be retrievable for
- *          post-market surveillance (IEC 62304 §8).
- * [IND-1] [IND-2] [IND-3] REQUIRED — IEC 61508 Part 1 §7.4.7: event
- *          recording for fault diagnosis.  Logs support SIL verification.
- *          NOTE: The ring buffer is RAM-only and lost on reset.
- *          Persist logs to non-volatile storage for production use. */
-#ifndef OS_MONITOR_ERROR_LOG
-#define OS_MONITOR_ERROR_LOG   1 // Default=1
-#endif
-
-/* Error log capacity (number of entries)
+//-----------------------------------------------------------------------------
+/* Error log capacity in entries (sub-option of OS_MONITORING_EN).  The ring
+ * buffer is RAM-only and lost on reset — persist logs to non-volatile
+ * storage for production use if post-mortem traces are needed.
  * [MED-C] [IND-2] [IND-3] Minimum capacity should be sufficient to
  *          capture all errors during a worst-case operating cycle.
- *          16 entries (128 bytes of RAM) is the default: it captures a full
- *          fault burst of a typical safety cycle while keeping the RAM cost
- *          low on small parts (F103 = 20 KB).  Increase for long cycle
- *          times or higher diagnostic coverage requirements. */
-#ifndef OS_MONITOR_ERROR_LOG_SIZE
-#define OS_MONITOR_ERROR_LOG_SIZE  16 // Default=16
+ *          16 entries (~128 bytes of RAM) is the default: it captures a
+ *          full fault burst of a typical safety cycle while keeping the
+ *          RAM cost low on small parts (F103 = 20 KB).  Increase for long
+ *          cycle times or higher diagnostic coverage requirements. */
+#ifndef OS_MONITORING_LOG_SIZE
+#define OS_MONITORING_LOG_SIZE    16 // Default=16
 #endif
 
+#if OS_MONITORING_LOG_SIZE < 1
+#error "OS_MONITORING_LOG_SIZE must be at least 1"
+#endif
 
 /* ============================================================================
  *  OS_SAFETY — Fault Detection and Hardware Protection
@@ -199,10 +248,10 @@
  *          provides stuck-at fault detection.
  * NOTE: This test is non-destructive but may produce false positives
  *       during active DMA transfers.  Call from idle task only. */
-#ifndef OS_SAFETY_RAM_TEST
-#define OS_SAFETY_RAM_TEST     1 // Default=0
+#ifndef OS_SAFETY_RAM_TEST_EN
+#define OS_SAFETY_RAM_TEST_EN     0 // Default=0
 #endif
-
+//-----------------------------------------------------------------------------
 /* MPU: hardware memory protection per task (Cortex-M3/M4/M7)
  * [MED-C] REQUIRED — IEC 62304 §5.4.4: spatial isolation between
  *          safety-related and non-safety software items.
@@ -211,10 +260,10 @@
  *          is recommended for SIL 3 to contain faults within modules.
  * NOTE: Requires ARM Cortex-M3+ with MPU.  Cortex-M0/L0 do not
  *       have MPU hardware; set to 0 on those targets. */
-#ifndef OS_SAFETY_MPU
-#define OS_SAFETY_MPU          0 // Default=0
+#ifndef OS_SAFETY_MPU_EN
+#define OS_SAFETY_MPU_EN    0 // Default=0
 #endif
-
+//-----------------------------------------------------------------------------
 /* Hardware watchdog feed/check integration
  * [MED-C] REQUIRED — IEC 62304 §5.4.7: fault tolerance requires
  *          a mechanism to recover from unrecoverable SW faults.
@@ -224,10 +273,10 @@
  *          IEC 61508 Part 3 §7.4.14: external monitoring device.
  * NOTE: Configure IWDG timeout via CubeMX.  The feed task must run
  *       at ≤ 50% of the IWDG timeout to prevent spurious resets. */
-#ifndef OS_SAFETY_HW_WATCHDOG_CHECK
-#define OS_SAFETY_HW_WATCHDOG_CHECK  1 // Default=0
+#ifndef OS_SAFETY_HW_WATCHDOG_EN
+#define OS_SAFETY_HW_WATCHDOG_EN  0 // Default=0
 #endif
-
+//-----------------------------------------------------------------------------
 /* CRC check: ROM integrity verification via CRC peripheral
  * [MED-C] REQUIRED — IEC 62304 §5.4.4: code integrity verification.
  *          Detects flash bit-flips from radiation or electrical stress.
@@ -236,10 +285,10 @@
  *          detects latent faults in executable code.
  * NOTE: Do not write to flash while CRC check is in progress;
  *       this causes false positives. */
-#ifndef OS_SAFETY_CRC_CHECK
-#define OS_SAFETY_CRC_CHECK    1 // Default=0
+#ifndef OS_SAFETY_CRC_EN
+#define OS_SAFETY_CRC_EN   0 // Default=0
 #endif
-
+//-----------------------------------------------------------------------------
 /* Software watchdog: detect stuck tasks and recover
  * [MED-B] [MED-C] REQUIRED — IEC 62304 §5.4.6: error detection
  *          for safety-related tasks.  A stuck task is a failure
@@ -248,22 +297,10 @@
  *          detection for diagnostic coverage calculation.
  * NOTE: The timeout must be set to ≤ the process safety time.
  *       Tasks that legitimately run long must yield periodically. */
-#ifndef OS_SAFETY_SOFT_WATCHDOG
-#define OS_SAFETY_SOFT_WATCHDOG  1 // Default=0
+#ifndef OS_SAFETY_SOFT_WATCHDOG_EN
+#define OS_SAFETY_SOFT_WATCHDOG_EN     0 // Default=0
 #endif
-
-/* Action on deadline miss: 0 = log only, 1 = reset task, 2 = disable task
- * [MED-B] [MED-C] REQUIRED ≥ 1 — IEC 62304 §5.4.7: fault reaction.
- *          Logging alone (0) is insufficient for Class B/C; the system
- *          must take corrective action (reset or disable).
- * [IND-2] [IND-3] REQUIRED ≥ 1 — IEC 61508 Part 1 §7.4.8:
- *          safety function must respond to detected faults.
- *          Option 1 (reset) enables recovery; option 2 (disable)
- *          enters a safe state. */
-#ifndef OS_SAFETY_DEADLINE_ACTION
-#define OS_SAFETY_DEADLINE_ACTION  1 // Default=1
-#endif
-
+//-----------------------------------------------------------------------------
 /* Max task recovery attempts before permanent disable
  * [MED-C] [IND-3] Recommended ≥ 1 — IEC 62304 §5.4.7 and
  *          IEC 61508 Part 1 §7.4.8: after repeated failures,
@@ -271,9 +308,9 @@
  *          rather than continue attempting recovery indefinitely.
  *          Set to 0 to disable recovery (immediate safe state). */
 #ifndef OS_SAFETY_TASK_MAX_RECOVERY
-#define OS_SAFETY_TASK_MAX_RECOVERY  3 // Default=3
+#define OS_SAFETY_TASK_MAX_RECOVERY     3 // Default=3
 #endif
-
+//-----------------------------------------------------------------------------
 /* Software watchdog timeout in milliseconds
  * [MED-B] [MED-C] REQUIRED — Must be ≤ the application's safety time.
  *          IEC 62304 §5.4.6: error detection time must be less than
@@ -285,7 +322,7 @@
 #ifndef OS_SAFETY_SOFT_WDG_TIMEOUT_MS
 #define OS_SAFETY_SOFT_WDG_TIMEOUT_MS  3000UL // Default=3000UL
 #endif
-
+//-----------------------------------------------------------------------------
 /* Max duration (us) allowed inside OS_SAFE before reporting error
  * [MED-C] [IND-3] Recommended — Long critical sections increase
  *          interrupt latency, which can cause deadline misses.
@@ -297,30 +334,10 @@
 #endif
 
 /* ============================================================================
- *  Compile-Time Validation
- * ============================================================================ */
-
-#if (OS_KERNEL_TICK_PERIOD_US < 100UL) || (OS_KERNEL_TICK_PERIOD_US > 1000UL)
-#error "OS_KERNEL_TICK_PERIOD_US must be 100..1000"
-#endif
-
-#if (1000UL % OS_KERNEL_TICK_PERIOD_US) != 0
-#error "OS_KERNEL_TICK_PERIOD_US must divide 1000 evenly"
-#endif
-
-#if (OS_SAFETY_DEADLINE_ACTION < 0) || (OS_SAFETY_DEADLINE_ACTION > 2)
-#error "OS_SAFETY_DEADLINE_ACTION must be 0, 1, or 2"
-#endif
-
-/* CubeMX peripheral consistency checks are in ZenOS_Port.hpp at the end
-   (after HAL defines may be available). If HAL is not used, they are harmless. */
-
-
-/* ============================================================================
  *  Safety Standard Enforcement
  * -------------------------------------------------------------------------- *
- *  Define OS_TARGET_MEDICAL to enforce IEC 62304 (Medical SW Lifecycle)
- *  Define OS_TARGET_INDUSTRIAL to enforce IEC 61508 (Functional Safety)
+ *  Define OS_TARGET_MEDICAL_CLASS to enforce IEC 62304 (Medical SW Lifecycle)
+ *  Define OS_TARGET_INDUSTRIAL_SIL to enforce IEC 61508 (Functional Safety)
  *  These can be combined — the stricter requirement applies.
  *
  *  Usage:
@@ -342,21 +359,18 @@
  *   SIL 4: Very high risk — typically hardware, not SW
  */
 
-#ifndef OS_TARGET_MEDICAL
-#define OS_TARGET_MEDICAL  0   /* 0 = not targeting medical */
+#ifndef OS_TARGET_MEDICAL_CLASS
+#define OS_TARGET_MEDICAL_CLASS  0   /* 0 = not targeting medical */
 #endif
-
-#ifndef OS_TARGET_INDUSTRIAL
-#define OS_TARGET_INDUSTRIAL  0  /* 0 = not targeting industrial */
+#if (OS_TARGET_MEDICAL_CLASS < 0) || (OS_TARGET_MEDICAL_CLASS > 3)
+#error "OS_TARGET_MEDICAL_CLASS must be 0 (disabled), 1 (Class A), 2 (Class B), or 3 (Class C)"
 #endif
-
-/* ── Validate OS_TARGET values ── */
-#if (OS_TARGET_MEDICAL < 0) || (OS_TARGET_MEDICAL > 3)
-#error "OS_TARGET_MEDICAL must be 0 (disabled), 1 (Class A), 2 (Class B), or 3 (Class C)"
+//-----------------------------------------------------------------------------
+#ifndef OS_TARGET_INDUSTRIAL_SIL
+#define OS_TARGET_INDUSTRIAL_SIL  0  /* 0 = not targeting industrial */
 #endif
-
-#if (OS_TARGET_INDUSTRIAL < 0) || (OS_TARGET_INDUSTRIAL > 4)
-#error "OS_TARGET_INDUSTRIAL must be 0 (disabled), 1 (SIL 1), 2 (SIL 2), 3 (SIL 3), or 4 (SIL 4)"
+#if (OS_TARGET_INDUSTRIAL_SIL < 0) || (OS_TARGET_INDUSTRIAL_SIL > 4)
+#error "OS_TARGET_INDUSTRIAL_SIL must be 0 (disabled), 1 (SIL 1), 2 (SIL 2), 3 (SIL 3), or 4 (SIL 4)"
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -364,50 +378,45 @@
  * ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Class B and above: fault detection required ── */
-#if (OS_TARGET_MEDICAL >= 2)
+#if (OS_TARGET_MEDICAL_CLASS >= 2)
 
-#if !OS_MONITOR_DEADLINE
-#error "[IEC 62304 Class B/C] OS_MONITOR_DEADLINE must be enabled — deadline monitoring is required for fault detection"
+#if !OS_MONITORING_EN
+#error "[IEC 62304 Class B/C] OS_MONITORING_EN must be enabled — deadline monitoring, TCB integrity and error logging are required for fault detection and traceability"
 #endif
 
-#if !OS_MONITOR_ERROR_LOG
-#error "[IEC 62304 Class B/C] OS_MONITOR_ERROR_LOG must be enabled — error logging is required for traceability"
+#if !OS_SAFETY_SOFT_WATCHDOG_EN
+#error "[IEC 62304 Class B/C] OS_SAFETY_SOFT_WATCHDOG_EN must be enabled — task fault detection is required"
 #endif
 
-#if !OS_SAFETY_SOFT_WATCHDOG
-#error "[IEC 62304 Class B/C] OS_SAFETY_SOFT_WATCHDOG must be enabled — task fault detection is required"
+#if (OS_MONITORING_DEADLINE_ACTION < 1)
+#error "[IEC 62304 Class B/C] OS_MONITORING_DEADLINE_ACTION must be ≥ 1 — logging alone is insufficient, corrective action required"
 #endif
 
-#if (OS_SAFETY_DEADLINE_ACTION < 1)
-#error "[IEC 62304 Class B/C] OS_SAFETY_DEADLINE_ACTION must be ≥ 1 — logging alone is insufficient, corrective action required"
-#endif
-
-#endif /* OS_TARGET_MEDICAL >= 2 */
+#endif /* OS_TARGET_MEDICAL_CLASS >= 2 */
 
 /* ── Class C: fault detection + tolerance + memory protection required ── */
-#if (OS_TARGET_MEDICAL >= 3)
+#if (OS_TARGET_MEDICAL_CLASS >= 3)
 
-#if !OS_SAFETY_HW_WATCHDOG_CHECK
-#error "[IEC 62304 Class C] OS_SAFETY_HW_WATCHDOG_CHECK must be enabled — HW watchdog is required for fault tolerance"
+#if !OS_SAFETY_HW_WATCHDOG_EN
+#error "[IEC 62304 Class C] OS_SAFETY_HW_WATCHDOG_EN must be enabled — HW watchdog is required for fault tolerance"
 #endif
 
-#if !OS_MONITOR_TCB_INTEGRITY
-#error "[IEC 62304 Class C] OS_MONITOR_TCB_INTEGRITY must be enabled — control data integrity checks required"
+/* Control-data integrity (TCB magic) is enforced by the OS_MONITORING_EN
+   requirement in the Class B/C block above. */
+
+#if !OS_SAFETY_MPU_EN
+#error "[IEC 62304 Class C] OS_SAFETY_MPU_EN must be enabled — spatial isolation required for safety partitioning"
 #endif
 
-#if !OS_SAFETY_MPU
-#error "[IEC 62304 Class C] OS_SAFETY_MPU must be enabled — spatial isolation required for safety partitioning"
+#if !OS_SAFETY_CRC_EN
+#error "[IEC 62304 Class C] OS_SAFETY_CRC_EN must be enabled — code integrity verification required"
 #endif
 
-#if !OS_SAFETY_CRC_CHECK
-#error "[IEC 62304 Class C] OS_SAFETY_CRC_CHECK must be enabled — code integrity verification required"
+#if !OS_SAFETY_RAM_TEST_EN
+#error "[IEC 62304 Class C] OS_SAFETY_RAM_TEST_EN must be enabled — RAM integrity verification required"
 #endif
 
-#if !OS_SAFETY_RAM_TEST
-#error "[IEC 62304 Class C] OS_SAFETY_RAM_TEST must be enabled — RAM integrity verification required"
-#endif
-
-#endif /* OS_TARGET_MEDICAL >= 3 */
+#endif /* OS_TARGET_MEDICAL_CLASS >= 3 */
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -415,56 +424,54 @@
  * ═══════════════════════════════════════════════════════════════════ */
 
 /* ── SIL 1+: basic fault detection ── */
-#if (OS_TARGET_INDUSTRIAL >= 1)
+#if (OS_TARGET_INDUSTRIAL_SIL >= 1)
 
-#if !OS_SAFETY_SOFT_WATCHDOG
-#error "[IEC 61508 SIL 1+] OS_SAFETY_SOFT_WATCHDOG must be enabled — SW fault detection required"
+#if !OS_SAFETY_SOFT_WATCHDOG_EN
+#error "[IEC 61508 SIL 1+] OS_SAFETY_SOFT_WATCHDOG_EN must be enabled — SW fault detection required"
 #endif
 
-#if !OS_MONITOR_ERROR_LOG
-#error "[IEC 61508 SIL 1+] OS_MONITOR_ERROR_LOG must be enabled — event recording required for diagnostics"
+#if !OS_MONITORING_EN
+#error "[IEC 61508 SIL 1+] OS_MONITORING_EN must be enabled — event recording required for diagnostics"
 #endif
 
-#endif /* OS_TARGET_INDUSTRIAL >= 1 */
+#endif /* OS_TARGET_INDUSTRIAL_SIL >= 1 */
 
 /* ── SIL 2+: robust fault detection + reaction ── */
-#if (OS_TARGET_INDUSTRIAL >= 2)
+#if (OS_TARGET_INDUSTRIAL_SIL >= 2)
 
-#if !OS_MONITOR_DEADLINE
-#error "[IEC 61508 SIL 2+] OS_MONITOR_DEADLINE must be enabled — timing diagnostics required"
+/* Timing diagnostics are enforced by the OS_MONITORING_EN requirement in the
+   SIL 1+ block above. */
+
+#if !OS_IPC_TOOLS_EN
+#error "[IEC 61508 SIL 2+] OS_IPC_TOOLS_EN must be enabled — mutual exclusion required for shared resources"
 #endif
 
-#if !OS_TOOLS
-#error "[IEC 61508 SIL 2+] OS_TOOLS must be enabled — mutual exclusion required for shared resources"
+#if !OS_SAFETY_HW_WATCHDOG_EN
+#error "[IEC 61508 SIL 2+] OS_SAFETY_HW_WATCHDOG_EN must be enabled — external monitoring device required"
 #endif
 
-#if !OS_SAFETY_HW_WATCHDOG_CHECK
-#error "[IEC 61508 SIL 2+] OS_SAFETY_HW_WATCHDOG_CHECK must be enabled — external monitoring device required"
+#if (OS_MONITORING_DEADLINE_ACTION < 1)
+#error "[IEC 61508 SIL 2+] OS_MONITORING_DEADLINE_ACTION must be ≥ 1 — corrective action on fault required"
 #endif
 
-#if (OS_SAFETY_DEADLINE_ACTION < 1)
-#error "[IEC 61508 SIL 2+] OS_SAFETY_DEADLINE_ACTION must be ≥ 1 — corrective action on fault required"
-#endif
-
-#endif /* OS_TARGET_INDUSTRIAL >= 2 */
+#endif /* OS_TARGET_INDUSTRIAL_SIL >= 2 */
 
 /* ── SIL 3+: high-integrity fault tolerance ── */
-#if (OS_TARGET_INDUSTRIAL >= 3)
+#if (OS_TARGET_INDUSTRIAL_SIL >= 3)
 
-#if !OS_SAFETY_MPU
-#error "[IEC 61508 SIL 3+] OS_SAFETY_MPU must be enabled — spatial partitioning required for fault containment"
+#if !OS_SAFETY_MPU_EN
+#error "[IEC 61508 SIL 3+] OS_SAFETY_MPU_EN must be enabled — spatial partitioning required for fault containment"
 #endif
 
-#if !OS_SAFETY_RAM_TEST
-#error "[IEC 61508 SIL 3+] OS_SAFETY_RAM_TEST must be enabled — RAM diagnostic coverage required"
+#if !OS_SAFETY_RAM_TEST_EN
+#error "[IEC 61508 SIL 3+] OS_SAFETY_RAM_TEST_EN must be enabled — RAM diagnostic coverage required"
 #endif
 
-#if !OS_SAFETY_CRC_CHECK
-#error "[IEC 61508 SIL 3+] OS_SAFETY_CRC_CHECK must be enabled — program memory verification required"
+#if !OS_SAFETY_CRC_EN
+#error "[IEC 61508 SIL 3+] OS_SAFETY_CRC_EN must be enabled — program memory verification required"
 #endif
 
-#if !OS_MONITOR_TCB_INTEGRITY
-#error "[IEC 61508 SIL 3+] OS_MONITOR_TCB_INTEGRITY must be enabled — control data integrity required"
-#endif
+/* Control-data integrity is enforced by the OS_MONITORING_EN requirement in the
+   SIL 1+ block above. */
 
-#endif /* OS_TARGET_INDUSTRIAL >= 3 */
+#endif /* OS_TARGET_INDUSTRIAL_SIL >= 3 */

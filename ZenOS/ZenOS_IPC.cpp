@@ -14,7 +14,7 @@
 #include "ZenOS_Internal.hpp"
 
 /* ═══════════════ Events ═══════════════ */
-#if (OS_IPC_TOOLS)
+#if (OS_IPC_TOOLS_EN)
 
 extern "C" void _os_event_register(ECB* e) {
 	if (!e) return;
@@ -255,7 +255,7 @@ bool _OsSafeGuard::once() {
 }
 
 /* ── OsEvent ── */
-#if (OS_IPC_TOOLS)
+#if (OS_IPC_TOOLS_EN)
 OS_EVENT::OS_EVENT() {
 	ecb.count = 0; ecb.in_use = 0; ecb.id = -1; ecb.next = nullptr;
 	_os_event_register(&ecb);

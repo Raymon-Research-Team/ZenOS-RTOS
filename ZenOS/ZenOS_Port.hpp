@@ -560,19 +560,19 @@ extern uint32_t __bss_end__;
  * protection on a core that has no MPU.  Silently compiling the PMSAv7
  * path for Cortex-M0 would emit stores to 0xE000ED90 (which does not
  * exist on ARMv6-M) and fault at the first context switch. */
-#if OS_SAFETY_MPU && !OS_HAS_MPU_HW
-    #error "[ZenOS] OS_SAFETY_MPU=1 but this target has no MPU (Cortex-M0/M0+ or device header reports __MPU_PRESENT=0). Set OS_SAFETY_MPU=0 or select a Cortex-M3/M4/M7/M23/M33 device."
+#if OS_SAFETY_MPU_EN && !OS_HAS_MPU_HW
+    #error "[ZenOS] OS_SAFETY_MPU_EN=1 but this target has no MPU (Cortex-M0/M0+ or device header reports __MPU_PRESENT=0). Set OS_SAFETY_MPU_EN=0 or select a Cortex-M3/M4/M7/M23/M33 device."
 #endif
 
 /* Report an unverified MPU configuration.  When no CMSIS device header was
  * included we cannot prove the MPU exists; the user must confirm it. */
-#if OS_SAFETY_MPU && !defined(__MPU_PRESENT)
-    #warning "[ZenOS] OS_SAFETY_MPU=1 without a CMSIS device header in the include path; MPU presence was assumed from __ARM_ARCH_* only. Include the device header or confirm __MPU_PRESENT for your part."
+#if OS_SAFETY_MPU_EN && !defined(__MPU_PRESENT)
+    #warning "[ZenOS] OS_SAFETY_MPU_EN=1 without a CMSIS device header in the include path; MPU presence was assumed from __ARM_ARCH_* only. Include the device header or confirm __MPU_PRESENT for your part."
 #endif
 
 /* Whether user tasks actually run with an active MPU (the safety feature is
    on AND the silicon has one).  Reported through os_get_capabilities(). */
-#if OS_SAFETY_MPU && OS_HAS_MPU_HW
+#if OS_SAFETY_MPU_EN && OS_HAS_MPU_HW
     #define OS_HAS_USER_MPU_ACTIVE 1
 #else
     #define OS_HAS_USER_MPU_ACTIVE 0
@@ -612,12 +612,12 @@ extern uint32_t __bss_end__;
 
 /* A safety feature that needs a peripheral the device does not have cannot
  * be satisfied — fail loudly instead of emitting dead register accesses. */
-#if OS_SAFETY_CRC_CHECK && !OS_HAS_CRC_HW
-    #error "[ZenOS] OS_SAFETY_CRC_CHECK=1 but this device has no CRC peripheral (CRC_BASE is not defined by its CMSIS header). Set OS_SAFETY_CRC_CHECK=0 or select a part with a CRC unit."
+#if OS_SAFETY_CRC_EN && !OS_HAS_CRC_HW
+    #error "[ZenOS] OS_SAFETY_CRC_EN=1 but this device has no CRC peripheral (CRC_BASE is not defined by its CMSIS header). Set OS_SAFETY_CRC_EN=0 or select a part with a CRC unit."
 #endif
 
-#if OS_SAFETY_HW_WATCHDOG_CHECK && !OS_HAS_IWDG_HW
-#error "[ZenOS] OS_SAFETY_HW_WATCHDOG_CHECK=1 but this device has no IWDG peripheral (IWDG_BASE is not defined by its CMSIS header). Set OS_SAFETY_HW_WATCHDOG_CHECK=0 or select a part with an IWDG."
+#if OS_SAFETY_HW_WATCHDOG_EN && !OS_HAS_IWDG_HW
+#error "[ZenOS] OS_SAFETY_HW_WATCHDOG_EN=1 but this device has no IWDG peripheral (IWDG_BASE is not defined by its CMSIS header). Set OS_SAFETY_HW_WATCHDOG_EN=0 or select a part with an IWDG."
 #endif
 
 /* ═══════════════ Capability Bitmask (os_get_capabilities) ═══════════════
@@ -625,12 +625,12 @@ extern uint32_t __bss_end__;
  * application can assert on the target instead of re-deriving it. */
 #define OS_CAP_MPU         (1UL << 0)   /* MPU hardware present on the silicon */
 #define OS_CAP_FPU         (1UL << 1)   /* FPU hardware present on the silicon */
-#define OS_CAP_MPU_ACTIVE  (1UL << 2)   /* OS_SAFETY_MPU=1 and MPU available  */
+#define OS_CAP_MPU_ACTIVE  (1UL << 2)   /* OS_SAFETY_MPU_EN=1 and MPU available  */
 #define OS_CAP_CRC_HW      (1UL << 3)   /* CRC peripheral available+enabled  */
 #define OS_CAP_IWDG_HW     (1UL << 4)   /* IWDG peripheral available+enabled */
 #define OS_CAP_CYCCNT      (1UL << 5)   /* DWT CYCCNT counter available      */
 #define OS_CAP_VTOR        (1UL << 6)   /* SCB->VTOR available               */
-#define OS_CAP_TICKLESS    (1UL << 7)   /* OS_KERNEL_TICKLESS_IDLE compiled in */
+#define OS_CAP_TICKLESS    (1UL << 7)   /* OS_KERNEL_TICKLESS_IDLE_EN compiled in */
 
 /* ═══════════════ FPU Availability ═══════════════
  * Same rule as the MPU: a Cortex-M4F/M7F only has the FPU when the vendor

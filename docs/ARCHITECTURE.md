@@ -93,21 +93,24 @@ ZenOS is a priority-based preemptive real-time operating system (RTOS) designed 
 ZenOS-RTOS/
 ├── ZenOS/
 │   ├── ZenOS.hpp              # Public API (C and C++)
-│   ├── ZenOS.cpp              # Kernel core
+│   ├── ZenOS.cpp              # Kernel core (globals, init, start, PendSV, tick, idle)
 │   ├── ZenOS_Internal.hpp     # Internal shared declarations
-│   ├── ZenOS_Config.hpp       # User configuration
-│   ├── ZenOS_Port.hpp         # Platform-specific definitions
-│   ├── ZenOS_c.h              # C-only header
-│   ├── ZenOS_Scheduler.cpp    # Priority bitmap scheduler
-│   ├── ZenOS_IPC.cpp          # Inter-Process Communication
-│   ├── ZenOS_Safety.cpp       # Safety subsystem
-│   └── ZenOS_Monitor.cpp      # Runtime monitoring
-├── .github/workflows/
-│   └── build.yml              # CI build matrix
+│   ├── ZenOS_Config.hpp       # User configuration + IEC target enforcement
+│   ├── ZenOS_Port.hpp         # Platform detection, capability flags, RAM-test region
+│   ├── ZenOS_Compiler.hpp     # Compiler abstraction (GCC/Clang/IAR/ARMCC)
+│   ├── ZenOS_Regs.hpp         # Consolidated Cortex-M register definitions
+│   ├── ZenOS_Version.hpp      # Single source of truth for version numbers
+│   ├── ZenOS_c.h              # C-only wrapper header
+│   ├── ZenOS_Scheduler.cpp    # Priority bitmap scheduler, task create/control
+│   ├── ZenOS_IPC.cpp          # Events, Mutex, C++ RAII wrappers
+│   ├── ZenOS_Safety.cpp       # Error system, stack check, fault handler, watchdog, CRC, RAM test, MPU
+│   └── ZenOS_Monitor.cpp      # Stack watermark, CPU usage, deadline, error log queries
 ├── docs/
 │   ├── ARCHITECTURE.md        # This document
 │   ├── PORTING_GUIDE.md       # How to port to new STM32 families
-│   └── TEST_REPORT.md         # Test results
+│   ├── INTEGRATION_CUBEMX.md  # HAL/CubeMX coexistence contract
+│   ├── CHANGELOG.md           # Release history
+│   └── guide-html/guide.html  # Bilingual interactive guide
 └── README.md
 ```
 
@@ -138,9 +141,15 @@ ZenOS-RTOS/
     │              ▼                  │   │
     │          BLOCKED ──────────────┘   │
     │              │                      │
-    │         os_task_stop()              │
-    │         fault / stack overflow      │
+    │    os_task_stop() → SUSPENDED       │
+    │    fault / stack overflow → INACTIVE│
     └────────────────────────────────────┘
+
+Two additional states exist: SUSPENDED (stopped via os_task_stop(),
+resumed by os_task_start()) and DELETED (terminated; never scheduled
+again until recreated). SUSPENDED and DELETED are appended after
+BLOCKED so the hard-coded PendSV state values (READY=1, RUNNING=2)
+stay valid.
 ```
 
 ### State Transition Rules
@@ -152,18 +161,21 @@ ZenOS-RTOS/
 | RUNNING | `os_delay()` / `os_block()` | BLOCKED | Must be in critical section |
 | RUNNING | PendSV preempts | READY | State saved on stack |
 | BLOCKED | Timeout / signal | READY | Wake task, increment blocked_count atomically |
-| BLOCKED/READY/RUNNING | `os_task_stop()` | INACTIVE | Remove from PQ, decrement blocked_count if needed |
-| BLOCKED/READY | Stack overflow | INACTIVE or reset | Max recovery attempts before permanent disable |
+| READY/RUNNING | `os_task_stop()` | SUSPENDED | Non-destructive suspend; removed from PQ; forced PendSV if current |
+| BLOCKED | `os_task_stop()` | SUSPENDED | Wait aborted cleanly (blocking_on cleared, blocked_count decremented) |
+| SUSPENDED | `os_task_start()` | READY (or BLOCKED if it was blocked when stopped) | Re-queued at base priority |
+| BLOCKED/READY | Stack overflow | reset or INACTIVE | Max recovery attempts (`OS_SAFETY_TASK_MAX_RECOVERY`) before permanent disable |
 | Any | HardFault | INACTIVE | Task disabled, idle task recovers |
 
 ### Kernel Invariants
 
 1. **Single RUNNING task** — exactly one task has `state == RUNNING` at any time
 2. **No duplicate in PQ** — a task appears at most once in the priority queues
-3. **No INACTIVE in PQ** — INACTIVE tasks are never in the priority queues
+3. **No INACTIVE/SUSPENDED in PQ** — INACTIVE and SUSPENDED tasks are never in the priority queues
 4. **blocked_count is accurate** — reflects the number of tasks in BLOCKED state
 5. **task_count never decreases** — task IDs are monotonically increasing
-6. **Deleted tasks are unreachable** — once INACTIVE, a task never executes code
+6. **Dead tasks are unreachable** — an INACTIVE or DELETED task never executes code until restarted/recreated
+7. **Idle is never queued** — priority 0 is reserved; PendSV falls back to the idle TCB when no queue has an eligible task
 
 ### TCB Memory Layout
 
@@ -343,8 +355,8 @@ evt.signal_from_isr();           // ISR-safe signaling
 
 ```cpp
 OS_SEMAPHORE sem(5, 10);         // Initial=5, Max=10
-sem.wait();                       // Decrement (block if zero)
-sem.signal();                     // Increment (block if full)
+sem.wait();                       // Decrement (blocks with absolute-deadline timeout if zero)
+sem.signal();                     // Increment — non-blocking, returns false when full
 sem.signal_from_isr();           // ISR-safe increment
 ```
 
@@ -352,10 +364,11 @@ sem.signal_from_isr();           // ISR-safe increment
 
 ```cpp
 OS_QUEUE<int, 8> queue;           // Capacity=8, type=int
-queue.put(42);                    // Block if full
+queue.put(42);                    // Non-blocking (timeout 0) — returns false if full
+queue.put(42, 100);               // Blocking put, absolute-deadline 100ms timeout
 queue.put_from_isr(42);          // Non-blocking ISR put
-queue.get(item);                  // Block if empty
-queue.get(item, 100);            // Timeout after 100ms
+queue.get(item);                  // Non-blocking — returns false if empty
+queue.get(item, 100);            // Timeout after 100ms (absolute deadline)
 ```
 
 ---
@@ -446,16 +459,22 @@ On HardFault/MemManage/BusFault/UsageFault:
 | Code | Name | Description |
 |------|------|-------------|
 | 0 | NONE | No error |
+| 1 | SAFE_DELAY_MS | Blocking delay attempted from ISR or inside `OS_SAFE` |
+| 2 | SAFE_YIELD | Yield attempted from an illegal context |
+| 3 | SAFE_EVENT_WAIT | Blocking event wait attempted from ISR / `OS_SAFE` |
 | 4 | STACK_OVERFLOW | Task stack overflow detected |
 | 5 | INVALID_EVENT_ID | Signal/wait on unregistered event |
-| 6 | TASK_AFTER_START | Attempt to create task after os_start() |
+| 6 | TASK_AFTER_START | Attempt to create a task after os_start() (or task-ID exhaustion) |
 | 7 | TASK_STUCK | Soft watchdog timeout |
-| 8 | SAFE_TOO_LONG | Critical section exceeded max duration |
-| 9 | HARDFAULT | CPU fault (HardFault/MemManage/BusFault/UsageFault) |
-| 10 | PRIORITY_CONFLICT | Scheduling priority issue |
-| 11 | DEADLINE_MISS | Task missed its deadline |
-| 12 | TCB_CORRUPTED | TCB magic number mismatch |
-| 15 | RAM_TEST_FAIL | RAM integrity test failed |
+| 8 | SAFE_TOO_LONG | Critical section exceeded `OS_SAFETY_MAX_CRITICAL_US` |
+| 9 | HARDFAULT | CPU fault (HardFault/MemManage/BusFault/UsageFault); also CRC ROM mismatch |
+| 10 | PRIORITY_CONFLICT | Reserved for application use (not reported by the kernel) |
+| 11 | DEADLINE_MISS | Task missed its deadline (`OS_MONITORING_EN`) |
+| 12 | TCB_CORRUPTED | TCB magic number mismatch (`OS_MONITORING_EN`) |
+| 13 | SENSOR_TIMEOUT | Reserved for application use (not reported by the kernel) |
+| 14 | SAFE_MUTEX_LOCK | Mutex block attempted from ISR context |
+| 15 | RAM_TEST_FAIL | RAM integrity test failed (`OS_SAFETY_RAM_TEST_EN`) |
+| 16 | MPU_CONFIG_ERROR | MPU region misaligned or invalid (`OS_SAFETY_MPU_EN`) |
 
 ---
 
@@ -575,30 +594,32 @@ When enabled:
 
 ```bash
 # Minimal build (Cortex-M3, no FPU)
--mcpu=cortex-m3 -mthumb -DSTM32F1xx
+-mcpu=cortex-m3 -mthumb -DSTM32F103xB
 
 # Full build (Cortex-M4F with FPU + MPU)
--mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32F4xx
+-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32F407xx
 
 # Safety-critical build (IEC 62304 Class C)
--DOS_TARGET_MEDICAL=3 -DOS_SAFETY_MPU=1 -DOS_SAFETY_CRC_CHECK=1
+-DOS_TARGET_MEDICAL=3 -DOS_SAFETY_MPU=1 -DOS_SAFETY_CRC=1 \
+  -DOS_SAFETY_RAM_TEST=1 -DOS_SAFETY_HW_WATCHDOG=1 -DOS_SAFETY_SOFT_WATCHDOG=1
 
 # Minimal RAM build
--DOS_KERNEL_MAX_PRIORITIES=8 -DOS_KERNEL_STACK_SIZE=96 -DOS_MONITOR_ENABLED=0
+-DOS_KERNEL_MAX_PRIORITIES=8 -DOS_MONITOR=0 -DOS_IPC_TOOLS=0
 ```
 
 ## Appendix B: RAM Usage
 
 | Component | Default Config | Minimal Config |
 |-----------|---------------|----------------|
-| Per-task TCB | 64 bytes | 64 bytes |
-| Per-task stack | 512 bytes | 128 bytes |
-| Priority bitmap (32) | 128 bytes | 128 bytes |
-| Priority bitmap (256) | 1024 bytes | — |
-| Idle task | 256 bytes | 256 bytes |
-| Fault stack | 192 bytes | 192 bytes |
-| Error log (32) | 128 bytes | — |
-| RAM test state | 4 bytes | — |
+| Per-task TCB | 64 bytes (+16 with `OS_MONITORING_EN`) | 64 bytes |
+| Per-task stack | 256 bytes (effective floor; default request 128 B) | 256 bytes |
+| Priority queues (32 slots) | 128 bytes | 128 bytes |
+| Priority queues (256 slots) | 1024 bytes | — |
+| Idle task stack | 512 bytes (`OS_IDLE_STACK_WORDS=128`) | 512 bytes |
+| Fault stack | 256 bytes | 256 bytes |
+| Error log (16 entries) | ~128 bytes | — (`OS_MONITORING_EN=0`) |
+| Monitor fields per task | 16 bytes | — (`OS_MONITORING_EN=0`) |
+| RAM test state | ~12 bytes | — (`OS_SAFETY_RAM_TEST_EN=0`) |
 
 ---
 

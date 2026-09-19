@@ -74,11 +74,10 @@ int main(void) {
 
 ### Late ISR Installation
 
-If you must install an ISR after `os_start()`, call:
-```c
-os_kernel_relocate_vectors();  // Re-copies VTOR to RAM (TODO: add API)
-```
-Or install ISRs before `os_start()`.
+If you must install an ISR after `os_start()`, either write it into the RAM
+vector table directly (the table that `VTOR` now points to) or install all
+ISRs before `os_start()`. There is no kernel API for re-copying the vector
+table; the copy happens exactly once inside `os_start()`.
 
 ---
 
@@ -115,17 +114,19 @@ the scheduler — this is correct behavior.
 
 ```c
 // In ZenOS_Config.hpp:
-#define OS_SAFETY_HW_WATCHDOG  1
+#define OS_SAFETY_HW_WATCHDOG_EN  1
 
 // In CubeMX: disable IWDG auto-feed in HAL
-// (MX_IWDG_Init() still configures prescaler/reload)
+// (MX_IWDG_Init() still configures prescaler/reload — and initialise the
+//  handle for real; an uninitialised IWDG handle makes any HAL_IWDG_Refresh
+//  call dereference a null instance and fault)
 ```
 
 ### Option B: HAL Owns Watchdog
 
 ```c
 // In ZenOS_Config.hpp:
-#define OS_SAFETY_HW_WATCHDOG  0
+#define OS_SAFETY_HW_WATCHDOG_EN  0
 
 // Application code: feed in main loop or dedicated task
 HAL_IWDG_Refresh(&hiwdg);
@@ -148,7 +149,7 @@ part of the current source tree. Every UART belongs to the application.
 - Configure and use USARTs through CubeMX/HAL exactly as you would without
   ZenOS. No pins are reserved by the kernel.
 - Use `os_log_error()` / `os_get_error_log_entry()` for structured kernel
-  error reporting (RAM ring buffer, see `OS_MONITOR_ERROR_LOG`); the
+  error reporting (RAM ring buffer, see `OS_MONITORING_EN`); the
   application is responsible for forwarding those entries to a console if
   it wants textual output.
 - The sample application (`Core/Src/main.cpp`) implements its own small

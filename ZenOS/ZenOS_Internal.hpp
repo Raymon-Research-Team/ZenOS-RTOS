@@ -51,7 +51,7 @@ extern TCB* volatile     _os_pq_head_ext[OS_PRIORITY_EXTRA_COUNT];
 
 extern volatile uint32_t _os_syst_rvr_normal;
 
-#if (OS_IPC_TOOLS)
+#if (OS_IPC_TOOLS_EN)
 extern ECB* volatile     _os_event_list;
 extern int16_t           os_event_next_id;
 /* ═══════════════ IPC Functions (internal) ═══════════════ */
@@ -110,7 +110,7 @@ inline void _os_time_fold(void) {
 inline void _os_time_fold(void) { /* no DWT — tick-derived domain */ }
 #endif
 
-#if OS_KERNEL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE_EN
 bool _os_tickless_process(uint32_t skip);
 #endif
 
@@ -150,14 +150,14 @@ struct ZenOS_FaultContext {
 
 extern volatile ZenOS_FaultContext os_last_fault;
 
-#if OS_MONITOR_TCB_INTEGRITY
+#if OS_MONITORING_EN
 inline bool _os_tcb_check_magic(TCB* t) {
     return t && t->magic == OS_TCB_MAGIC;
 }
 #endif
 
 /* ═══════════════ Monitor Functions (internal) ═══════════════ */
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
 uint32_t _os_stack_watermark_scan(const TCB* task);
 #endif
 

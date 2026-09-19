@@ -17,8 +17,11 @@ Add a new `#elif defined(STM32XXXX)` block in the STM32 Family Detection section
     #define OS_FAMILY_NAME      "STM32XXXX"
     #define OS_VECTOR_COUNT     NNN      /* From RM, number of IRQs + 16 */
     #define OS_SMP_CORES        1        /* 1 for single-core */
-    #define OS_HAS_FPU_HW       0        /* 1 if Cortex-M4F/M7 */
-    #define OS_HAS_MPU_HW       1        /* 0 for M0/M0+, 1 for M3+ */
+    /* NOTE: do NOT define OS_HAS_FPU_HW / OS_HAS_MPU_HW here.
+       Capability flags are derived automatically from the CMSIS device
+       header (__FPU_PRESENT / __MPU_PRESENT) and the compiler's
+       __ARM_ARCH_* macros — a family name alone cannot prove that the
+       silicon vendor instantiated an optional component. */
     #define OS_FLASH_SIZE       0xNNNNN  /* Typical flash size in bytes */
     #define OS_RAM_SIZE         0xNNNN   /* Typical SRAM size in bytes */
     #define OS_NVIC_PRIO_BITS   N        /* 2, 3, or 4 */
@@ -91,15 +94,15 @@ Create `STM32xxxx_FLASH.ld` with:
 
 | Feature | Config Macro | Notes |
 |---------|-------------|-------|
-| MPU protection | `OS_SAFETY_MPU=1` | Requires PMSAv7/PMSAv8 |
-| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG=1` | Configure IWDG timeout in CubeMX/init |
-| CRC integrity | `OS_SAFETY_CRC_CHECK=1` | Must match flash contents |
-| RAM test | `OS_SAFETY_RAM_TEST=1` | Call `os_ram_test_step()` from idle |
-| Tickless idle | `OS_TOOL_TICKLESS_IDLE=1` | Power savings via WFI; see the idle-stack note below |
+| MPU protection | `OS_SAFETY_MPU_EN=1` | Requires PMSAv7/PMSAv8; rejected at compile time when `__MPU_PRESENT=0` |
+| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN=1` | Configure IWDG timeout in CubeMX/init |
+| CRC integrity | `OS_SAFETY_CRC_EN=1` | Must match flash contents |
+| RAM test | `OS_SAFETY_RAM_TEST_EN=1` | Call `os_ram_test_step()` from idle |
+| Tickless idle | `OS_KERNEL_TICKLESS_IDLE_EN=1` | Power savings via WFI; see the idle-stack note below |
 
 ## Idle stack sizing
 
-`OS_IDLE_STACK_WORDS` (default 256 words = 1 KB) sizes the idle task stack.
+`OS_IDLE_STACK_WORDS` (default 128 words = 512 bytes) sizes the idle task stack.
 The idle loop is not a bare `wfi` — it runs the hardware-watchdog check, the
 CRC step and the tickless-idle path, and any interrupt taken while idle pushes
 a full exception frame onto the same stack. Measure the idle peak with

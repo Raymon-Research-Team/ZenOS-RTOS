@@ -43,7 +43,7 @@ TCB*              volatile current_task = nullptr;
 uint32_t          _os_idle_stack[OS_IDLE_STACK_WORDS] OS_ALIGNED(8);
 volatile uint32_t tick_count = 0;
 
-#if OS_IPC_TOOLS
+#if OS_IPC_TOOLS_EN
 ECB* volatile _os_event_list = nullptr;
 int16_t os_event_next_id = 0;
 #endif
@@ -204,14 +204,14 @@ extern "C" void os_tick(void) {
     if (current_task == &_os_idle_tcb) _os_idle_ticks++;
     else if (current_task && current_task->state == TaskState::RUNNING) {
         current_task->cpu_ticks++;
-#if OS_MONITOR_ENABLED
+#if OS_MONITORING_EN
         /* Stack watermark: track lowest SP seen */
         if ((uint32_t)current_task->stack_top < (uint32_t)current_task->peak_sp)
             current_task->peak_sp = current_task->stack_top;
 #endif
     }
 
-#if OS_SAFETY_SOFT_WATCHDOG
+#if OS_SAFETY_SOFT_WATCHDOG_EN
     /* Check every 1ms (OS_TICKS_PER_MS ticks) to reduce overhead */
     if ((tick_count % OS_TICKS_PER_MS) == 0 &&
         current_task && current_task != &_os_idle_tcb &&
@@ -234,7 +234,7 @@ extern "C" void os_tick(void) {
     }
 #endif
 
-#if OS_MONITOR_DEADLINE
+#if OS_MONITORING_EN
     /* Deadline monitoring — only flag the miss; PendSV handles action */
     if (current_task && current_task != &_os_idle_tcb &&
         current_task->state == TaskState::RUNNING &&
@@ -285,7 +285,7 @@ extern "C" void os_tick(void) {
 
 
 /* ═══════════════ Tickless Idle ═════════════════════════════════ */
-#if OS_KERNEL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE_EN
 static bool os_idle_tickless(void) {
     uint32_t saved_rvr = _os_syst_rvr_normal;
     if (saved_rvr == 0) return false;
@@ -395,13 +395,13 @@ extern bool _os_tickless_process(uint32_t skip);
 /* ═══════════════ Idle ═══════════════ */
 static void os_idle_task(void) {
     while (1) {
-#if OS_SAFETY_HW_WATCHDOG_CHECK
+#if OS_SAFETY_HW_WATCHDOG_EN
         os_hw_watchdog_check();  /* feed if healthy */
 #endif
-#if OS_SAFETY_CRC_CHECK
+#if OS_SAFETY_CRC_EN
         os_crc_check_step();    /* check ROM in background */
 #endif
-#if OS_KERNEL_TICKLESS_IDLE
+#if OS_KERNEL_TICKLESS_IDLE_EN
         os_idle_tickless();
 #endif
         __asm volatile("wfi");
@@ -414,8 +414,8 @@ extern "C" void os_init(void) {
 
     /* os_event_next_id only exists when the event feature is compiled in;
        ZenOS.cpp is built for every configuration, so the reset must be
-       guarded or OS_IPC_TOOLS=0 fails to compile. */
-#if OS_IPC_TOOLS
+       guarded or OS_IPC_TOOLS_EN=0 fails to compile. */
+#if OS_IPC_TOOLS_EN
     os_event_next_id = 0;
 #endif
     _os_task_list = nullptr; _os_task_count = 0; current_task = nullptr;
@@ -446,10 +446,10 @@ extern "C" void os_init(void) {
        counter resets.  MUST run after the DWT block above (which zeroes
        CYCCNT). */
     _os_time_reset();
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
     os_mpu_init();
 #endif
-#if OS_SAFETY_CRC_CHECK
+#if OS_SAFETY_CRC_EN
     /* Capture the expected code-image CRC at boot so os_crc_check_step()
        (called from the idle task) has a valid reference.  Without this
        call the checker compared against a zero baseline and reported a
@@ -712,7 +712,7 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
 
         "restore_ctx:\n"
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
         "ldr   r6, [r9]\n"
         "cmp   r5, r6\n"
         "beq   8f\n"
@@ -867,7 +867,7 @@ extern "C" OS_NAKED OS_USED void OS_PendSV_Handler(void) {
         "ldr r0, [r5, #" OS_STR(OS_OFF_STACK_TOP) "]\n"
 
         "restore_ctx:\n"
-#if OS_SAFETY_MPU
+#if OS_SAFETY_MPU_EN
         "ldr   r6, [r9]\n"
         "cmp   r5, r6\n"
         "beq   8f\n"
