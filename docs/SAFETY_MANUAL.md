@@ -89,7 +89,7 @@ The test is intended for background execution from the idle task. The integrator
 
 ### 4.9 Error logging
 
-`OS_MONITORING_EN` enables a fixed-size RAM circular log. The capacity is controlled by `OS_MONITORING_LOG_SIZE` (default 16 entries). Every kernel error reported through `_os_report_error()` is logged automatically with timestamp, error code, task ID and severity (critical codes map to `CRITICAL`, others to `WARNING`).
+`OS_MONITORING_EN` enables a fixed-size RAM circular log. The capacity is controlled by `OS_MONITORING_ERROR_LOG_SIZE` (default 16 entries). Every kernel error reported through `_os_report_error()` is logged automatically with timestamp, error code, task ID and severity (critical codes map to `CRITICAL`, others to `WARNING`).
 
 The log is volatile and does not survive a reset unless the application persists relevant information elsewhere.
 
@@ -103,10 +103,10 @@ The current source configuration uses the following defaults:
 
 | Mechanism | Default |
 |---|---:|
-| `OS_MONITORING_EN` | 1 |
+| `OS_MONITORING_EN` | 0 |
 | `OS_MONITORING_DEADLINE_ACTION` | 1 |
-| `OS_MONITORING_LOG_SIZE` | 16 |
-| `OS_IPC_TOOLS_EN` | 0 |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 |
+| `OS_IPC_TOOLS_EN` | 1 |
 | `OS_SAFETY_RAM_TEST_EN` | 0 |
 | `OS_SAFETY_MPU_EN` | 0 |
 | `OS_SAFETY_HW_WATCHDOG_EN` | 0 |
