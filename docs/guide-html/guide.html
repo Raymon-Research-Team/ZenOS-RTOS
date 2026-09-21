@@ -921,14 +921,14 @@ CPU Usage: 45%
         <h2 id="iec">3. IEC 62304/61508 <span data-lang="en">Target Profiles</span><span data-lang="fa">پروفایل‌های هدف</span></h2>
         <div class="warning"><span data-lang="en"><strong>Certification disclaimer:</strong> These compiler profiles enable ZenOS safety mechanisms and compile-time checks. They do not make ZenOS certified or make an application compliant by themselves. Certification and system-level compliance remain the integrator's responsibility.</span><span data-lang="fa"><strong>توضیح مهم درباره گواهی:</strong> این پروفایل‌های کامپایل، مکانیسم‌های ایمنی ZenOS و بررسی‌های زمان کامپایل را فعال می‌کنند. این تنظیمات به‌تنهایی به معنی گواهی‌شدن ZenOS یا منطبق‌شدن محصول با یک استاندارد نیستند؛ مسئولیت انطباق و فرایند گواهی در سطح محصول بر عهده یکپارچه‌ساز است.</span></div>
         <div class="tip">
-            <span data-lang="en">Build with <code>-DOS_TARGET_MEDICAL=3</code> for IEC 62304 Class C or <code>-DOS_TARGET_INDUSTRIAL=3</code> for IEC 61508 SIL 3. The build will fail if any required feature is disabled.</span>
-            <span data-lang="fa">با <code>-DOS_TARGET_MEDICAL=3</code> برای کلاس C یا <code>-DOS_TARGET_INDUSTRIAL=3</code> برای SIL 3 بسازید. اگر هر ویژگی الزامی غیرفعال باشد، build شکست می‌خورد.</span>
+            <span data-lang="en">Build with <code>-DOS_TARGET_MEDICAL_CLASS=3</code> for IEC 62304 Class C or <code>-DOS_TARGET_INDUSTRIAL_SIL=3</code> for IEC 61508 SIL 3. The build will fail if any required feature is disabled.</span>
+            <span data-lang="fa">با <code>-DOS_TARGET_MEDICAL_CLASS=3</code> برای کلاس C یا <code>-DOS_TARGET_INDUSTRIAL_SIL=3</code> برای SIL 3 بسازید. اگر هر ویژگی الزامی غیرفعال باشد، build شکست می‌خورد.</span>
         </div>
 
         <h3><span data-lang="en">IEC 62304 Medical Classes</span><span data-lang="fa">کلاس‌های پزشکی IEC 62304</span></h3>
         <div class="note">
-            <span data-lang="en"><strong>Note:</strong> Use <code>-DOS_TARGET_MEDICAL=X</code> compiler flag where X is 1 (Class A), 2 (Class B), or 3 (Class C). The build will fail with #error if required features are disabled.</span>
-            <span data-lang="fa"><strong>توجه:</strong> از پرچم کامپایلر <code>-DOS_TARGET_MEDICAL=X</code> استفاده کنید که X برابر ۱ (کلاس A)، ۲ (کلاس B) یا ۳ (کلاس C) است. اگر ویژگی‌های الزامی غیرفعال باشند، build با #error شکست می‌خورد.</span>
+            <span data-lang="en"><strong>Note:</strong> Use <code>-DOS_TARGET_MEDICAL_CLASS=X</code> compiler flag where X is 1 (Class A), 2 (Class B), or 3 (Class C). The build will fail with #error if required features are disabled.</span>
+            <span data-lang="fa"><strong>توجه:</strong> از پرچم کامپایلر <code>-DOS_TARGET_MEDICAL_CLASS=X</code> استفاده کنید که X برابر ۱ (کلاس A)، ۲ (کلاس B) یا ۳ (کلاس C) است. اگر ویژگی‌های الزامی غیرفعال باشند، build با #error شکست می‌خورد.</span>
         </div>
         <table>
             <tr><th>Class</th><th><span data-lang="en">Risk Level</span><span data-lang="fa">سطح ریسک</span></th><th><span data-lang="en">Required Features</span><span data-lang="fa">ویژگی‌های الزامی</span></th></tr>
@@ -939,8 +939,8 @@ CPU Usage: 45%
 
         <h3>IEC 61508 <span data-lang="en">SIL Levels</span><span data-lang="fa">سطوح SIL</span></h3>
         <div class="note">
-            <span data-lang="en"><strong>Note:</strong> Use <code>-DOS_TARGET_INDUSTRIAL=X</code> compiler flag where X is 1 (SIL 1), 2 (SIL 2), 3 (SIL 3), or 4 (SIL 4).</span>
-            <span data-lang="fa"><strong>توجه:</strong> از پرچم کامپایلر <code>-DOS_TARGET_INDUSTRIAL=X</code> استفاده کنید که X برابر ۱ (SIL 1)، ۲ (SIL 2)، ۳ (SIL 3) یا ۴ (SIL 4) است.</span>
+            <span data-lang="en"><strong>Note:</strong> Use <code>-DOS_TARGET_INDUSTRIAL_SIL=X</code> compiler flag where X is 1 (SIL 1), 2 (SIL 2), 3 (SIL 3), or 4 (SIL 4).</span>
+            <span data-lang="fa"><strong>توجه:</strong> از پرچم کامپایلر <code>-DOS_TARGET_INDUSTRIAL_SIL=X</code> استفاده کنید که X برابر ۱ (SIL 1)، ۲ (SIL 2)، ۳ (SIL 3) یا ۴ (SIL 4) است.</span>
         </div>
         <table>
             <tr><th>SIL</th><th><span data-lang="en">Risk Level</span><span data-lang="fa">سطح ریسک</span></th><th><span data-lang="en">Required Features</span><span data-lang="fa">ویژگی‌های الزامی</span></th></tr>
@@ -1113,7 +1113,7 @@ SRAM (data + stacks):
 ├── Data segment (initialized globals)
 ├── Task stacks (per-task, static)
 ├── Task stacks (per-task, static, ≥ 256 bytes each)
-├── Error log (OS_MONITORING_LOG_SIZE * ~8 bytes, when OS_MONITORING_EN is on)
+├── Error log (OS_MONITORING_ERROR_LOG_SIZE * ~8 bytes, when OS_MONITORING_EN is on)
 ├── Idle task stack (512 bytes — OS_IDLE_STACK_WORDS = 128)
 └── Fault task stack (256 bytes — OS_FAULT_STACK_WORDS = 64)</div>
     </div>
@@ -1278,8 +1278,8 @@ void task_shutdown_handler(void) {
             <tr><th><span data-lang="en">Question</span><span data-lang="fa">سؤال</span></th><th><span data-lang="en">If YES</span><span data-lang="fa">اگر بله</span></th><th><span data-lang="en">What to Enable</span><span data-lang="fa">چه چیزی فعال شود</span></th></tr>
             <tr><td><span data-lang="en">Is this a hobby/learning project?</span><span data-lang="fa">آیا این پروژه تفریحی/آموزشی است؟</span></td><td><span data-lang="en">Keep defaults</span><span data-lang="fa">پیش‌فرض‌ها را نگه دارید</span></td><td><span data-lang="en">Everything (already enabled)</span><span data-lang="fa">همه چیز (از قبل فعال)</span></td></tr>
             <tr><td><span data-lang="en">Is memory very limited (&lt;20KB RAM)?</span><span data-lang="fa">آیا حافظه بسیار محدود است؟</span></td><td><span data-lang="en">Disable unused features</span><span data-lang="fa">ویژگی‌های استفاده نشده را غیرفعال کنید</span></td><td><span data-lang="en">See "Minimal Config"</span><span data-lang="fa">به "حداقل پیکربندی" مراجعه کنید</span></td></tr>
-            <tr><td><span data-lang="en">Is this a medical device?</span><span data-lang="fa">آیا این یک دستگاه پزشکی است؟</span></td><td><span data-lang="en">Enable IEC 62304</span><span data-lang="fa">IEC 62304 را فعال کنید</span></td><td><code>-DOS_TARGET_MEDICAL=2</code> or <code>-DOS_TARGET_MEDICAL=3</code></td></tr>
-            <tr><td><span data-lang="en">Is this an industrial system?</span><span data-lang="fa">آیا این یک سیستم صنعتی است؟</span></td><td><span data-lang="en">Enable IEC 61508</span><span data-lang="fa">IEC 61508 را فعال کنید</span></td><td><code>-DOS_TARGET_INDUSTRIAL=2</code> or <code>-DOS_TARGET_INDUSTRIAL=3</code></td></tr>
+            <tr><td><span data-lang="en">Is this a medical device?</span><span data-lang="fa">آیا این یک دستگاه پزشکی است؟</span></td><td><span data-lang="en">Enable IEC 62304</span><span data-lang="fa">IEC 62304 را فعال کنید</span></td><td><code>-DOS_TARGET_MEDICAL_CLASS=2</code> or <code>-DOS_TARGET_MEDICAL_CLASS=3</code></td></tr>
+            <tr><td><span data-lang="en">Is this an industrial system?</span><span data-lang="fa">آیا این یک سیستم صنعتی است؟</span></td><td><span data-lang="en">Enable IEC 61508</span><span data-lang="fa">IEC 61508 را فعال کنید</span></td><td><code>-DOS_TARGET_INDUSTRIAL_SIL=2</code> or <code>-DOS_TARGET_INDUSTRIAL_SIL=3</code></td></tr>
             <tr><td><span data-lang="en">Do you need hardware watchdog?</span><span data-lang="fa">آیا به تایمر سخت‌افزاری نیاز دارید؟</span></td><td><span data-lang="en">Enable IWDG in CubeMX</span><span data-lang="fa">IWDG را در CubeMX فعال کنید</span></td><td><code>OS_SAFETY_HW_WATCHDOG_EN = 1</code></td></tr>
         </table>
 
@@ -1295,9 +1295,9 @@ void task_shutdown_handler(void) {
 // Single IPC switch — 0 removes all IPC classes (EVENT/MUTEX/QUEUE/SEMAPHORE):
 #define OS_IPC_TOOLS_EN               1         // Keep 1 if tasks communicate
 
-#define OS_MONITORING_EN                1         // Master switch: deadline + TCB integrity + error log + CPU/stack stats
+#define OS_MONITORING_EN                0         // Master switch: deadline + TCB integrity + error log + CPU/stack stats
 #define OS_MONITORING_DEADLINE_ACTION         1         // Deadline-miss reaction: 0=log, 1=reset task, 2=disable
-#define OS_MONITORING_LOG_SIZE       16        // Error-log ring buffer capacity (entries)
+#define OS_MONITORING_ERROR_LOG_SIZE       16        // Error-log ring buffer capacity (entries)
 
 #define OS_SAFETY_RAM_TEST_EN         0         // Disable to save CPU time
 #define OS_SAFETY_MPU_EN              0         // Disable if no memory protection needed
@@ -1314,7 +1314,7 @@ void task_shutdown_handler(void) {
         <h3>2.3 <span data-lang="en">Medical Device Configuration (IEC 62304 Class B)</span><span data-lang="fa">پیکربندی دستگاه پزشکی (کلاس B)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Medical Class B
 // Keep ALL defaults (optional mechanisms are not all enabled)
-// Then add to compiler flags: -DOS_TARGET_MEDICAL=2
+// Then add to compiler flags: -DOS_TARGET_MEDICAL_CLASS=2
 
 // This enables compile-time enforcement:
 // - OS_MONITORING_EN must be 1
@@ -1324,7 +1324,7 @@ void task_shutdown_handler(void) {
         <h3>2.4 <span data-lang="en">Medical Device Configuration (IEC 62304 Class C)</span><span data-lang="fa">پیکربندی دستگاه پزشکی (کلاس C)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Medical Class C (life-critical)
 // Keep ALL defaults (optional mechanisms are not all enabled)
-// Then add to compiler flags: -DOS_TARGET_MEDICAL=3
+// Then add to compiler flags: -DOS_TARGET_MEDICAL_CLASS=3
 
 // This enables compile-time enforcement for ALL features:
 // - OS_MONITORING_EN must be 1
@@ -1337,7 +1337,7 @@ void task_shutdown_handler(void) {
         <h3>2.5 <span data-lang="en">Industrial Configuration (IEC 61508 SIL 2)</span><span data-lang="fa">پیکربندی صنعتی (SIL 2)</span></h3>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Industrial SIL 2
 // Keep ALL defaults (optional mechanisms are not all enabled)
-// Then add to compiler flags: -DOS_TARGET_INDUSTRIAL=2
+// Then add to compiler flags: -DOS_TARGET_INDUSTRIAL_SIL=2
 
 // Required features:
 // - OS_SAFETY_SOFT_WATCHDOG_EN = 1
@@ -1373,11 +1373,11 @@ void task_shutdown_handler(void) {
             <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>100</td><td><span data-lang="en">Tick resolution in microseconds</span><span data-lang="fa">رزولوشن تیک (میکروثانیه)</span></td></tr>
             <tr><td><code>OS_KERNEL_DEFAULT_STACK_SIZE</code></td><td>128</td><td><span data-lang="en">Default stack request in bytes (256-byte effective floor)</span><span data-lang="fa">درخواست پیش‌فرض پشته (بایت) با کف مؤثر ۲۵۶ بایتی</span></td></tr>
             <tr><td><code>OS_KERNEL_MAX_PRIORITIES</code></td><td>16</td><td><span data-lang="en">Scheduler priority slots (default: 16, range: 2 to 256; priority 0 reserved for idle; higher numeric = higher priority)</span><span data-lang="fa">اسلات‌های اولویت زمان‌بند (پیش‌فرض: ۱۶، محدوده: ۲ تا ۲۵۶؛ اولویت ۰ برای idle رزرو شده؛ عدد بزرگ‌تر = اولویت بالاتر)</span></td></tr>
-            <tr><td><code>OS_IPC_TOOLS_EN</code></td><td>0</td><td><span data-lang="en">Single master switch for all IPC primitives: events, mutex with IPC priority ceiling, bounded FIFO queues, counting semaphores — enabled together (1) or removed together (0)</span><span data-lang="fa">کلید اصلی واحد برای همه اصول IPC: event، mutex با سقف اولویت، صف FIFO محدود، سمافور شمارشی — همه با هم فعال (۱) یا همه حذف (۰)</span></td></tr>
+            <tr><td><code>OS_IPC_TOOLS_EN</code></td><td>1</td><td><span data-lang="en">Single master switch for all IPC primitives: events, mutex with IPC priority ceiling, bounded FIFO queues, counting semaphores — enabled together (1) or removed together (0)</span><span data-lang="fa">کلید اصلی واحد برای همه اصول IPC: event، mutex با سقف اولویت، صف FIFO محدود، سمافور شمارشی — همه با هم فعال (۱) یا همه حذف (۰)</span></td></tr>
             <tr><td><code>OS_KERNEL_TICKLESS_IDLE_EN</code></td><td>1</td><td><span data-lang="en">WFI-based tickless idle (skip ticks while all tasks are blocked)</span><span data-lang="fa">idle بدون تیک مبتنی بر WFI (رد شدن از تیک‌ها وقتی همه تسک‌ها بلاک‌اند)</span></td></tr>
-            <tr><td><code>OS_MONITORING_EN</code></td><td>1</td><td><span data-lang="en">Master switch: deadline monitoring, TCB integrity checks, error log and CPU/stack stats — enabled together</span><span data-lang="fa">کلید اصلی: پایش ددلاین، بررسی یکپارچگی TCB، ثبت خطا و آمار CPU/stack — همه با هم</span></td></tr>
+            <tr><td><code>OS_MONITORING_EN</code></td><td>0</td><td><span data-lang="en">Master switch: deadline monitoring, TCB integrity checks, error log and CPU/stack stats — enabled together</span><span data-lang="fa">کلید اصلی: پایش ددلاین، بررسی یکپارچگی TCB، ثبت خطا و آمار CPU/stack — همه با هم</span></td></tr>
             <tr><td><code>OS_MONITORING_DEADLINE_ACTION</code></td><td>1</td><td><span data-lang="en">Deadline-miss reaction: 0 = log only, 1 = reset task, 2 = disable task</span><span data-lang="fa">واکنش به از دست رفتن ددلاین: ۰ = فقط ثبت، ۱ = ریست تسک، ۲ = غیرفعال کردن تسک</span></td></tr>
-            <tr><td><code>OS_MONITORING_LOG_SIZE</code></td><td>16</td><td><span data-lang="en">Error log capacity (entries)</span><span data-lang="fa">ظرفیت ثبت خطا (تعداد ورودی)</span></td></tr>
+            <tr><td><code>OS_MONITORING_ERROR_LOG_SIZE</code></td><td>16</td><td><span data-lang="en">Error log capacity (entries)</span><span data-lang="fa">ظرفیت ثبت خطا (تعداد ورودی)</span></td></tr>
             <tr><td><code>OS_SAFETY_RAM_TEST_EN</code></td><td>0</td><td><span data-lang="en">Bounded SRAM integrity test (disabled by default)</span><span data-lang="fa">آزمون یکپارچگی SRAM محدود (پیش‌فرض غیرفعال)</span></td></tr>
             <tr><td><code>OS_SAFETY_MPU_EN</code></td><td>0</td><td><span data-lang="en">Hardware MPU per-task protection (disabled by default, Cortex-M3+ only)</span><span data-lang="fa">حفاظت MPU سخت‌افزاری (پیش‌فرض غیرفعال، فقط Cortex-M3+)</span></td></tr>
             <tr><td><code>OS_SAFETY_HW_WATCHDOG_EN</code></td><td>0</td><td><span data-lang="en">IWDG integration (disabled by default)</span><span data-lang="fa">ادغام IWDG (پیش‌فرض غیرفعال)</span></td></tr>
