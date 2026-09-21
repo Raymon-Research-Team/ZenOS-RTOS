@@ -220,7 +220,7 @@ int main(void) {
 | 🔍 canary پشته | همیشه فعال | کلمات canary + بررسی محدوده SP برای هر تسک (هر ۱۶ تیک) |
 | 🔐 یکپارچگی TCB | `OS_MONITORING_EN` | اعتبارسنجی عدد جادو برای تشخیص خرابی حافظه |
 | ⏱️ پایش ددلاین | `OS_MONITORING_EN` | تشخیص ددلاین؛ واکنش با `OS_MONITORING_DEADLINE_ACTION` |
-| 📋 ثبت خطا | `OS_MONITORING_EN` | بافر حلقه‌ای RAM با زمان، شناسه تسک و شدت (`OS_MONITORING_LOG_SIZE`) |
+| 📋 ثبت خطا | `OS_MONITORING_EN` | بافر حلقه‌ای RAM با زمان، شناسه تسک و شدت (`OS_MONITORING_ERROR_LOG_SIZE`) |
 | 📊 آمار CPU و پشته | `OS_MONITORING_EN` | بار CPU، واترمارک پشته هر تسک و گزارش پشته |
 | 🐕 watchdog سخت‌افزاری | `OS_SAFETY_HW_WATCHDOG_EN` | ادغام IWDG STM32 با تغذیه مشروط |
 | 💤 watchdog نرم‌افزاری | `OS_SAFETY_SOFT_WATCHDOG_EN` | تشخیص تسک‌های گیرکرده با `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` |
