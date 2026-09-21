@@ -99,8 +99,8 @@
  *   Priority 1 is the lowest usable (user) priority.
  *   Priority 0 is the idle task and never runs while any user task is ready.
  *
- * Default: 32 slots (priorities 1..31, where 31 is highest).
- * Maximum: 256 slots (priorities 1..255, where 255 is highest).
+ * Default: 16 slots (priorities 1..16, where 16 is highest).
+ * Maximum: 255 slots (priorities 1..255, where 255 is highest).
  */
 #ifndef OS_KERNEL_MAX_PRIORITIES
 #define OS_KERNEL_MAX_PRIORITIES 16 // Default=16
