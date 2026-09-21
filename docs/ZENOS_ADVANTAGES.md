@@ -24,7 +24,7 @@ ZenOS uses a ready bitmap and per-priority queues. The scheduler checks active p
 
 The configuration supports:
 
-- 32 priority slots by default
+- 16 priority slots by default
 - up to 256 slots
 - application priorities `1..255` at the maximum setting
 - priority `0` reserved for idle
