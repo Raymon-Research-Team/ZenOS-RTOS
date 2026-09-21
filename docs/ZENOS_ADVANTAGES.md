@@ -90,7 +90,7 @@ The source tree provides independently configurable mechanisms including:
 | Stack protection | always-active canary + SP checks (`_os_stack_check_all`) |
 | TCB integrity | `OS_MONITORING_EN` |
 | Deadline monitoring | `OS_MONITORING_EN` (+ `OS_MONITORING_DEADLINE_ACTION`) |
-| Error logging | `OS_MONITORING_EN` (`OS_MONITORING_LOG_SIZE`) |
+| Error logging | `OS_MONITORING_EN` (`OS_MONITORING_ERROR_LOG_SIZE`) |
 | CPU/stack statistics | `OS_MONITORING_EN` |
 | Software watchdog | `OS_SAFETY_SOFT_WATCHDOG_EN` |
 | Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN` |
