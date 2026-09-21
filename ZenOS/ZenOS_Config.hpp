@@ -50,7 +50,7 @@
  *          Industrial: IEC 61508 Part 3 Table 4 — SW response time
  *          must be demonstrably less than the process safety time. */
 #ifndef OS_KERNEL_TICK_PERIOD_US
-#define OS_KERNEL_TICK_PERIOD_US  1000UL // Default=100
+#define OS_KERNEL_TICK_PERIOD_US  100UL // Default=100
 #endif
 
 #if (OS_KERNEL_TICK_PERIOD_US < 100UL) || (OS_KERNEL_TICK_PERIOD_US > 1000UL)
@@ -61,6 +61,7 @@
 #error "OS_KERNEL_TICK_PERIOD_US must divide 1000 evenly"
 #endif
 //-----------------------------------------------------------------------------
+
 /* Compiler optimization level string for the banner.
    GCC's __OPTIMIZE__ macro is 1 for ALL levels >= O1 (O1, O2, O3, Og, Os),
    so it cannot distinguish between them.  Set this manually in your
@@ -196,7 +197,7 @@
  * ============================================================================ */
 
 #ifndef OS_MONITORING_EN
-#define OS_MONITORING_EN             1 // Default=0
+#define OS_MONITORING_EN             0 // Default=0
 #endif
 //-----------------------------------------------------------------------------
 /* Reaction to a detected deadline miss (sub-option of OS_MONITORING_EN):

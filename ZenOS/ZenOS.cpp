@@ -150,6 +150,18 @@ extern "C" void os_delay_ms(uint32_t ms) {
     if (os_safe_depth > 0 || _os_in_isr()) { _os_report_error(OSError::SAFE_DELAY_MS); return; }
     if (ms == 0) return;
 
+    /* BUG-004 fix: before os_start() there is no scheduler and PendSV still
+       points at the startup weak handler (infinite loop).  os_yield() from a
+       pre-start delay therefore hung the boot forever.  Busy-wait on the DWT
+       µs domain instead (it is initialised by os_init and needs no tick). */
+    if (!_os_started) {
+        while (ms--) {
+            uint32_t start = os_get_us();
+            while ((os_get_us() - start) < 1000UL) __asm volatile("nop");
+        }
+        return;
+    }
+
     uint32_t delay_ticks = _os_ms_to_ticks(ms);
     uint32_t cs = os_critical_enter();
     _os_block_current(TaskState::BLOCKED, nullptr, 0, delay_ticks);
@@ -188,7 +200,6 @@ extern "C" void os_yield(void) {
 
 /* ═══════════════ Tick Handler ═══════════════ */
 extern "C" void os_tick(void) {
-
     /* ═══════ C2 fix: one critical section for the whole tick path ═══════
        _os_tickless_process() and _os_stack_check_all() mutate global
        scheduler state (priority queues, bitmap, _os_blocked_count). They must
@@ -290,9 +301,23 @@ static bool os_idle_tickless(void) {
     uint32_t saved_rvr = _os_syst_rvr_normal;
     if (saved_rvr == 0) return false;
 
+    /* BUG-006 fix (root cause of the 1 ms + tickless "tick_count stays 0"
+       freeze): when a task is blocked, this function must NOT touch SysTick
+       at all.  The previous code disabled SysTick, zeroed CVR and re-armed it
+       on EVERY idle iteration.  The HAL time base (TIM1) fires at the same
+       1 ms rate and wakes WFI long before SysTick's reload elapses, so the
+       counter was restarted from zero every time and the SysTick exception
+       never fired — tick_count stayed 0 forever and blocked tasks were never
+       woken.  Sleeping with the untouched normal reload lets the hardware
+       deliver every tick, and os_tick() does the blocked-timeout bookkeeping
+       with exact per-tick granularity.  Freeze/extend only for pure idle
+       sleep (nothing blocked), where no timeout depends on the tick. */
+    if (_os_blocked_count > 0) return false;
+
     uint32_t ticks_per_os_tick = saved_rvr + 1;
     uint32_t sleep = 0;
     uint32_t hw_sleep = 0;
+    uint32_t wake_csr = 0;
 
     {
         uint32_t cs = os_critical_enter();
@@ -314,6 +339,10 @@ static bool os_idle_tickless(void) {
         }
 
         if (sleep <= 1) {
+            /* BUG-003 fix: sleep windows of 0/1 ticks cannot use the extended
+               reload — restore the NORMAL reload before returning so SysTick
+               keeps running at its configured rate (a previous freeze with a
+               huge RVR must never leak past this function). */
             OS_SYST_CVR = 0;
             OS_SYST_RVR = saved_rvr;
             OS_SYST_CSR = 0x07;
@@ -325,6 +354,7 @@ static bool os_idle_tickless(void) {
         if (hw64 > 0x00FFFFFFULL) {
             sleep = 0x00FFFFFFUL / ticks_per_os_tick;
             if (sleep <= 1) {
+                /* Same normal-reload restore as above */
                 OS_SYST_CVR = 0;
                 OS_SYST_RVR = saved_rvr;
                 OS_SYST_CSR = 0x07;
@@ -339,12 +369,39 @@ static bool os_idle_tickless(void) {
         OS_SYST_RVR = hw_sleep - 1;
         OS_SYST_CSR = 0x07;
 
-        /* DSB + WFI must be inside the critical section to prevent
-           a race where an ISR fires between cs exit and WFI,
-           causing us to miss the wakeup and sleep until SysTick. */
-        __asm volatile("dsb" ::: "memory");
-        __asm volatile("wfi");
-        __asm volatile("isb" ::: "memory");
+        /* Sleep loop: keep sleeping until SysTick expires.
+           Peripheral interrupts (e.g. HAL TIM1 timebase at 1 ms) can wake
+           the CPU from WFI before SysTick expires.  On Cortex-M, WFI returns
+           when *any* interrupt is pending — even if the interrupt priority is
+           lower than the current execution priority.  If we simply broke out
+           of WFI on every peripheral wake, the elapsed sub-tick cycles were
+           divided away by integer truncation (skip == 0 at 1 ms tick), and the
+           next call to os_idle_tickless() would DISABLE SysTick before it could
+           fire — creating an infinite loop where SysTick never expires and
+           tasks never wake.
+
+           Fix: on a peripheral wake (COUNTFLAG clear) we temporarily freeze
+           SysTick so CVR retains its countdown position, let the pending ISR
+           run, then resume SysTick and re-enter WFI.  Only break out when
+           SysTick actually expires (COUNTFLAG set). */
+        while (true) {
+            __asm volatile("dsb" ::: "memory");
+            __asm volatile("wfi");
+            __asm volatile("isb" ::: "memory");
+
+            wake_csr = OS_SYST_CSR;
+            if ((wake_csr & OS_SYST_CSR_COUNTFLAG_Msk) != 0) {
+                /* SysTick expired — normal wake path */
+                break;
+            }
+            /* Peripheral woke us before SysTick expired.
+               Freeze SysTick so CVR keeps its countdown position,
+               let the pending ISR run, then resume. */
+            OS_SYST_CSR = 0;
+            os_critical_exit(cs);
+            cs = os_critical_enter();
+            OS_SYST_CSR = 0x07;
+        }
 
         os_critical_exit(cs);
     }
@@ -354,28 +411,40 @@ static bool os_idle_tickless(void) {
         uint32_t cvr_val = OS_SYST_CVR;
         OS_SYST_CSR = 0;
 
-        /* Always derive the elapsed time from the hardware counter, not
-           COUNTFLAG. COUNTFLAG is sticky (stays set until CSR is read) and
-           can be stale when a higher-priority ISR preempts the SysTick ISR.
-           CVR reflects actual elapsed time regardless of ISR state. */
-        if (cvr_val < hw_sleep) {
-            uint32_t elapsed_hw = (hw_sleep - 1) - cvr_val;
-            uint32_t skip = elapsed_hw / ticks_per_os_tick;
-            if (skip > 0) {
-                /* C3 fix: apply the skipped time right now, inside the CS —
-                   forward tick_count and wake expired tasks. Deferring this
-                   to the next SysTick loses time whenever another IRQ (e.g.
-                   the HAL TIM1 time base) wakes us repeatedly before that
-                   SysTick fires, because tick_skip would be overwritten. */
-                _os_idle_ticks += skip;
-                if (_os_tickless_process(skip)) {
-                    /* A task expired while we slept — reschedule now */
-                    OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
-                }
-            }
+        /* BUG-001 fix: two exclusive wake cases.
+           1) COUNTFLAG was set at wake: SysTick expired during the sleep.
+              os_tick() has already counted that wake tick once the critical
+              section above exited, so only the remaining (sleep - 1) ticks
+              are credited here — never the full interval, or every wake tick
+              would be counted twice.
+           2) COUNTFLAG was clear: a peripheral interrupt woke us before
+              expiry, the counter has not reloaded, and CVR still reflects
+              the true elapsed hardware counts. Derive the elapsed ticks from
+              CVR as before. */
+        uint32_t skip = 0;
+        if ((wake_csr & OS_SYST_CSR_COUNTFLAG_Msk) != 0) {
+            skip = (sleep > 0) ? (sleep - 1) : 0;
         }
-        /* else: CVR >= hw_sleep means SysTick hasn't started counting
-           down yet (or counter just reloaded). No time elapsed. */
+        else if (cvr_val < hw_sleep) {
+            uint32_t elapsed_hw = (hw_sleep - 1) - cvr_val;
+            skip = elapsed_hw / ticks_per_os_tick;
+        }
+        if (skip > 0) {
+            /* C3 fix: apply the skipped time right now, inside the CS —
+               forward tick_count and wake expired tasks. Deferring this
+               to the next SysTick loses time whenever another IRQ (e.g.
+               the HAL TIM1 time base) wakes us repeatedly before that
+               SysTick fires, because tick_skip would be overwritten. */
+            _os_idle_ticks += skip;
+            /* Wake the scheduler so an expired task runs immediately
+               (PendSV re-evaluates the release gate; see _os_pq_next). */
+            OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
+        }
+        /* Known residual edge (documented, not yet observed): if a peripheral
+           IRQ wakes us and SysTick expires inside the narrow window between
+           the wake_csr sample and this CVR read, the handler re-runs before
+           this block and up to one extra tick of the sleep interval can be
+           lost. Window is a few CPU cycles vs. a >= 1 ms interval. */
 
         OS_SYST_CVR = 0;
         OS_SYST_RVR = saved_rvr;
@@ -385,6 +454,14 @@ static bool os_idle_tickless(void) {
 
     return true;
 }
+
+/* BUG-003 note: after the release-gate fix the system schedules correctly
+   again, but a resume helper that restored the normal SysTick reload from
+   the idle loop made the board hang in WFI (no UART at all): touching
+   SysTick from task context after the wake races with the already-pended
+   PendSV.  The freeze/unfreeze is therefore kept strictly inside
+   os_idle_tickless(), and the idle loop only guarantees memory ordering
+   (DSB) before its own WFI. */
 
 /* Forward declaration for tickless processing (in ZenOS_Scheduler.cpp) */
 extern bool _os_tickless_process(uint32_t skip);
@@ -404,6 +481,7 @@ static void os_idle_task(void) {
 #if OS_KERNEL_TICKLESS_IDLE_EN
         os_idle_tickless();
 #endif
+        __asm volatile("dsb");
         __asm volatile("wfi");
     }
 }
@@ -569,10 +647,20 @@ extern "C" void os_start(void) {
     __asm volatile("msr control, %0" :: "r"(0x02));
     __asm volatile("isb");
 
+    /* BUG-005 fix (root cause of the 1 ms + tickless "tasks never run" bug):
+       _os_started MUST be true before PendSV is pended and interrupts are
+       enabled.  The ICSR PendSVSET write takes effect the instant IRQs are
+       unmasked, and PendSV switches straight to the highest-priority ready
+       task — the boot thread never comes back (its context is dropped on
+       first_run).  With the flag set AFTER _os_hw_enable_irq(), that store
+       was dead code: _os_started stayed 0 forever, so os_delay_ms() (and
+       every other blocking call) took the not-started path and tasks never
+       blocked/yielded — with the 100 µs default tick the timing tests
+       masked it, but at 1 ms + tickless idle the scheduler starved. */
+    _os_started = true;
     OS_SYST_CSR = 0x07;
     OS_SCB_ICSR = OS_ICSR_PENDSVSET_Msk;
     _os_hw_enable_irq();
-    _os_started = true;
 
     while (1) __asm volatile("wfi");
 }

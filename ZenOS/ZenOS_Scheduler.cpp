@@ -143,6 +143,31 @@ void _os_pq_remove(TCB* task) {
  *
  * The os_rr_skip bitmap below was unused dead code and has been removed.
  */
+/* ── Release Gate (periodic scheduling) ────────────────────────────
+ * BUG-003 fix (tickless starvation at 1 ms tick):
+ * The release gate MUST test the task's ACTIVE priority, not its base
+ * priority.  With the IPC priority ceiling, a task holding a mutex runs at
+ * the boosted ceiling priority while base_priority stays low.  After its
+ * time slice it is parked in its LOW base-priority queue with
+ * next_run_time = tick_count + 1.  On the next tick it is then woken —
+ * _os_wake_task()/_os_wake_on_delay_expiry() — and re-queued at the HIGH
+ * active priority.  A gate that compared the low base priority against the
+ * tick never became true for a boosted task, so _os_pq_next() skipped the
+ * queue holding it and the task never ran again; with tickless idle the
+ * idle task then spun forever in WFI/tickless and the whole system froze.
+ * The bug only shows when OS_KERNEL_TICK_PERIOD_US = 1000, because with a
+ * 1 ms tick every gate window is exactly one tick and the boosted task's
+ * queue is evaluated while its gate is still closed at the base priority.
+ */
+static inline bool _os_release_gate_open(const TCB* t, uint32_t now) {
+    return (t->period_ticks == 0) || ((int32_t)(now - t->next_run_time) >= 0);
+}
+
+static inline bool _os_pq_has_eligible(uint8_t prio, uint32_t now) {
+    for (TCB* t = *_os_pq_head_for(prio); t; t = t->queue_next)
+        if (_os_release_gate_open(t, now)) return true;
+    return false;
+}
 /* Reset all scheduler-owned priority state. Kept here so os_init() can reset
    extension storage without exposing the static RR arrays as globals. */
 extern "C" void _os_priority_queues_init(void) {
@@ -185,9 +210,7 @@ extern "C" TCB* _os_pq_next(void) {
         TCB* prev = nullptr;
         TCB* selected = nullptr;
         for (TCB* t = head; t; t = t->queue_next) {
-            bool eligible = (t->period_ticks == 0) ||
-                            ((int32_t)(now - t->next_run_time) >= 0);
-            if (eligible) {
+            if (_os_release_gate_open(t, now)) {
                 selected = t;
                 break;
             }
@@ -219,13 +242,10 @@ extern "C" void _os_pq_rotate(void) {
             prio--;
             continue;
         }
-        for (TCB* t = *_os_pq_head_for(prio); t; t = t->queue_next) {
-            if ((int32_t)(now - t->next_run_time) >= 0) {
-                p = prio;
-                break;
-            }
+        if (_os_pq_has_eligible(prio, now)) {
+            p = prio;
+            break;
         }
-        if (p != 0xFF) break;
         prio--;
     }
     if (p == 0xFF) return;
