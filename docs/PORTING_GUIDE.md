@@ -102,7 +102,7 @@ Create `STM32xxxx_FLASH.ld` with:
 
 ## Idle stack sizing
 
-`OS_IDLE_STACK_WORDS` (default 128 words = 512 bytes) sizes the idle task stack.
+`OS_IDLE_STACK_WORDS` (default 128 words = 512 bytes) sizes the idle task stack. It must be a positive word count; the source defines no explicit upper bound, so the practical limit is target RAM/linker capacity.
 The idle loop is not a bare `wfi` — it runs the hardware-watchdog check, the
 CRC step and the tickless-idle path, and any interrupt taken while idle pushes
 a full exception frame onto the same stack. Measure the idle peak with
