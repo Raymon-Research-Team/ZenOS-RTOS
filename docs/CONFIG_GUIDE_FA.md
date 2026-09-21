@@ -72,7 +72,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 | پیش‌فرض | `0` |
 | کاربرد | کلید اصلی واحد برای همه اصول ارتباط بین‌تسکی |
 
-با `OS_IPC_TOOLS_EN=1` همه IPC با هم فعال می‌شوند: `OS_EVENT`، `OS_MUTEX` (با سقف اولویت فوری)، `OS_QUEUE`، `OS_SEMAPHORE` و گاردهای `OS_LOCK`/`OS_LOCK_T`. با `OS_IPC_TOOLS_EN=0` کلاس‌های IPC اصلاً کامپایل نمی‌شوند و برنامه نباید از آن‌ها استفاده کند. کلید جداگانه برای هرprimitive وجود ندارد.
+با `OS_IPC_TOOLS_EN=1` همه IPC با هم فعال می‌شوند: `OS_EVENT`، `OS_MUTEX` (با سقف اولویت فوری)، `OS_QUEUE`، `OS_SEMAPHORE` و گاردهای `OS_LOCK`/`OS_LOCK_T`. با `OS_IPC_TOOLS_EN=1` کلاس‌های IPC اصلاً کامپایل نمی‌شوند و برنامه نباید از آن‌ها استفاده کند. کلید جداگانه برای هرprimitive وجود ندارد.
 
 > توجه برای پروفایل‌های ایمنی: اجرای IEC 61508 در SIL 2+ الزام `OS_IPC_TOOLS_EN=1` را اعمال می‌کند (قطع‌سازی متقابل برای منابع مشترک).
 
@@ -80,20 +80,20 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 | گزینه | پیش‌فرض | کاربرد |
 |---|---:|---|
-| `OS_MONITORING_EN` | 1 | کلید اصلی: پایش deadline + بررسی یکپارچگی TCB + ثبت خطا در RAM + اندازه‌گیری CPU و stack، همه با هم |
+| `OS_MONITORING_EN` | 0 | کلید اصلی: پایش deadline + بررسی یکپارچگی TCB + ثبت خطا در RAM + اندازه‌گیری CPU و stack، همه با هم |
 | `OS_MONITORING_DEADLINE_ACTION` | 1 | واکنش به از دست رفتن deadline (زیرگروه `OS_MONITORING_EN`): 0 = فقط ثبت، 1 = ریست تسک، 2 = غیرفعال کردن تسک؛ محدوده مجاز 0..2 |
-| `OS_MONITORING_LOG_SIZE` | 16 | تعداد ورودی‌های log خطا (زیرگروه `OS_MONITORING_EN`)؛ حداقل ۱ |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | تعداد ورودی‌های log خطا (زیرگروه `OS_MONITORING_EN`)؛ حداقل ۱ |
 
-با `OS_MONITORING_EN=1` این‌ها کامپایل و اجرا می‌شوند (شرح کامل در بلوک کامنت `ZenOS_Config.hpp`):
+با `OS_MONITORING_EN=0` این‌ها کامپایل و اجرا می‌شوند (شرح کامل در بلوک کامنت `ZenOS_Config.hpp`):
 
 1. **پایش ددلاین** — `os_task_set_deadline()` ددلاین سخت هر تسک را مسلح می‌کند؛ `os_tick()` از دست رفتن را تشخیص، شمارش و به‌صورت `DEADLINE_MISS` گزارش می‌کند؛ واکنش با `OS_MONITORING_DEADLINE_ACTION` تنظیم می‌شود؛ `os_get_deadline_miss_count()` شمارش هر تسک را می‌دهد.
 2. **بررسی یکپارچگی TCB** — هر TCB عدد جادویی (`OS_TCB_MAGIC`) دارد که در ایجاد نوشته و پیش از اقدامات بازیابی watchdog بررسی می‌شود؛ TCB خراب با `TCB_CORRUPTED` گزارش و تسک به‌جای ریست، غیرفعال می‌شود.
-3. **ثبت خطا** — `OS_MONITORING_LOG_SIZE` ورودی با زمان، کد خطا، شناسه تسک و شدت. `_os_report_error()` هر خطای هسته را خودکار ثبت می‌کند. API پرس‌وجو: `os_log_error()`، `os_get_error_log_entry()`، `os_get_error_log_count()`، `os_get_error_log_total()`.
+3. **ثبت خطا** — `OS_MONITORING_ERROR_LOG_SIZE` ورودی با زمان، کد خطا، شناسه تسک و شدت. `_os_report_error()` هر خطای هسته را خودکار ثبت می‌کند. API پرس‌وجو: `os_log_error()`، `os_get_error_log_entry()`، `os_get_error_log_count()`، `os_get_error_log_total()`.
 4. **بار CPU و اندازه‌گیری پشته** — `os_get_cpu_usage()`، `os_get_cpu_usage_total()`، `os_get_task_cpu_usage()`، ردیابی واترمارک peak-SP هر تسک، `os_get_stack_watermark()`، `os_get_stack_watermark_percent()` و جدول `os_get_stack_report()`.
 
 با `OS_MONITORING_EN=0` همه موارد بالا حذف می‌شوند: TCB آن فیلدها را از دست می‌دهد، API ثبت خطا به stub بی‌اثر تبدیل می‌شود و توابع پایش کامپایل نمی‌شوند (فراخوانی‌های برنامه را با `#if OS_MONITORING_EN` گارد کنید).
 
-هزینه RAM در حالت فعال (Cortex-M3، تقریبی): حدود ۸ بایت برای هر ورودی log (`OS_MONITORING_LOG_SIZE` ورودی) + ۱۶ بایت برای هر تسک (فیلدهای deadline، magic و واترمارک).
+هزینه RAM در حالت فعال (Cortex-M3، تقریبی): حدود ۸ بایت برای هر ورودی log (`OS_MONITORING_ERROR_LOG_SIZE` ورودی) + ۱۶ بایت برای هر تسک (فیلدهای deadline، magic و واترمارک).
 
 ## ۴. مکانیسم‌های ایمنی
 
@@ -119,21 +119,21 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 ## ۵. پروفایل‌های هدف IEC
 
 ```text
--DOS_TARGET_MEDICAL=1   # Class A
--DOS_TARGET_MEDICAL=2   # Class B
--DOS_TARGET_MEDICAL=3   # Class C
+-DOS_TARGET_MEDICAL_CLASS=1   # Class A
+-DOS_TARGET_MEDICAL_CLASS=2   # Class B
+-DOS_TARGET_MEDICAL_CLASS=3   # Class C
 
--DOS_TARGET_INDUSTRIAL=1   # SIL 1
--DOS_TARGET_INDUSTRIAL=2   # SIL 2
--DOS_TARGET_INDUSTRIAL=3   # SIL 3
--DOS_TARGET_INDUSTRIAL=4   # SIL 4
+-DOS_TARGET_INDUSTRIAL_SIL=1   # SIL 1
+-DOS_TARGET_INDUSTRIAL_SIL=2   # SIL 2
+-DOS_TARGET_INDUSTRIAL_SIL=3   # SIL 3
+-DOS_TARGET_INDUSTRIAL_SIL=4   # SIL 4
 ```
 
 | پروفایل | الزامات اعمال‌شده در زمان کامپایل |
 |---|---|
-| کلاس B/C پزشکی (`OS_TARGET_MEDICAL_CLASS >= 2`) | `OS_MONITORING_EN=1`، `OS_SAFETY_SOFT_WATCHDOG_EN=1`، `OS_MONITORING_DEADLINE_ACTION >= 1` |
+| کلاس B/C پزشکی (`OS_TARGET_MEDICAL_CLASS >= 2`) | `OS_MONITORING_EN=0`، `OS_SAFETY_SOFT_WATCHDOG_EN=1`، `OS_MONITORING_DEADLINE_ACTION >= 1` |
 | کلاس C پزشکی (`OS_TARGET_MEDICAL_CLASS >= 3`) | علاوه بر آن `OS_SAFETY_HW_WATCHDOG_EN=1`، `OS_SAFETY_MPU_EN=1`، `OS_SAFETY_CRC_EN=1`، `OS_SAFETY_RAM_TEST_EN=1` |
-| SIL 1+ صنعتی (`OS_TARGET_INDUSTRIAL_SIL >= 1`) | `OS_SAFETY_SOFT_WATCHDOG_EN=1`، `OS_MONITORING_EN=1` |
+| SIL 1+ صنعتی (`OS_TARGET_INDUSTRIAL_SIL >= 1`) | `OS_SAFETY_SOFT_WATCHDOG_EN=1`، `OS_MONITORING_EN=0` |
 | SIL 2+ صنعتی (`OS_TARGET_INDUSTRIAL_SIL >= 2`) | علاوه بر آن `OS_IPC_TOOLS_EN=1`، `OS_SAFETY_HW_WATCHDOG_EN=1`، `OS_MONITORING_DEADLINE_ACTION >= 1` |
 | SIL 3+ صنعتی (`OS_TARGET_INDUSTRIAL_SIL >= 3`) | علاوه بر آن `OS_SAFETY_MPU_EN=1`، `OS_SAFETY_RAM_TEST_EN=1`، `OS_SAFETY_CRC_EN=1` |
 
@@ -149,7 +149,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 #define OS_MONITORING_EN                1
 #define OS_MONITORING_DEADLINE_ACTION         1
-#define OS_MONITORING_LOG_SIZE       16
+#define OS_MONITORING_ERROR_LOG_SIZE       16
 
 #define OS_SAFETY_RAM_TEST_EN        0
 #define OS_SAFETY_MPU_EN             0
@@ -169,7 +169,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 - `OS_KERNEL_TICK_PERIOD_US` (محدوده 100..1000 و قاعده تقسیم بدون باقیمانده)
 - `OS_KERNEL_MAX_PRIORITIES` (2..256)
 - `OS_MONITORING_DEADLINE_ACTION` (0..2)
-- `OS_MONITORING_LOG_SIZE` (>= 1)
+- `OS_MONITORING_ERROR_LOG_SIZE` (>= 1)
 - محدوده‌های `OS_TARGET_MEDICAL_CLASS` / `OS_TARGET_INDUSTRIAL_SIL`
 - همه الزامات پروفایل‌های هدف فهرست‌شده در بخش ۵
 
