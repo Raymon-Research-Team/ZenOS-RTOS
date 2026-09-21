@@ -23,7 +23,9 @@ Controls the kernel tick period. `100` µs means a 10 kHz kernel tick.
 | Property | Value |
 |---|---|
 | Default | `128` bytes |
-| Minimum | `64` bytes (`static_assert` in the creation template) |
+| Request minimum | `64` bytes (`static_assert`) |
+| Effective allocation floor | `256` bytes |
+| Upper limit | No explicit source-level maximum; constrained by `uint32_t`, linker/toolchain limits, and available target RAM |
 
 Default stack size used by task creation when no custom stack size is supplied. The creation template enforces an effective floor of `256` bytes (`StackBytesEff`): smaller requests still allocate a 256-byte buffer, because the kernel's stack initialization clamps stacks to at least 64 words (256 bytes). Actual stack sizing should be verified with the runtime stack report on the target build.
 
@@ -65,6 +67,7 @@ These figures describe scheduler priority storage, not the total RAM usage of an
 | Property | Value |
 |---|---|
 | Default | `1` (enabled) |
+| Allowed values | `0` or `1` |
 
 Tickless idle: when the idle task runs and tasks are blocked, the kernel programs SysTick for the next wakeup and advances `tick_count` by the skipped ticks on wake (`WFI`-based power saving). Disable for simpler, always-on tick timing.
 
@@ -84,17 +87,17 @@ Tickless idle: when the idle task runs and tasks are blocked, the kernel program
 | Default | `0` |
 | Purpose | Single master switch for all inter-task communication primitives |
 
-`OS_IPC_TOOLS_EN=1` enables **all** IPC together: `OS_EVENT`, `OS_MUTEX` (with immediate priority ceiling), `OS_QUEUE`, `OS_SEMAPHORE` and the `OS_LOCK`/`OS_LOCK_T` guards. With `OS_IPC_TOOLS_EN=1` the IPC classes are not compiled and the application must not use them. There are no separate per-primitive switches.
+`OS_IPC_TOOLS_EN=1` enables **all** IPC together: `OS_EVENT`, `OS_MUTEX` (with immediate priority ceiling), `OS_QUEUE`, `OS_SEMAPHORE` and the `OS_LOCK`/`OS_LOCK_T` guards. With `OS_IPC_TOOLS_EN=0` the IPC classes are not compiled and the application must not use them. There are no separate per-primitive switches.
 
 > Note for safety profiles: IEC 61508 SIL 2+ enforcement requires `OS_IPC_TOOLS_EN=1` (mutual exclusion for shared resources).
 
 ## 3. Runtime monitoring
 
-| Option | Default | Purpose |
+| Option | Default | Valid values / limit | Purpose |
 |---|---:|---|
-| `OS_MONITORING_EN` | 0 | Master switch: deadline monitoring + TCB integrity checks + error log + CPU/stack instrumentation, enabled together |
-| `OS_MONITORING_DEADLINE_ACTION` | 1 | Deadline-miss reaction (sub-option of `OS_MONITORING_EN`): 0 = log only, 1 = reset task, 2 = disable task; valid range 0..2 |
-| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | Error-log ring-buffer capacity in entries (sub-option of `OS_MONITORING_EN`); minimum 1 |
+| `OS_MONITORING_EN` | 0 | `0` or `1` | Master switch: deadline monitoring + TCB integrity checks + error log + CPU/stack instrumentation, enabled together |
+| `OS_MONITORING_DEADLINE_ACTION` | 1 | `0..2` | `0` = log only, `1` = reset task, `2` = disable task |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | `>=1` entry | Error-log ring-buffer capacity (sub-option of `OS_MONITORING_EN`) |
 
 What `OS_MONITORING_EN=1` compiles in and runs (see the comment block in `ZenOS_Config.hpp`):
 
@@ -111,14 +114,14 @@ RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`O
 
 | Option | Default | Purpose |
 |---|---:|---|
-| `OS_SAFETY_RAM_TEST_EN` | 0 | Background March-C SRAM integrity test (incremental steps) |
-| `OS_SAFETY_MPU_EN` | 0 | Per-task MPU protection on supported Cortex-M targets |
-| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | STM32 IWDG feed/check integration |
-| `OS_SAFETY_CRC_EN` | 0 | Incremental flash integrity check through the CRC peripheral |
-| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | Stuck-task detection and recovery |
-| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | Maximum recovery attempts per task before permanent disable (0 = immediate safe state) |
-| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | Software watchdog timeout |
-| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | Maximum duration of an `OS_SAFE` section before `SAFE_TOO_LONG` (0 disables the check) |
+| `OS_SAFETY_RAM_TEST_EN` | 0 | `0` or `1` | Background March-C SRAM integrity test (incremental steps) |
+| `OS_SAFETY_MPU_EN` | 0 | `0` or `1`; `1` requires MPU hardware | Per-task MPU protection on supported Cortex-M targets |
+| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | `0` or `1`; `1` requires IWDG | STM32 IWDG feed/check integration |
+| `OS_SAFETY_CRC_EN` | 0 | `0` or `1`; `1` requires CRC hardware | Incremental flash integrity check through the CRC peripheral |
+| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | `0` or `1` | Stuck-task detection and recovery |
+| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | `>=0` | Maximum recovery attempts per task before permanent disable; `0` = immediate safe state |
+| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | `>=0` ms | Software watchdog timeout; actual useful maximum is constrained by application safety/process time |
+| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | `>=0` µs; `0` disables | Maximum duration of an `OS_SAFE` section before `SAFE_TOO_LONG` |
 
 The safety mechanisms are individually configurable. They are **not all enabled by default**; the configuration header is the source of truth for each default.
 
@@ -130,7 +133,7 @@ Hardware-availability guards (in `ZenOS_Port.hpp`) fail the build at compile tim
 
 ## 5. Safety target profiles
 
-Define target profiles through compiler definitions, not by editing the target-profile section of the configuration header:
+Valid profile ranges: `OS_TARGET_MEDICAL_CLASS=0..3` (`0` disabled, `1..3` = Class A/B/C) and `OS_TARGET_INDUSTRIAL_SIL=0..4` (`0` disabled, `1..4` = SIL 1..4). Values outside these ranges fail compilation.\n\nDefine target profiles through compiler definitions, not by editing the target-profile section of the configuration header:
 
 ```text
 -DOS_TARGET_MEDICAL_CLASS=1   # IEC 62304 Class A
