@@ -86,7 +86,7 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ### Error log
 
-`OS_MONITORING_EN` یک بافر حلقه‌ای RAM با اندازه ثابت فراهم می‌کند. ظرفیت با `OS_MONITORING_LOG_SIZE` کنترل می‌شود (پیش‌فرض ۱۶ ورودی). هر خطای هسته که از `_os_report_error()` عبور کند خودکار ثبت می‌شود: زمان، کد خطا، شناسه تسک و شدت (کدهای بحرانی → `CRITICAL`، بقیه → `WARNING`).
+`OS_MONITORING_EN` یک بافر حلقه‌ای RAM با اندازه ثابت فراهم می‌کند. ظرفیت با `OS_MONITORING_ERROR_LOG_SIZE` کنترل می‌شود (پیش‌فرض ۱۶ ورودی). هر خطای هسته که از `_os_report_error()` عبور کند خودکار ثبت می‌شود: زمان، کد خطا، شناسه تسک و شدت (کدهای بحرانی → `CRITICAL`، بقیه → `WARNING`).
 
 این log با reset از بین می‌رود مگر برنامه آن را ذخیره کند.
 
@@ -98,10 +98,10 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 | گزینه | پیش‌فرض |
 |---|---:|
-| `OS_MONITORING_EN` | 1 |
+| `OS_MONITORING_EN` | 0 |
 | `OS_MONITORING_DEADLINE_ACTION` | 1 |
-| `OS_MONITORING_LOG_SIZE` | 16 |
-| `OS_IPC_TOOLS_EN` | 0 |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 |
+| `OS_IPC_TOOLS_EN` | 1 |
 | `OS_SAFETY_RAM_TEST_EN` | 0 |
 | `OS_SAFETY_MPU_EN` | 0 |
 | `OS_SAFETY_HW_WATCHDOG_EN` | 0 |
