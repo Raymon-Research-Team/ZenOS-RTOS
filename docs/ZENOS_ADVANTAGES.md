@@ -103,7 +103,7 @@ These are engineering mechanisms, not a claim of safety certification.
 
 ## 7. Resource-aware scaling
 
-Increasing `OS_KERNEL_MAX_PRIORITIES` (default 16) above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
+`OS_KERNEL_MAX_PRIORITIES` defaults to 16 slots and is valid from 2 to 256 slots. Increasing it above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
 
 | Priority slots | Usable application priorities | Queue heads | Bitmap |
 |---:|---:|---:|---:|
