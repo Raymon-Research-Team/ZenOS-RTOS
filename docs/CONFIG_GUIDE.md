@@ -103,7 +103,7 @@ What `OS_MONITORING_EN=1` compiles in and runs (see the comment block in `ZenOS_
 3. **Error log** — `OS_MONITORING_ERROR_LOG_SIZE` entries, each with timestamp, error code, task ID and severity. `_os_report_error()` logs every kernel error automatically. Query API: `os_log_error()`, `os_get_error_log_entry()`, `os_get_error_log_count()`, `os_get_error_log_total()`.
 4. **CPU load and stack instrumentation** — `os_get_cpu_usage()`, `os_get_cpu_usage_total()`, `os_get_task_cpu_usage()`, per-task peak-SP watermark tracking, `os_get_stack_watermark()`, `os_get_stack_watermark_percent()` and the `os_get_stack_report()` table.
 
-Setting `OS_MONITORING_EN=0 removes all of the above: the TCB loses those fields, the error-log API becomes no-op stubs and the monitor query functions are not compiled (guard application calls with `#if OS_MONITORING_EN`).
+Setting `OS_MONITORING_EN=0` removes all of the above: the TCB loses those fields, the error-log API becomes no-op stubs and the monitor query functions are not compiled (guard application calls with `#if OS_MONITORING_EN`).
 
 RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`OS_MONITORING_ERROR_LOG_SIZE` entries) + 16 bytes per task (deadline, magic and watermark fields).
 
