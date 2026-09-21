@@ -198,7 +198,7 @@ Semaphores can be used for resource pools and ISR-to-task signaling. The maximum
 
 ## 10. Monitoring (OS_MONITORING_EN)
 
-Monitoring requires `OS_MONITORING_EN=0`; guard calls with `#if OS_MONITORING_EN`:
+Monitoring requires `OS_MONITORING_EN=1`; guard calls with `#if OS_MONITORING_EN`:
 
 ```cpp
 #if OS_MONITORING_EN
