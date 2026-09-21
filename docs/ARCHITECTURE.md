@@ -1,6 +1,6 @@
 # ZenOS-RTOS Architecture Document
 
-**Version:** 2.0.0  
+**Version:** 1.1.0  
 **Date:** September 2026  
 **Author:** Raymon Research Team
 
@@ -30,19 +30,19 @@
 
 ZenOS is a priority-based preemptive real-time operating system (RTOS) designed for ARM Cortex-M microcontrollers. It provides:
 
-- **O(1) priority bitmap scheduler** with configurable priority levels (2–256)
+- **Priority bitmap + per-priority ready queues with eligibility checks** with configurable priority levels (2–256)
 - **FPU-aware context switch** for Cortex-M4F/M7
 - **Hardware MPU integration** for memory protection (PMSAv7 and PMSAv8)
 - **Immediate Priority Ceiling Protocol** for IPC (prevents unbounded priority inversion)
-- **Complete safety instrumentation** — stack canaries, watchdog, CRC check, RAM test
-- **IEC 62304 / IEC 61508 compliance support** with compile-time enforcement
+- **Configurable safety mechanisms** — stack canaries, watchdogs, CRC check, RAM test, MPU and monitoring
+- **IEC 62304 / IEC 61508 target-profile configuration checks** with compile-time enforcement
 
 ### Design Principles
 
 1. **Zero mock/fake implementations** — every API has a real implementation
 2. **No API without behavior** — every function does what its signature promises
 3. **No hidden crashes** — every fault path is handled gracefully
-4. **Portable** — same kernel code runs on STM32F0 through STM32H7
+4. **Portable** — family-specific STM32 detection plus a generic Cortex-M fallback
 5. **RAM-efficient** — no 256-entry static arrays; bitmap + linked list
 
 ---
@@ -75,15 +75,15 @@ ZenOS is a priority-based preemptive real-time operating system (RTOS) designed 
 
 ### Compilation Units
 
-| File | Role | Size (est.) |
+| File | Role |
 |------|------|-------------|
-| `ZenOS.cpp` | Kernel core: globals, init, start, PendSV, tick, idle, delay | ~3KB flash |
-| `ZenOS_Scheduler.cpp` | O(1) bitmap scheduler, task create/control/lookup | ~2KB flash |
-| `ZenOS_IPC.cpp` | Events, Mutex, C++ RAII wrappers | ~2KB flash |
-| `ZenOS_Safety.cpp` | Error system, stack check, fault handler, watchdog, CRC, RAM test, MPU | ~2KB flash |
-| `ZenOS_Monitor.cpp` | Stack watermark, CPU usage, deadline monitoring | ~1KB flash |
+| `ZenOS.cpp` | Kernel core: globals, init, start, PendSV, tick, idle, delay |
+| `ZenOS_Scheduler.cpp` | Priority bitmap scheduler, task create/control/lookup |
+| `ZenOS_IPC.cpp` | Events, Mutex, C++ RAII wrappers |
+| `ZenOS_Safety.cpp` | Error system, stack check, fault handler, watchdog, CRC, RAM test, MPU |
+| `ZenOS_Monitor.cpp` | Stack watermark, CPU usage, deadline monitoring |
 
-**Total estimated kernel size:** ~10KB flash, ~1.5KB RAM (default config, 10 tasks)
+Binary size and RAM usage are configuration-, compiler-, optimization-, target- and task-count-dependent; measure the final build rather than relying on a fixed estimate.
 
 ---
 
@@ -213,7 +213,7 @@ Assembly offsets are verified by `static_assert` at compile time.
 
 ## 5. Scheduler
 
-### O(1) Priority Bitmap
+### Priority Bitmap and Ready Queues
 
 The scheduler uses a **bitmap + linked list** design:
 
@@ -221,7 +221,7 @@ The scheduler uses a **bitmap + linked list** design:
 - `os_pq_head[32]` — linked list heads for priorities 0–31
 - For >32 priorities: `os_ready_bitmap_ext[]` + `os_pq_head_ext[]`
 
-**Selection:** `__builtin_clz()` finds the highest set bit in O(1).
+**Selection:** the bitmap is used to identify the highest active priority; the scheduler then checks task eligibility before selecting a runnable task.
 
 ### Priority Levels
 
@@ -600,8 +600,8 @@ When enabled:
 -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32F407xx
 
 # Safety-critical build (IEC 62304 Class C)
--DOS_TARGET_MEDICAL=3 -DOS_SAFETY_MPU=1 -DOS_SAFETY_CRC=1 \
-  -DOS_SAFETY_RAM_TEST=1 -DOS_SAFETY_HW_WATCHDOG=1 -DOS_SAFETY_SOFT_WATCHDOG=1
+-DOS_TARGET_MEDICAL_CLASS=3 -DOS_SAFETY_MPU_EN=1 -DOS_SAFETY_CRC_EN=1 \
+  -DOS_SAFETY_RAM_TEST_EN=1 -DOS_SAFETY_HW_WATCHDOG_EN=1 -DOS_SAFETY_SOFT_WATCHDOG_EN=1
 
 # Minimal RAM build
 -DOS_KERNEL_MAX_PRIORITIES=8 -DOS_MONITOR=0 -DOS_IPC_TOOLS=0

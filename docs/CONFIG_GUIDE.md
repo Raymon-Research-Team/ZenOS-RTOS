@@ -23,7 +23,9 @@ Controls the kernel tick period. `100` µs means a 10 kHz kernel tick.
 | Property | Value |
 |---|---|
 | Default | `128` bytes |
-| Minimum | `64` bytes (`static_assert` in the creation template) |
+| Request minimum | `64` bytes (`static_assert`) |
+| Effective allocation floor | `256` bytes |
+| Upper limit | No explicit source-level maximum; constrained by `uint32_t`, linker/toolchain limits, and available target RAM |
 
 Default stack size used by task creation when no custom stack size is supplied. The creation template enforces an effective floor of `256` bytes (`StackBytesEff`): smaller requests still allocate a 256-byte buffer, because the kernel's stack initialization clamps stacks to at least 64 words (256 bytes). Actual stack sizing should be verified with the runtime stack report on the target build.
 
@@ -65,6 +67,7 @@ These figures describe scheduler priority storage, not the total RAM usage of an
 | Property | Value |
 |---|---|
 | Default | `1` (enabled) |
+| Allowed values | `0` or `1` |
 
 Tickless idle: when the idle task runs and tasks are blocked, the kernel programs SysTick for the next wakeup and advances `tick_count` by the skipped ticks on wake (`WFI`-based power saving). Disable for simpler, always-on tick timing.
 
@@ -90,35 +93,35 @@ Tickless idle: when the idle task runs and tasks are blocked, the kernel program
 
 ## 3. Runtime monitoring
 
-| Option | Default | Purpose |
+| Option | Default | Valid values / limit | Purpose |
 |---|---:|---|
-| `OS_MONITORING_EN` | 1 | Master switch: deadline monitoring + TCB integrity checks + error log + CPU/stack instrumentation, enabled together |
-| `OS_MONITORING_DEADLINE_ACTION` | 1 | Deadline-miss reaction (sub-option of `OS_MONITORING_EN`): 0 = log only, 1 = reset task, 2 = disable task; valid range 0..2 |
-| `OS_MONITORING_LOG_SIZE` | 16 | Error-log ring-buffer capacity in entries (sub-option of `OS_MONITORING_EN`); minimum 1 |
+| `OS_MONITORING_EN` | 0 | `0` or `1` | Master switch: deadline monitoring + TCB integrity checks + error log + CPU/stack instrumentation, enabled together |
+| `OS_MONITORING_DEADLINE_ACTION` | 1 | `0..2` | `0` = log only, `1` = reset task, `2` = disable task |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | `>=1` entry | Error-log ring-buffer capacity (sub-option of `OS_MONITORING_EN`) |
 
 What `OS_MONITORING_EN=1` compiles in and runs (see the comment block in `ZenOS_Config.hpp`):
 
 1. **Deadline monitoring** — `os_task_set_deadline()` arms a per-task hard deadline; `os_tick()` detects misses, counts them and reports `DEADLINE_MISS`; the reaction is configured by `OS_MONITORING_DEADLINE_ACTION`. `os_get_deadline_miss_count()` exposes the per-task miss count.
 2. **TCB integrity checking** — every TCB carries a magic number (`OS_TCB_MAGIC`) written at task creation and verified before watchdog recovery actions; a corrupted TCB is reported as `TCB_CORRUPTED` and the affected task is deactivated instead of reset.
-3. **Error log** — `OS_MONITORING_LOG_SIZE` entries, each with timestamp, error code, task ID and severity. `_os_report_error()` logs every kernel error automatically. Query API: `os_log_error()`, `os_get_error_log_entry()`, `os_get_error_log_count()`, `os_get_error_log_total()`.
+3. **Error log** — `OS_MONITORING_ERROR_LOG_SIZE` entries, each with timestamp, error code, task ID and severity. `_os_report_error()` logs every kernel error automatically. Query API: `os_log_error()`, `os_get_error_log_entry()`, `os_get_error_log_count()`, `os_get_error_log_total()`.
 4. **CPU load and stack instrumentation** — `os_get_cpu_usage()`, `os_get_cpu_usage_total()`, `os_get_task_cpu_usage()`, per-task peak-SP watermark tracking, `os_get_stack_watermark()`, `os_get_stack_watermark_percent()` and the `os_get_stack_report()` table.
 
 Setting `OS_MONITORING_EN=0` removes all of the above: the TCB loses those fields, the error-log API becomes no-op stubs and the monitor query functions are not compiled (guard application calls with `#if OS_MONITORING_EN`).
 
-RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`OS_MONITORING_LOG_SIZE` entries) + 16 bytes per task (deadline, magic and watermark fields).
+RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`OS_MONITORING_ERROR_LOG_SIZE` entries) + 16 bytes per task (deadline, magic and watermark fields).
 
 ## 4. Safety mechanisms
 
-| Option | Default | Purpose |
+| Option | Default | Valid values / limit | Purpose |
 |---|---:|---|
-| `OS_SAFETY_RAM_TEST_EN` | 0 | Background March-C SRAM integrity test (incremental steps) |
-| `OS_SAFETY_MPU_EN` | 0 | Per-task MPU protection on supported Cortex-M targets |
-| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | STM32 IWDG feed/check integration |
-| `OS_SAFETY_CRC_EN` | 0 | Incremental flash integrity check through the CRC peripheral |
-| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | Stuck-task detection and recovery |
-| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | Maximum recovery attempts per task before permanent disable (0 = immediate safe state) |
-| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | Software watchdog timeout |
-| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | Maximum duration of an `OS_SAFE` section before `SAFE_TOO_LONG` (0 disables the check) |
+| `OS_SAFETY_RAM_TEST_EN` | 0 | `0` or `1` | Background March-C SRAM integrity test (incremental steps) |
+| `OS_SAFETY_MPU_EN` | 0 | `0` or `1`; `1` requires MPU hardware | Per-task MPU protection on supported Cortex-M targets |
+| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | `0` or `1`; `1` requires IWDG | STM32 IWDG feed/check integration |
+| `OS_SAFETY_CRC_EN` | 0 | `0` or `1`; `1` requires CRC hardware | Incremental flash integrity check through the CRC peripheral |
+| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | `0` or `1` | Stuck-task detection and recovery |
+| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | `>=0` | Maximum recovery attempts per task before permanent disable; `0` = immediate safe state |
+| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | `>=0` ms | Software watchdog timeout; actual useful maximum is constrained by application safety/process time |
+| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | `>=0` µs; `0` disables | Maximum duration of an `OS_SAFE` section before `SAFE_TOO_LONG` |
 
 The safety mechanisms are individually configurable. They are **not all enabled by default**; the configuration header is the source of truth for each default.
 
@@ -130,17 +133,17 @@ Hardware-availability guards (in `ZenOS_Port.hpp`) fail the build at compile tim
 
 ## 5. Safety target profiles
 
-Define target profiles through compiler definitions, not by editing the target-profile section of the configuration header:
+Valid profile ranges: `OS_TARGET_MEDICAL_CLASS=0..3` (`0` disabled, `1..3` = Class A/B/C) and `OS_TARGET_INDUSTRIAL_SIL=0..4` (`0` disabled, `1..4` = SIL 1..4). Values outside these ranges fail compilation.\n\nDefine target profiles through compiler definitions, not by editing the target-profile section of the configuration header:
 
 ```text
--DOS_TARGET_MEDICAL=1   # IEC 62304 Class A
--DOS_TARGET_MEDICAL=2   # IEC 62304 Class B
--DOS_TARGET_MEDICAL=3   # IEC 62304 Class C
+-DOS_TARGET_MEDICAL_CLASS=1   # IEC 62304 Class A
+-DOS_TARGET_MEDICAL_CLASS=2   # IEC 62304 Class B
+-DOS_TARGET_MEDICAL_CLASS=3   # IEC 62304 Class C
 
--DOS_TARGET_INDUSTRIAL=1   # IEC 61508 SIL 1
--DOS_TARGET_INDUSTRIAL=2   # IEC 61508 SIL 2
--DOS_TARGET_INDUSTRIAL=3   # IEC 61508 SIL 3
--DOS_TARGET_INDUSTRIAL=4   # IEC 61508 SIL 4
+-DOS_TARGET_INDUSTRIAL_SIL=1   # IEC 61508 SIL 1
+-DOS_TARGET_INDUSTRIAL_SIL=2   # IEC 61508 SIL 2
+-DOS_TARGET_INDUSTRIAL_SIL=3   # IEC 61508 SIL 3
+-DOS_TARGET_INDUSTRIAL_SIL=4   # IEC 61508 SIL 4
 ```
 
 When a target profile is active, the configuration header enforces the required ZenOS features with compile-time errors:
@@ -167,7 +170,7 @@ For a memory-constrained target, disable only features that the application does
 
 #define OS_MONITORING_EN                1
 #define OS_MONITORING_DEADLINE_ACTION         1
-#define OS_MONITORING_LOG_SIZE       16
+#define OS_MONITORING_ERROR_LOG_SIZE       16
 
 #define OS_SAFETY_RAM_TEST_EN        0
 #define OS_SAFETY_MPU_EN             0
@@ -187,7 +190,7 @@ Compile-time validation covers:
 - `OS_KERNEL_TICK_PERIOD_US` (range 100..1000 and even-divisor rule)
 - `OS_KERNEL_MAX_PRIORITIES` (2..256)
 - `OS_MONITORING_DEADLINE_ACTION` (0..2)
-- `OS_MONITORING_LOG_SIZE` (>= 1)
+- `OS_MONITORING_ERROR_LOG_SIZE` (>= 1)
 - `OS_TARGET_MEDICAL_CLASS` / `OS_TARGET_INDUSTRIAL_SIL` ranges
 - all target-profile feature enforcement listed in section 5
 

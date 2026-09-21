@@ -5,7 +5,7 @@ This guide explains how to add support for a new STM32 chip family to ZenOS RTOS
 ## Prerequisites
 
 - The target chip's reference manual (RM) for register addresses
-- ARM GCC toolchain (`arm-none-eabi-gcc`)
+- A supported ARM C/C++ toolchain; the compiler abstraction in `ZenOS_Compiler.hpp` provides compiler-specific handling (for example GCC/Clang/IAR/ARMCC)
 - A linker script for your target chip
 
 ## Step 1: Add Family Detection in `ZenOS_Port.hpp`
@@ -48,7 +48,7 @@ Check the Cortex-M core:
 | Core | `__ARM_ARCH_*__` | Has DWT? | Has MPU? | Has FPU? | Has VTOR? |
 |------|-----------------|----------|----------|----------|-----------|
 | M0 | `__ARM_ARCH_6M__` | No | No | No | No |
-| M0+ | `__ARM_ARCH_6M__` | No | Optional | No | No |
+| M0+ | `__ARM_ARCH_6M__` | No | No | No | No |
 | M3 | `__ARM_ARCH_7M__` | Yes | Yes | No | Yes |
 | M4 | `__ARM_ARCH_7EM__` | Yes | Yes | Optional | Yes |
 | M7 | `__ARM_ARCH_7EM__` | Yes | Yes | Yes | Yes |
@@ -95,14 +95,14 @@ Create `STM32xxxx_FLASH.ld` with:
 | Feature | Config Macro | Notes |
 |---------|-------------|-------|
 | MPU protection | `OS_SAFETY_MPU_EN=1` | Requires PMSAv7/PMSAv8; rejected at compile time when `__MPU_PRESENT=0` |
-| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN=1` | Configure IWDG timeout in CubeMX/init |
-| CRC integrity | `OS_SAFETY_CRC_EN=1` | Must match flash contents |
+| Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN=1` | Requires a detected IWDG peripheral; configure its timeout in CubeMX/init |
+| CRC integrity | `OS_SAFETY_CRC_EN=1` | Requires a detected CRC peripheral and stable flash contents |
 | RAM test | `OS_SAFETY_RAM_TEST_EN=1` | Call `os_ram_test_step()` from idle |
 | Tickless idle | `OS_KERNEL_TICKLESS_IDLE_EN=1` | Power savings via WFI; see the idle-stack note below |
 
 ## Idle stack sizing
 
-`OS_IDLE_STACK_WORDS` (default 128 words = 512 bytes) sizes the idle task stack.
+`OS_IDLE_STACK_WORDS` (default 128 words = 512 bytes) sizes the idle task stack. It must be a positive word count; the source defines no explicit upper bound, so the practical limit is target RAM/linker capacity.
 The idle loop is not a bare `wfi` — it runs the hardware-watchdog check, the
 CRC step and the tickless-idle path, and any interrupt taken while idle pushes
 a full exception frame onto the same stack. Measure the idle peak with

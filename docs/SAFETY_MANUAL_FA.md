@@ -86,7 +86,7 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ### Error log
 
-`OS_MONITORING_EN` یک بافر حلقه‌ای RAM با اندازه ثابت فراهم می‌کند. ظرفیت با `OS_MONITORING_LOG_SIZE` کنترل می‌شود (پیش‌فرض ۱۶ ورودی). هر خطای هسته که از `_os_report_error()` عبور کند خودکار ثبت می‌شود: زمان، کد خطا، شناسه تسک و شدت (کدهای بحرانی → `CRITICAL`، بقیه → `WARNING`).
+`OS_MONITORING_EN` یک بافر حلقه‌ای RAM با اندازه ثابت فراهم می‌کند. ظرفیت با `OS_MONITORING_ERROR_LOG_SIZE` کنترل می‌شود (پیش‌فرض ۱۶ ورودی). هر خطای هسته که از `_os_report_error()` عبور کند خودکار ثبت می‌شود: زمان، کد خطا، شناسه تسک و شدت (کدهای بحرانی → `CRITICAL`، بقیه → `WARNING`).
 
 این log با reset از بین می‌رود مگر برنامه آن را ذخیره کند.
 
@@ -96,20 +96,20 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ## ۵. مقادیر پیش‌فرض فعلی
 
-| گزینه | پیش‌فرض |
+| گزینه | پیش‌فرض | محدوده/شرط |
 |---|---:|
-| `OS_MONITORING_EN` | 1 |
-| `OS_MONITORING_DEADLINE_ACTION` | 1 |
-| `OS_MONITORING_LOG_SIZE` | 16 |
-| `OS_IPC_TOOLS_EN` | 0 |
-| `OS_SAFETY_RAM_TEST_EN` | 0 |
-| `OS_SAFETY_MPU_EN` | 0 |
-| `OS_SAFETY_HW_WATCHDOG_EN` | 0 |
-| `OS_SAFETY_CRC_EN` | 0 |
-| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 |
-| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 |
-| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 |
-| `OS_SAFETY_MAX_CRITICAL_US` | 1000 |
+| `OS_MONITORING_EN` | 0 | `0` یا `1` |
+| `OS_MONITORING_DEADLINE_ACTION` | 1 | `0..2` |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | حداقل `1` |
+| `OS_IPC_TOOLS_EN` | 1 | `0` یا `1` |
+| `OS_SAFETY_RAM_TEST_EN` | 0 | `0` یا `1` |
+| `OS_SAFETY_MPU_EN` | 0 | `0` یا `1`؛ ۱ نیازمند MPU |
+| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | `0` یا `1`؛ ۱ نیازمند IWDG |
+| `OS_SAFETY_CRC_EN` | 0 | `0` یا `1`؛ ۱ نیازمند CRC |
+| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | `0` یا `1` |
+| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | `>=0` |
+| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | `>=0` میلی‌ثانیه |
+| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | `>=0` میکروثانیه؛ ۰ غیرفعال |
 
 مکانیسم‌های ایمنی مستقل از یکدیگر قابل فعال‌سازی هستند.
 
@@ -117,8 +117,8 @@ ZenOS مجموعه‌ای از مکانیسم‌های قابل پیکربندی
 
 ZenOS پروفایل‌های compile-time زیر را فراهم می‌کند:
 
-- `OS_TARGET_MEDICAL_CLASS=1..3` برای Class A/B/C
-- `OS_TARGET_INDUSTRIAL_SIL=1..4` برای SIL 1..4
+- `OS_TARGET_MEDICAL_CLASS=0..3` (`0` = غیرفعال؛ `1..3` = Class A/B/C) برای Class A/B/C
+- `OS_TARGET_INDUSTRIAL_SIL=0..4` (`0` = غیرفعال؛ `1..4` = SIL 1..4) برای SIL 1..4
 
 | پروفایل | الزامات |
 |---|---|

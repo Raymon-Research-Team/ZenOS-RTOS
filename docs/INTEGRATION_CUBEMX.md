@@ -94,9 +94,8 @@ table; the copy happens exactly once inside `os_start()`.
 
 ### HAL ISRs
 
-HAL ISRs (EXTI, UART, SPI, ADC, etc.) run at priorities 0–5 by default.
-Since PendSV is at 0xFE and SysTick at 0xFF, HAL ISRs always preempt
-the scheduler — this is correct behavior.
+HAL ISRs (EXTI, UART, SPI, ADC, etc.) use the priorities configured by the application/CubeMX.
+Since PendSV and SysTick are configured at the lowest system-handler priorities, application interrupts configured above them can preempt the scheduler's deferred context switch.
 
 ### What NOT To Do
 

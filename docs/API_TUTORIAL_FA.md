@@ -240,7 +240,7 @@ uint32_t unexpected = os_get_unexpected_error_count();
 OSError  last       = os_get_last_error();
 ```
 
-با فعال بودن `OS_MONITORING_EN`، خطاها در یک بافر حلقه‌ای RAM با ظرفیت `OS_MONITORING_LOG_SIZE` ذخیره می‌شوند؛ `os_get_error_log_entry(i)`، `os_get_error_log_count()` و `os_get_error_log_total()` آن را می‌خوانند. خطاهای تشخیص‌داده‌شده توسط هسته هم خودکار ثبت می‌شوند.
+با فعال بودن `OS_MONITORING_EN`، خطاها در یک بافر حلقه‌ای RAM با ظرفیت `OS_MONITORING_ERROR_LOG_SIZE` ذخیره می‌شوند؛ `os_get_error_log_entry(i)`، `os_get_error_log_count()` و `os_get_error_log_total()` آن را می‌خوانند. خطاهای تشخیص‌داده‌شده توسط هسته هم خودکار ثبت می‌شوند.
 
 برای تزریق خطای عمدی (تست‌ها)، محدوده را طوری علامت‌گذاری کنید که خطاهای مورد انتظار غیرمنتظره شمرده نشوند:
 

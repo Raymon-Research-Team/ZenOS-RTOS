@@ -89,7 +89,7 @@ The test is intended for background execution from the idle task. The integrator
 
 ### 4.9 Error logging
 
-`OS_MONITORING_EN` enables a fixed-size RAM circular log. The capacity is controlled by `OS_MONITORING_LOG_SIZE` (default 16 entries). Every kernel error reported through `_os_report_error()` is logged automatically with timestamp, error code, task ID and severity (critical codes map to `CRITICAL`, others to `WARNING`).
+`OS_MONITORING_EN` enables a fixed-size RAM circular log. The capacity is controlled by `OS_MONITORING_ERROR_LOG_SIZE` (default 16 entries). Every kernel error reported through `_os_report_error()` is logged automatically with timestamp, error code, task ID and severity (critical codes map to `CRITICAL`, others to `WARNING`).
 
 The log is volatile and does not survive a reset unless the application persists relevant information elsewhere.
 
@@ -101,20 +101,20 @@ The log is volatile and does not survive a reset unless the application persists
 
 The current source configuration uses the following defaults:
 
-| Mechanism | Default |
+| Mechanism | Default | Valid values / limit |
 |---|---:|
-| `OS_MONITORING_EN` | 1 |
-| `OS_MONITORING_DEADLINE_ACTION` | 1 |
-| `OS_MONITORING_LOG_SIZE` | 16 |
-| `OS_IPC_TOOLS_EN` | 0 |
-| `OS_SAFETY_RAM_TEST_EN` | 0 |
-| `OS_SAFETY_MPU_EN` | 0 |
-| `OS_SAFETY_HW_WATCHDOG_EN` | 0 |
-| `OS_SAFETY_CRC_EN` | 0 |
-| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 |
-| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 |
-| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 |
-| `OS_SAFETY_MAX_CRITICAL_US` | 1000 |
+| `OS_MONITORING_EN` | 0 | `0` or `1` |
+| `OS_MONITORING_DEADLINE_ACTION` | 1 | `0..2` |
+| `OS_MONITORING_ERROR_LOG_SIZE` | 16 | `>=1` |
+| `OS_IPC_TOOLS_EN` | 1 | `0` or `1` |
+| `OS_SAFETY_RAM_TEST_EN` | 0 | `0` or `1` |
+| `OS_SAFETY_MPU_EN` | 0 | `0` or `1`; 1 requires MPU |
+| `OS_SAFETY_HW_WATCHDOG_EN` | 0 | `0` or `1`; 1 requires IWDG |
+| `OS_SAFETY_CRC_EN` | 0 | `0` or `1`; 1 requires CRC |
+| `OS_SAFETY_SOFT_WATCHDOG_EN` | 0 | `0` or `1` |
+| `OS_SAFETY_TASK_MAX_RECOVERY` | 3 | `>=0` |
+| `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` | 3000 | `>=0` ms |
+| `OS_SAFETY_MAX_CRITICAL_US` | 1000 | `>=0` µs; 0 disables |
 
 Safety mechanisms are individually configurable. A project should enable only what its requirements and target hardware call for, while safety-target profiles enforce mandatory settings at compile time.
 
@@ -122,8 +122,8 @@ Safety mechanisms are individually configurable. A project should enable only wh
 
 ZenOS provides compile-time configuration guards for:
 
-- IEC 62304: `OS_TARGET_MEDICAL_CLASS=1..3` (Class A/B/C)
-- IEC 61508: `OS_TARGET_INDUSTRIAL_SIL=1..4` (SIL 1..4)
+- IEC 62304: `OS_TARGET_MEDICAL_CLASS=0..3` (`0` disabled; `1..3` = Class A/B/C) (Class A/B/C)
+- IEC 61508: `OS_TARGET_INDUSTRIAL_SIL=0..4` (`0` disabled; `1..4` = SIL 1..4) (SIL 1..4)
 
 The guards reject configurations that omit required ZenOS mechanisms for the selected target profile:
 

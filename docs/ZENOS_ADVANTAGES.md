@@ -24,7 +24,7 @@ ZenOS uses a ready bitmap and per-priority queues. The scheduler checks active p
 
 The configuration supports:
 
-- 32 priority slots by default
+- 16 priority slots by default
 - up to 256 slots
 - application priorities `1..255` at the maximum setting
 - priority `0` reserved for idle
@@ -90,7 +90,7 @@ The source tree provides independently configurable mechanisms including:
 | Stack protection | always-active canary + SP checks (`_os_stack_check_all`) |
 | TCB integrity | `OS_MONITORING_EN` |
 | Deadline monitoring | `OS_MONITORING_EN` (+ `OS_MONITORING_DEADLINE_ACTION`) |
-| Error logging | `OS_MONITORING_EN` (`OS_MONITORING_LOG_SIZE`) |
+| Error logging | `OS_MONITORING_EN` (`OS_MONITORING_ERROR_LOG_SIZE`) |
 | CPU/stack statistics | `OS_MONITORING_EN` |
 | Software watchdog | `OS_SAFETY_SOFT_WATCHDOG_EN` |
 | Hardware watchdog | `OS_SAFETY_HW_WATCHDOG_EN` |
@@ -103,7 +103,7 @@ These are engineering mechanisms, not a claim of safety certification.
 
 ## 7. Resource-aware scaling
 
-Increasing `OS_KERNEL_MAX_PRIORITIES` (default 16) above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
+`OS_KERNEL_MAX_PRIORITIES` defaults to 16 slots and is valid from 2 to 256 slots. Increasing it above 32 adds derived bitmap and queue-head storage only for the additional priority levels.
 
 | Priority slots | Usable application priorities | Queue heads | Bitmap |
 |---:|---:|---:|---:|
