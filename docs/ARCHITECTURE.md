@@ -213,7 +213,7 @@ Assembly offsets are verified by `static_assert` at compile time.
 
 ## 5. Scheduler
 
-### O(1) Priority Bitmap
+### Priority Bitmap and Ready Queues
 
 The scheduler uses a **bitmap + linked list** design:
 
@@ -221,7 +221,7 @@ The scheduler uses a **bitmap + linked list** design:
 - `os_pq_head[32]` — linked list heads for priorities 0–31
 - For >32 priorities: `os_ready_bitmap_ext[]` + `os_pq_head_ext[]`
 
-**Selection:** `__builtin_clz()` finds the highest set bit in O(1).
+**Selection:** the bitmap is used to identify the highest active priority; the scheduler then checks task eligibility before selecting a runnable task.
 
 ### Priority Levels
 
@@ -600,8 +600,8 @@ When enabled:
 -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -DSTM32F407xx
 
 # Safety-critical build (IEC 62304 Class C)
--DOS_TARGET_MEDICAL=3 -DOS_SAFETY_MPU=1 -DOS_SAFETY_CRC=1 \
-  -DOS_SAFETY_RAM_TEST=1 -DOS_SAFETY_HW_WATCHDOG=1 -DOS_SAFETY_SOFT_WATCHDOG=1
+-DOS_TARGET_MEDICAL_CLASS=3 -DOS_SAFETY_MPU_EN=1 -DOS_SAFETY_CRC_EN=1 \
+  -DOS_SAFETY_RAM_TEST_EN=1 -DOS_SAFETY_HW_WATCHDOG_EN=1 -DOS_SAFETY_SOFT_WATCHDOG_EN=1
 
 # Minimal RAM build
 -DOS_KERNEL_MAX_PRIORITIES=8 -DOS_MONITOR=0 -DOS_IPC_TOOLS=0
