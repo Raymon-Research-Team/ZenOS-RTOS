@@ -84,7 +84,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 | `OS_MONITORING_DEADLINE_ACTION` | 1 | واکنش به از دست رفتن deadline (زیرگروه `OS_MONITORING_EN`): 0 = فقط ثبت، 1 = ریست تسک، 2 = غیرفعال کردن تسک؛ محدوده مجاز 0..2 |
 | `OS_MONITORING_ERROR_LOG_SIZE` | 16 | تعداد ورودی‌های log خطا (زیرگروه `OS_MONITORING_EN`)؛ حداقل ۱ |
 
-با `OS_MONITORING_EN=0` این‌ها کامپایل و اجرا می‌شوند (شرح کامل در بلوک کامنت `ZenOS_Config.hpp`):
+با `OS_MONITORING_EN=1` این‌ها کامپایل و اجرا می‌شوند (شرح کامل در بلوک کامنت `ZenOS_Config.hpp`):
 
 1. **پایش ددلاین** — `os_task_set_deadline()` ددلاین سخت هر تسک را مسلح می‌کند؛ `os_tick()` از دست رفتن را تشخیص، شمارش و به‌صورت `DEADLINE_MISS` گزارش می‌کند؛ واکنش با `OS_MONITORING_DEADLINE_ACTION` تنظیم می‌شود؛ `os_get_deadline_miss_count()` شمارش هر تسک را می‌دهد.
 2. **بررسی یکپارچگی TCB** — هر TCB عدد جادویی (`OS_TCB_MAGIC`) دارد که در ایجاد نوشته و پیش از اقدامات بازیابی watchdog بررسی می‌شود؛ TCB خراب با `TCB_CORRUPTED` گزارش و تسک به‌جای ریست، غیرفعال می‌شود.
