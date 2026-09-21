@@ -200,7 +200,7 @@ if (buffers.wait(1000)) {
 
 ## ۱۰. پایش (OS_MONITORING_EN)
 
-پایش نیازمند `OS_MONITORING_EN=0` است؛ فراخوانی‌ها را با `#if OS_MONITORING_EN` گارد کنید:
+پایش نیازمند `OS_MONITORING_EN=1` است؛ فراخوانی‌ها را با `#if OS_MONITORING_EN` گارد کنید:
 
 ```cpp
 #if OS_MONITORING_EN
