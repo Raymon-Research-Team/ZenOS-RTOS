@@ -112,7 +112,7 @@ RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`O
 
 ## 4. Safety mechanisms
 
-| Option | Default | Purpose |
+| Option | Default | Valid values / limit | Purpose |
 |---|---:|---|
 | `OS_SAFETY_RAM_TEST_EN` | 0 | `0` or `1` | Background March-C SRAM integrity test (incremental steps) |
 | `OS_SAFETY_MPU_EN` | 0 | `0` or `1`; `1` requires MPU hardware | Per-task MPU protection on supported Cortex-M targets |
