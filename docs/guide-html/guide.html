@@ -350,7 +350,7 @@
 
         <div class="note">
             <span data-lang="en"><strong>Target MCU:</strong> All examples use <strong>STM32F103C8T6</strong> (Blue Pill, Cortex-M3, 72MHz, 64KB Flash, 20KB RAM). Code is portable to other STM32 families — just adjust pins and peripherals.</span>
-            <span data-lang="fa"><strong>میکروکنترلر هدف:</strong> تمام مثال‌ها برای <strong>STM32F103C8T6</strong> (بلو پیل، Cortex-M3، 72MHz، 64KB فلش، 20KB RAM) هستند. کد قابل حمل به خانواده‌های دیگر STM32 است.</span>
+            <span data-lang="fa"><strong>میکروکنترلر هدف:</strong> مثال شروع سریع برای <strong>STM32F103C8T6</strong> (بلو پیل، Cortex-M3، 72MHz، 64KB فلش، 20KB RAM) هستند. کد قابل حمل به خانواده‌های دیگر STM32 است.</span>
         </div>
 
         <!-- Prerequisites -->
@@ -365,7 +365,7 @@
             <tr><td><strong>Jumper Wires</strong></td><td>Male-to-female, 10+ pcs</td><td>Any electronics shop</td></tr>
             <tr><td><strong>LED + Resistor</strong></td><td>220Ω–1kΩ</td><td>Any electronics shop</td></tr>
         </table>
-        <p><strong><span data-lang="en">Total cost: ~$10</span><span data-lang="fa">هزینه کل: حدود ۱۰ دلار</span></strong></p>
+        <p><strong><span data-lang="en">Use your actual hardware and development-tool costs; no fixed project cost is specified.</span><span data-lang="fa">هزینه سخت‌افزار و ابزارها به برد و تجهیزات انتخابی شما بستگی دارد.</span></strong></p>
 
         <h3>1.2 <span data-lang="en">Software You Need</span><span data-lang="fa">نرم‌افزار مورد نیاز</span></h3>
         <table>
@@ -1112,7 +1112,7 @@ SRAM (data + stacks):
 ├── BSS segment (zero-initialized globals)
 ├── Data segment (initialized globals)
 ├── Task stacks (per-task, static)
-├── Task stacks (per-task, static, ≥ 256 bytes each)
+├── Task stacks (per-task, static; effective allocation floor 256 bytes)
 ├── Error log (OS_MONITORING_ERROR_LOG_SIZE * ~8 bytes, when OS_MONITORING_EN is on)
 ├── Idle task stack (512 bytes — OS_IDLE_STACK_WORDS = 128)
 └── Fault task stack (256 bytes — OS_FAULT_STACK_WORDS = 64)</div>
@@ -1363,7 +1363,7 @@ void task_shutdown_handler(void) {
             <tr><td>HAL Timebase</td><td>CubeMX</td><td><span data-lang="en">System Core → SYS → Timebase = TIM1</span><span data-lang="fa">System Core → SYS → Timebase = TIM1</span></td></tr>
             <tr><td><code>os_tick()</code></td><td><code>stm32fxxx_it.c</code></td><td><span data-lang="en">Must be in SysTick_Handler</span><span data-lang="fa">باید در SysTick_Handler باشد</span></td></tr>
             <tr><td>C++11 flag</td><td>Compiler settings</td><td><code>-std=c++11</code></td></tr>
-            <tr><td>IWDG (if using HW watchdog)</td><td>CubeMX</td><td><span data-lang="en">Enable IWDG with ~6.5s timeout</span><span data-lang="fa">IWDG را با تایم‌اوت ~۶.۵ ثانیه فعال کنید</span></td></tr>
+            <tr><td>IWDG (if using HW watchdog)</td><td>CubeMX</td><td><span data-lang="en">Enable IWDG timeout configured for the target application</span><span data-lang="fa">IWDG را با تایم‌اوت ~۶.۵ ثانیه فعال کنید</span></td></tr>
             <tr><td>CRC (if using CRC check)</td><td>CubeMX</td><td><span data-lang="en">Enable CRC peripheral</span><span data-lang="fa">پیرفرال CRC را فعال کنید</span></td></tr>
         </table>
 
@@ -1371,7 +1371,7 @@ void task_shutdown_handler(void) {
 <table>
             <tr><th><span data-lang="en">Constant</span><span data-lang="fa">ثابت</span></th><th><span data-lang="en">Default</span><span data-lang="fa">پیش‌فرض</span></th><th><span data-lang="en">Description</span><span data-lang="fa">توضیحات</span></th></tr>
             <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>100</td><td><span data-lang="en">Tick resolution in microseconds</span><span data-lang="fa">رزولوشن تیک (میکروثانیه)</span></td></tr>
-            <tr><td><code>OS_KERNEL_DEFAULT_STACK_SIZE</code></td><td>128</td><td><span data-lang="en">Default stack request in bytes (256-byte effective floor)</span><span data-lang="fa">درخواست پیش‌فرض پشته (بایت) با کف مؤثر ۲۵۶ بایتی</span></td></tr>
+            <tr><td><code>OS_KERNEL_DEFAULT_STACK_SIZE</code></td><td>128</td><td><span data-lang="en">Default stack request in bytes (128-byte macro default; 256-byte effective allocation floor)</span><span data-lang="fa">درخواست پیش‌فرض پشته (بایت) با کف مؤثر ۲۵۶ بایتی</span></td></tr>
             <tr><td><code>OS_KERNEL_MAX_PRIORITIES</code></td><td>16</td><td><span data-lang="en">Scheduler priority slots (default: 16, range: 2 to 256; priority 0 reserved for idle; higher numeric = higher priority)</span><span data-lang="fa">اسلات‌های اولویت زمان‌بند (پیش‌فرض: ۱۶، محدوده: ۲ تا ۲۵۶؛ اولویت ۰ برای idle رزرو شده؛ عدد بزرگ‌تر = اولویت بالاتر)</span></td></tr>
             <tr><td><code>OS_IPC_TOOLS_EN</code></td><td>1</td><td><span data-lang="en">Single master switch for all IPC primitives: events, mutex with IPC priority ceiling, bounded FIFO queues, counting semaphores — enabled together (1) or removed together (0)</span><span data-lang="fa">کلید اصلی واحد برای همه اصول IPC: event، mutex با سقف اولویت، صف FIFO محدود، سمافور شمارشی — همه با هم فعال (۱) یا همه حذف (۰)</span></td></tr>
             <tr><td><code>OS_KERNEL_TICKLESS_IDLE_EN</code></td><td>1</td><td><span data-lang="en">WFI-based tickless idle (skip ticks while all tasks are blocked)</span><span data-lang="fa">idle بدون تیک مبتنی بر WFI (رد شدن از تیک‌ها وقتی همه تسک‌ها بلاک‌اند)</span></td></tr>
