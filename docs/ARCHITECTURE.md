@@ -1,6 +1,6 @@
 # ZenOS-RTOS Architecture Document
 
-**Version:** 2.0.0  
+**Version:** 1.1.0  
 **Date:** September 2026  
 **Author:** Raymon Research Team
 
@@ -30,19 +30,19 @@
 
 ZenOS is a priority-based preemptive real-time operating system (RTOS) designed for ARM Cortex-M microcontrollers. It provides:
 
-- **O(1) priority bitmap scheduler** with configurable priority levels (2–256)
+- **Priority bitmap + per-priority ready queues with eligibility checks** with configurable priority levels (2–256)
 - **FPU-aware context switch** for Cortex-M4F/M7
 - **Hardware MPU integration** for memory protection (PMSAv7 and PMSAv8)
 - **Immediate Priority Ceiling Protocol** for IPC (prevents unbounded priority inversion)
-- **Complete safety instrumentation** — stack canaries, watchdog, CRC check, RAM test
-- **IEC 62304 / IEC 61508 compliance support** with compile-time enforcement
+- **Configurable safety mechanisms** — stack canaries, watchdogs, CRC check, RAM test, MPU and monitoring
+- **IEC 62304 / IEC 61508 target-profile configuration checks** with compile-time enforcement
 
 ### Design Principles
 
 1. **Zero mock/fake implementations** — every API has a real implementation
 2. **No API without behavior** — every function does what its signature promises
 3. **No hidden crashes** — every fault path is handled gracefully
-4. **Portable** — same kernel code runs on STM32F0 through STM32H7
+4. **Portable** — family-specific STM32 detection plus a generic Cortex-M fallback
 5. **RAM-efficient** — no 256-entry static arrays; bitmap + linked list
 
 ---
@@ -75,15 +75,15 @@ ZenOS is a priority-based preemptive real-time operating system (RTOS) designed 
 
 ### Compilation Units
 
-| File | Role | Size (est.) |
+| File | Role |
 |------|------|-------------|
-| `ZenOS.cpp` | Kernel core: globals, init, start, PendSV, tick, idle, delay | ~3KB flash |
-| `ZenOS_Scheduler.cpp` | O(1) bitmap scheduler, task create/control/lookup | ~2KB flash |
-| `ZenOS_IPC.cpp` | Events, Mutex, C++ RAII wrappers | ~2KB flash |
-| `ZenOS_Safety.cpp` | Error system, stack check, fault handler, watchdog, CRC, RAM test, MPU | ~2KB flash |
-| `ZenOS_Monitor.cpp` | Stack watermark, CPU usage, deadline monitoring | ~1KB flash |
+| `ZenOS.cpp` | Kernel core: globals, init, start, PendSV, tick, idle, delay |
+| `ZenOS_Scheduler.cpp` | Priority bitmap scheduler, task create/control/lookup |
+| `ZenOS_IPC.cpp` | Events, Mutex, C++ RAII wrappers |
+| `ZenOS_Safety.cpp` | Error system, stack check, fault handler, watchdog, CRC, RAM test, MPU |
+| `ZenOS_Monitor.cpp` | Stack watermark, CPU usage, deadline monitoring |
 
-**Total estimated kernel size:** ~10KB flash, ~1.5KB RAM (default config, 10 tasks)
+Binary size and RAM usage are configuration-, compiler-, optimization-, target- and task-count-dependent; measure the final build rather than relying on a fixed estimate.
 
 ---
 
