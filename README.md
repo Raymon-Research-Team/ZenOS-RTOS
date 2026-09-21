@@ -164,7 +164,7 @@ Safety and monitoring mechanisms are **configurable** in `ZenOS_Config.hpp`; the
 | 🔍 Stack Canary | always active | Canary words + stack-pointer checks for every task (checked every 16 ticks) |
 | 🔐 TCB Integrity | `OS_MONITORING_EN` | Magic-number validation of task control blocks |
 | ⏱️ Deadline Monitor | `OS_MONITORING_EN` | Detects deadline misses; reaction via `OS_MONITORING_DEADLINE_ACTION` |
-| 📋 Error Log | `OS_MONITORING_EN` | RAM ring buffer with timestamp, task ID and severity (`OS_MONITORING_LOG_SIZE`) |
+| 📋 Error Log | `OS_MONITORING_EN` | RAM ring buffer with timestamp, task ID and severity (`OS_MONITORING_ERROR_LOG_SIZE`) |
 | 📊 CPU & Stack Stats | `OS_MONITORING_EN` | CPU usage, per-task stack watermark and stack report |
 | 🐕 HW Watchdog | `OS_SAFETY_HW_WATCHDOG_EN` | STM32 IWDG conditional feed when enabled |
 | 💤 SW Watchdog | `OS_SAFETY_SOFT_WATCHDOG_EN` | Stuck-task detection with `OS_SAFETY_SOFT_WDG_TIMEOUT_MS` |
