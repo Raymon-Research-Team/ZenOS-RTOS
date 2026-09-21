@@ -198,7 +198,7 @@ Semaphores can be used for resource pools and ISR-to-task signaling. The maximum
 
 ## 10. Monitoring (OS_MONITORING_EN)
 
-Monitoring requires `OS_MONITORING_EN=1`; guard calls with `#if OS_MONITORING_EN`:
+Monitoring requires `OS_MONITORING_EN=0`; guard calls with `#if OS_MONITORING_EN`:
 
 ```cpp
 #if OS_MONITORING_EN
@@ -238,7 +238,7 @@ uint32_t unexpected = os_get_unexpected_error_count();
 OSError  last       = os_get_last_error();
 ```
 
-When `OS_MONITORING_EN` is enabled, errors are stored in a RAM circular buffer whose capacity is controlled by `OS_MONITORING_LOG_SIZE`; `os_get_error_log_entry(i)`, `os_get_error_log_count()` and `os_get_error_log_total()` read it back. Errors are also logged automatically for every kernel-detected fault.
+When `OS_MONITORING_EN` is enabled, errors are stored in a RAM circular buffer whose capacity is controlled by `OS_MONITORING_ERROR_LOG_SIZE`; `os_get_error_log_entry(i)`, `os_get_error_log_count()` and `os_get_error_log_total()` read it back. Errors are also logged automatically for every kernel-detected fault.
 
 For deliberate fault injection (tests), wrap the region so expected errors do not count as unexpected:
 
