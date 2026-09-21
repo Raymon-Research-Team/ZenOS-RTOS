@@ -96,14 +96,14 @@ Tickless idle: when the idle task runs and tasks are blocked, the kernel program
 | `OS_MONITORING_DEADLINE_ACTION` | 1 | Deadline-miss reaction (sub-option of `OS_MONITORING_EN`): 0 = log only, 1 = reset task, 2 = disable task; valid range 0..2 |
 | `OS_MONITORING_ERROR_LOG_SIZE` | 16 | Error-log ring-buffer capacity in entries (sub-option of `OS_MONITORING_EN`); minimum 1 |
 
-What `OS_MONITORING_EN=0` compiles in and runs (see the comment block in `ZenOS_Config.hpp`):
+What `OS_MONITORING_EN=1` compiles in and runs (see the comment block in `ZenOS_Config.hpp`):
 
 1. **Deadline monitoring** — `os_task_set_deadline()` arms a per-task hard deadline; `os_tick()` detects misses, counts them and reports `DEADLINE_MISS`; the reaction is configured by `OS_MONITORING_DEADLINE_ACTION`. `os_get_deadline_miss_count()` exposes the per-task miss count.
 2. **TCB integrity checking** — every TCB carries a magic number (`OS_TCB_MAGIC`) written at task creation and verified before watchdog recovery actions; a corrupted TCB is reported as `TCB_CORRUPTED` and the affected task is deactivated instead of reset.
 3. **Error log** — `OS_MONITORING_ERROR_LOG_SIZE` entries, each with timestamp, error code, task ID and severity. `_os_report_error()` logs every kernel error automatically. Query API: `os_log_error()`, `os_get_error_log_entry()`, `os_get_error_log_count()`, `os_get_error_log_total()`.
 4. **CPU load and stack instrumentation** — `os_get_cpu_usage()`, `os_get_cpu_usage_total()`, `os_get_task_cpu_usage()`, per-task peak-SP watermark tracking, `os_get_stack_watermark()`, `os_get_stack_watermark_percent()` and the `os_get_stack_report()` table.
 
-Setting `OS_MONITORING_EN=0` removes all of the above: the TCB loses those fields, the error-log API becomes no-op stubs and the monitor query functions are not compiled (guard application calls with `#if OS_MONITORING_EN`).
+Setting `OS_MONITORING_EN=0 removes all of the above: the TCB loses those fields, the error-log API becomes no-op stubs and the monitor query functions are not compiled (guard application calls with `#if OS_MONITORING_EN`).
 
 RAM cost when enabled (Cortex-M3, approximate): ~8 bytes per error-log entry (`OS_MONITORING_ERROR_LOG_SIZE` entries) + 16 bytes per task (deadline, magic and watermark fields).
 
@@ -147,9 +147,9 @@ When a target profile is active, the configuration header enforces the required 
 
 | Profile | Enforced at compile time |
 |---|---|
-| Medical Class B/C (`OS_TARGET_MEDICAL_CLASS >= 2`) | `OS_MONITORING_EN=0`, `OS_SAFETY_SOFT_WATCHDOG_EN=1`, `OS_MONITORING_DEADLINE_ACTION >= 1` |
+| Medical Class B/C (`OS_TARGET_MEDICAL_CLASS >= 2`) | `OS_MONITORING_EN=1`, `OS_SAFETY_SOFT_WATCHDOG_EN=1`, `OS_MONITORING_DEADLINE_ACTION >= 1` |
 | Medical Class C (`OS_TARGET_MEDICAL_CLASS >= 3`) | additionally `OS_SAFETY_HW_WATCHDOG_EN=1`, `OS_SAFETY_MPU_EN=1`, `OS_SAFETY_CRC_EN=1`, `OS_SAFETY_RAM_TEST_EN=1` |
-| Industrial SIL 1+ (`OS_TARGET_INDUSTRIAL_SIL >= 1`) | `OS_SAFETY_SOFT_WATCHDOG_EN=1`, `OS_MONITORING_EN=0` |
+| Industrial SIL 1+ (`OS_TARGET_INDUSTRIAL_SIL >= 1`) | `OS_SAFETY_SOFT_WATCHDOG_EN=1`, `OS_MONITORING_EN=1` |
 | Industrial SIL 2+ (`OS_TARGET_INDUSTRIAL_SIL >= 2`) | additionally `OS_IPC_TOOLS_EN=1`, `OS_SAFETY_HW_WATCHDOG_EN=1`, `OS_MONITORING_DEADLINE_ACTION >= 1` |
 | Industrial SIL 3+ (`OS_TARGET_INDUSTRIAL_SIL >= 3`) | additionally `OS_SAFETY_MPU_EN=1`, `OS_SAFETY_RAM_TEST_EN=1`, `OS_SAFETY_CRC_EN=1` |
 
