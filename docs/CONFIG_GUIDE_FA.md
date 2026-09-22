@@ -72,7 +72,8 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 | ویژگی | مقدار |
 |---|---|
-| پیش‌فرض | `0` |
+| پیش‌فرض | `1` |
+| مقادیر مجاز | `0` یا `1` |
 | کاربرد | کلید اصلی واحد برای همه اصول ارتباط بین‌تسکی |
 
 با `OS_IPC_TOOLS_EN=1` همه IPC با هم فعال می‌شوند: `OS_EVENT`، `OS_MUTEX` (با سقف اولویت فوری)، `OS_QUEUE`، `OS_SEMAPHORE` و گاردهای `OS_LOCK`/`OS_LOCK_T`. با `OS_IPC_TOOLS_EN=0` کلاس‌های IPC اصلاً کامپایل نمی‌شوند و برنامه نباید از آن‌ها استفاده کند. کلید جداگانه برای هرprimitive وجود ندارد.
@@ -146,24 +147,25 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 ## ۶. پیکربندی کم‌حجم نمونه
 
+برای هدف‌های محدود از نظر RAM/Flash، فقط گزینه‌هایی را که عمداً می‌خواهید کوچک‌تر شوند override کنید. نمونه زیر پیش‌فرض‌های فعلی را حفظ می‌کند مگر جایی که صریحاً override شده باشد:
+
 ```cpp
-#define OS_KERNEL_TICK_PERIOD_US  1000UL
-#define OS_KERNEL_DEFAULT_STACK_SIZE  256
+// Overrideهای معتبر برای هدف محدود:
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // معتبر: 100..1000؛ باید 1000 را دقیقاً تقسیم کند
+#define OS_KERNEL_DEFAULT_STACK_SIZE  128     // پیش‌فرض فعلی؛ کف تخصیص مؤثر = 256 B
+#define OS_KERNEL_MAX_PRIORITIES      2       // معتبر: 2..256؛ اولویت 0 = idle
 
-#define OS_IPC_TOOLS_EN              1   // 0 یعنی حذف همه کلاس‌های IPC
+#define OS_IPC_TOOLS_EN               0       // override صریح: حذف همه IPC
+#define OS_MONITORING_EN              0       // پیش‌فرض فعلی
 
-#define OS_MONITORING_EN                1
-#define OS_MONITORING_DEADLINE_ACTION         1
-#define OS_MONITORING_ERROR_LOG_SIZE       16
-
-#define OS_SAFETY_RAM_TEST_EN        0
-#define OS_SAFETY_MPU_EN             0
-#define OS_SAFETY_HW_WATCHDOG_EN     0
-#define OS_SAFETY_CRC_EN             0
-#define OS_SAFETY_SOFT_WATCHDOG_EN   0
+#define OS_SAFETY_RAM_TEST_EN         0
+#define OS_SAFETY_MPU_EN              0
+#define OS_SAFETY_HW_WATCHDOG_EN      0
+#define OS_SAFETY_CRC_EN              0
+#define OS_SAFETY_SOFT_WATCHDOG_EN    0
 ```
 
-این فقط یک نمونه برای سیستم محدود از نظر RAM/Flash است. در سیستم ایمنی‌محور، الزامات پروفایل هدف اولویت دارند.
+`OS_KERNEL_TICK_PERIOD_US=1000` و `OS_KERNEL_MAX_PRIORITIES=2` **override** هستند، نه مقدار پیش‌فرض. پیش‌فرض‌های سورس همچنان 100 میکروثانیه و 16 اسلات اولویت هستند. `OS_IPC_TOOLS_EN=0` نیز override صریح است، چون پیش‌فرض سورس `1` است. در سیستم‌های ایمنی‌محور، الزامات پروفایل هدف باید فعال شوند.
 
 ## ۷. بازنویسی پیکربندی
 
