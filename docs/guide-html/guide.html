@@ -887,7 +887,7 @@ CPU Usage: 45%
     void task_wdg_feeder(void) {
         while (1) {
             os_hw_watchdog_feed();  // Unconditional feed
-            os_delay_ms(1000);     // Feed every 1s (IWDG timeout ~6.5s)
+            os_delay_ms(1000);     // Feed every 1s; timeout depends on the target IWDG configuration
         }
     }
     // Or conditional feed (skip if unhealthy)
