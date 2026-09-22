@@ -84,7 +84,8 @@ Tickless idle: when the idle task runs and tasks are blocked, the kernel program
 
 | Property | Value |
 |---|---|
-| Default | `0` |
+| Default | `1` |
+| Allowed values | `0` or `1` |
 | Purpose | Single master switch for all inter-task communication primitives |
 
 `OS_IPC_TOOLS_EN=1` enables **all** IPC together: `OS_EVENT`, `OS_MUTEX` (with immediate priority ceiling), `OS_QUEUE`, `OS_SEMAPHORE` and the `OS_LOCK`/`OS_LOCK_T` guards. With `OS_IPC_TOOLS_EN=0` the IPC classes are not compiled and the application must not use them. There are no separate per-primitive switches.
@@ -160,26 +161,25 @@ When both profiles are defined, the stricter requirement applies. These checks v
 
 ## 6. Minimal configuration example
 
-For a memory-constrained target, disable only features that the application does not need and verify the resulting RAM/flash footprint:
+For a memory-constrained target, explicitly override only the settings that reduce resource usage. The example below keeps the current source defaults unless a smaller footprint is intentionally requested:
 
 ```cpp
-#define OS_KERNEL_TICK_PERIOD_US  1000UL
-#define OS_KERNEL_DEFAULT_STACK_SIZE  256
+// Valid overrides for a constrained target:
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // valid: 100..1000; must divide 1000
+#define OS_KERNEL_DEFAULT_STACK_SIZE  128     // current default request; effective floor = 256 B
+#define OS_KERNEL_MAX_PRIORITIES      2       // valid: 2..256; priority 0 = idle
 
-#define OS_IPC_TOOLS_EN              1   // 0 removes all IPC classes
+#define OS_IPC_TOOLS_EN               0       // explicit override: disable all IPC
+#define OS_MONITORING_EN              0       // current default
 
-#define OS_MONITORING_EN                1
-#define OS_MONITORING_DEADLINE_ACTION         1
-#define OS_MONITORING_ERROR_LOG_SIZE       16
-
-#define OS_SAFETY_RAM_TEST_EN        0
-#define OS_SAFETY_MPU_EN             0
-#define OS_SAFETY_HW_WATCHDOG_EN     0
-#define OS_SAFETY_CRC_EN             0
-#define OS_SAFETY_SOFT_WATCHDOG_EN   0
+#define OS_SAFETY_RAM_TEST_EN         0
+#define OS_SAFETY_MPU_EN              0
+#define OS_SAFETY_HW_WATCHDOG_EN      0
+#define OS_SAFETY_CRC_EN              0
+#define OS_SAFETY_SOFT_WATCHDOG_EN    0
 ```
 
-The values above are an example profile, not a universal recommendation. Safety-targeted systems must enable the mechanisms required by their target profile.
+`OS_KERNEL_TICK_PERIOD_US=1000` and `OS_KERNEL_MAX_PRIORITIES=2` are **overrides**, not defaults. The source defaults remain 100 µs and 16 priority slots. `OS_IPC_TOOLS_EN=0` is also an explicit override because the source default is `1`. Safety-targeted systems must enable the mechanisms required by their target profile.
 
 ## 7. Overriding configuration
 
