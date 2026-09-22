@@ -1287,26 +1287,24 @@ void task_shutdown_handler(void) {
 
         <h3>2.1 <span data-lang="en">Minimal Configuration (Constrained Devices)</span><span data-lang="fa">حداقل پیکربندی (دستگاه‌های محدود)</span></h3>
         <p><span data-lang="en">For devices with &lt;20KB RAM or when you need maximum flash/RAM savings:</span><span data-lang="fa">برای دستگاه‌هایی با کمتر از ۲۰KB RAM یا زمانی که به حداکثر صرفه‌جویی نیاز دارید:</span></p>
-        <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Minimal configuration
-#define OS_KERNEL_TICK_PERIOD_US    1000UL   // 1ms tick (less overhead)
-#define OS_KERNEL_DEFAULT_STACK_SIZE  256    // Smaller default stack (256-byte effective floor)
-#define OS_KERNEL_MAX_PRIORITIES    16       // default priorities 1 to 15
+        <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Minimal configuration (explicit overrides)
+// Source defaults: tick=100us, stack request=128B (effective floor=256B),
+// priorities=16 slots, IPC=1, monitoring=0, safety features=0.
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // override: valid 100..1000us; must divide 1000
+#define OS_KERNEL_DEFAULT_STACK_SIZE  128     // source default request; effective floor=256B
+#define OS_KERNEL_MAX_PRIORITIES      2       // override: valid 2..256; priority 0=idle
 
-// Single IPC switch — 0 removes all IPC classes (EVENT/MUTEX/QUEUE/SEMAPHORE):
-#define OS_IPC_TOOLS_EN               1         // Keep 1 if tasks communicate
+#define OS_IPC_TOOLS_EN               0       // explicit override: disable all IPC
+#define OS_MONITORING_EN              0       // source default
 
-#define OS_MONITORING_EN                0         // Master switch: deadline + TCB integrity + error log + CPU/stack stats
-#define OS_MONITORING_DEADLINE_ACTION         1         // Deadline-miss reaction: 0=log, 1=reset task, 2=disable
-#define OS_MONITORING_ERROR_LOG_SIZE       16        // Error-log ring buffer capacity (entries)
-
-#define OS_SAFETY_RAM_TEST_EN         0         // Disable to save CPU time
-#define OS_SAFETY_MPU_EN              0         // Disable if no memory protection needed
-#define OS_SAFETY_HW_WATCHDOG_EN      0         // Disable if no IWDG available
-#define OS_SAFETY_CRC_EN              0         // Disable if no CRC peripheral
-#define OS_SAFETY_SOFT_WATCHDOG_EN    1         // Keep — detects stuck tasks</code></pre>
+#define OS_SAFETY_RAM_TEST_EN         0
+#define OS_SAFETY_MPU_EN              0
+#define OS_SAFETY_HW_WATCHDOG_EN      0
+#define OS_SAFETY_CRC_EN              0
+#define OS_SAFETY_SOFT_WATCHDOG_EN    0</code></pre>
 
         <h3>2.2 <span data-lang="en">Standard Configuration (Recommended)</span><span data-lang="fa">پیکربندی استاندارد (پیشنهادی)</span></h3>
-        <p><span data-lang="en">Repository defaults — optional mechanisms are not all enabled; verify each default and its valid range in the configuration reference:</span><span data-lang="fa">تنظیمات پیش‌فرض — تمام ویژگی‌ها فعال. بهترین برای بیشتر برنامه‌ها:</span></p>
+        <p><span data-lang="en">Repository defaults — optional mechanisms are not all enabled; verify each default and its valid range in the configuration reference:</span><span data-lang="fa">تنظیمات پیش‌فرض مخزن — مکانیسم‌های اختیاری همگی فعال نیستند؛ مقدار پیش‌فرض و محدوده هر گزینه را در مرجع پیکربندی بررسی کنید:</span></p>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Standard configuration (all defaults)
 // No changes needed — features follow the defaults in ZenOS_Config.hpp.
 // Just use the file as-is.</code></pre>
