@@ -230,7 +230,7 @@ Your donation directly funds development, testing, certification, and documentat
 </td>
 <td rowspan="2" align="center" width="50%">
 
-<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="docs/guide-html/donate-qr.png" alt="Donate QR Code" width="180" /></a>
+<a href="https://donatr.ee/raymon-research-team/" target="_blank" rel="noopener" title="Open donation page in a new tab"><img src="donate-qr.png" alt="Donate QR Code" width="180" /></a>
 
 </td>
 </tr>
