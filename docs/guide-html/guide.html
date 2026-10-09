@@ -1293,7 +1293,7 @@ void task_shutdown_handler(void) {
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Minimal configuration (explicit overrides)
 // Source defaults: tick=10us, stack request=128B (effective floor=256B),
 // priorities=16 slots, IPC=1, monitoring=0, safety features=0.
-#define OS_KERNEL_TICK_PERIOD_US      1000UL  // override: valid 100..1000us; must divide 1000
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // override: valid 10..1000us; must divide 1000
 #define OS_KERNEL_DEFAULT_STACK_SIZE  128     // source default request; effective floor=256B
 #define OS_KERNEL_MAX_PRIORITIES      2       // override: valid 2..256; priority 0=idle
 
