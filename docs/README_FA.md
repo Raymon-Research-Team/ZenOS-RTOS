@@ -6,12 +6,15 @@
 
 ### **سادگی — امنیت — سرعت**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](../LICENSE)
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg?style=for-the-badge)](../LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.1.0-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
+
+
+> **مجوز:** این نسخه تحت مجوز BUSL-1.1 منتشر می‌شود. استفاده تجاری/تولیدی خارج از مجوز اصلی به مجوز تجاری جداگانه نیاز دارد. جزئیات: [COMMERCIAL.md](../COMMERCIAL.md).
 
 <br>
 
