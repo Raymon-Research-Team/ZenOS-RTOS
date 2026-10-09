@@ -410,7 +410,7 @@ ZenOS SMP is:
 - **Optional**: Compile with `OS_SMP_CORES = 1` for single-core (default)
 - **Simple**: One function call to pin/migrate tasks
 - **Safe**: Same safety mechanisms (canary, MPU, watchdog) work on both cores
-- **Free**: MIT license, no commercial restrictions
+- **Source-available**: BUSL-1.1; production/commercial use outside the license grant requires a separate commercial license
 
 ---
 
@@ -437,7 +437,7 @@ ZenOS SMP is:
 | IPC ceiling | No (PI only) | No | No | **IPCP built-in** |
 | Tickless idle | Complex | Complex | Complex | **One-line enable** |
 | Dual-core SMP | Yes (complex) | Experimental | Commercial | **Simple + free** |
-| License | MIT | Apache 2.0 | Apache 2.0 + commercial | **MIT** |
+| License | Apache 2.0 | Apache 2.0 | Apache 2.0 + commercial | **BUSL-1.1** |
 
 ---
 
