@@ -43,18 +43,18 @@
  *  OS_KERNEL — Core Timing and Memory
  * ============================================================================ */
 
-/* Tick resolution in microseconds (100..1000, must divide 1000 evenly)
+/* Tick resolution in microseconds (10..1000, must divide 1000 evenly)
  * [MED-B] [MED-C] [IND-1] [IND-2] Must be ≤ 1 ms for Class B/C and SIL ≥ 1.
  *          Medical: IEC 62304 requires timing analysis for Class B/C;
  *          a tick ≤ 1 ms is necessary for deadline verification.
  *          Industrial: IEC 61508 Part 3 Table 4 — SW response time
  *          must be demonstrably less than the process safety time. */
 #ifndef OS_KERNEL_TICK_PERIOD_US
-#define OS_KERNEL_TICK_PERIOD_US  100UL // Default=100
+#define OS_KERNEL_TICK_PERIOD_US  10UL // Default=10
 #endif
 
-#if (OS_KERNEL_TICK_PERIOD_US < 100UL) || (OS_KERNEL_TICK_PERIOD_US > 1000UL)
-#error "OS_KERNEL_TICK_PERIOD_US must be 100..1000"
+#if (OS_KERNEL_TICK_PERIOD_US < 10UL) || (OS_KERNEL_TICK_PERIOD_US > 1000UL)
+#error "OS_KERNEL_TICK_PERIOD_US must be 10..1000"
 #endif
 
 #if (1000UL % OS_KERNEL_TICK_PERIOD_US) != 0
