@@ -13,10 +13,10 @@ This document describes the configuration implemented by `ZenOS/ZenOS_Config.hpp
 | Property | Value |
 |---|---|
 | Default | `100` µs |
-| Valid range | `100..1000` µs |
+| Valid range | `10..1000` µs |
 | Constraint | Must divide `1000` evenly |
 
-Controls the kernel tick period. `100` µs means a 10 kHz kernel tick.
+Controls the kernel tick period. `10` µs means a 100 kHz kernel tick.
 
 ### `OS_KERNEL_DEFAULT_STACK_SIZE`
 
@@ -165,7 +165,7 @@ For a memory-constrained target, explicitly override only the settings that redu
 
 ```cpp
 // Valid overrides for a constrained target:
-#define OS_KERNEL_TICK_PERIOD_US      1000UL  // valid: 100..1000; must divide 1000
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // valid: 10..1000; must divide 1000
 #define OS_KERNEL_DEFAULT_STACK_SIZE  128     // current default request; effective floor = 256 B
 #define OS_KERNEL_MAX_PRIORITIES      2       // valid: 2..256; priority 0 = idle
 
@@ -179,7 +179,7 @@ For a memory-constrained target, explicitly override only the settings that redu
 #define OS_SAFETY_SOFT_WATCHDOG_EN    0
 ```
 
-`OS_KERNEL_TICK_PERIOD_US=1000` and `OS_KERNEL_MAX_PRIORITIES=2` are **overrides**, not defaults. The source defaults remain 100 µs and 16 priority slots. `OS_IPC_TOOLS_EN=0` is also an explicit override because the source default is `1`. Safety-targeted systems must enable the mechanisms required by their target profile.
+`OS_KERNEL_TICK_PERIOD_US=1000` and `OS_KERNEL_MAX_PRIORITIES=2` are **overrides**, not defaults. The source defaults remain 10 µs and 16 priority slots. `OS_IPC_TOOLS_EN=0` is also an explicit override because the source default is `1`. Safety-targeted systems must enable the mechanisms required by their target profile.
 
 ## 7. Overriding configuration
 
@@ -187,7 +187,7 @@ Each configuration option is protected by `#ifndef`, so project-level definition
 
 Compile-time validation covers:
 
-- `OS_KERNEL_TICK_PERIOD_US` (range 100..1000 and even-divisor rule)
+- `OS_KERNEL_TICK_PERIOD_US` (range 10..1000 and even-divisor rule)
 - `OS_KERNEL_MAX_PRIORITIES` (2..256)
 - `OS_MONITORING_DEADLINE_ACTION` (0..2)
 - `OS_MONITORING_ERROR_LOG_SIZE` (>= 1)
