@@ -205,6 +205,6 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 ---
 
-**ZenOS RTOS v1.1.0 · MIT License · Raymon Research Team**
+**ZenOS RTOS v1.1.0 · BUSL-1.1 · Raymon Research Team**
 
 </div>
