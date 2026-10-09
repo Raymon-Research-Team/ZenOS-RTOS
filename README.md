@@ -180,7 +180,7 @@ This is a solo project. I build it, test it, write the docs, and maintain it —
 
 > **📝 Note:** ZenOS provides compile-time target profiles for IEC 62304 (medical) and IEC 61508 (industrial) configuration requirements. These profiles and safety mechanisms do not constitute official certification; formal product-level verification, validation, traceability, audits, and certification remain the responsibility of the project/product owner.
 
-If you find ZenOS useful, whether for learning, prototyping, or shipping a product, consider supporting its continued development.
+If ZenOS is useful for learning, laboratory evaluation, or research, consider supporting its continued development. Commercial or production use requires a separate commercial license.
 
 ### 🎯 Where the money goes
 
@@ -216,6 +216,8 @@ Writing good documentation takes time. Answering issues takes time. Both matter.
 ## 💸 Donate
 
 Your donation directly funds development, testing, certification, and documentation.
+
+> **Free laboratory use:** ZenOS may be used at no charge for non-production laboratory testing, education, research, and evaluation. Donations are voluntary and do not grant commercial-use rights. **Commercial or production use requires a separate commercial license.** See [COMMERCIAL.md](COMMERCIAL.md) for details, or contact [rahman.h22@gmail.com](mailto:rahman.h22@gmail.com).
 
 > 💡 **Click a wallet address to copy it into your wallet app. Click the QR code to open it in a new tab.**
 
