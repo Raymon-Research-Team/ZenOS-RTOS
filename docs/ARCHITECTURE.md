@@ -524,7 +524,7 @@ ZenOS uses compile-time macros for hardware-specific details:
 
 ### Tick Timer
 
-SysTick configured for 100µs resolution (configurable):
+SysTick configured for 10µs resolution (configurable):
 - `OS_KERNEL_TICK_PERIOD_US = 100` (default)
 - `OS_TICKS_PER_MS = 10` (derived)
 - Maximum: 1000µs (1ms)
