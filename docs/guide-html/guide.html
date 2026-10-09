@@ -267,8 +267,8 @@
         <img src="./ZenOS_logo.svg" alt="ZenOS">
         <h3 data-lang="en">Real-Time Operating System for ARM Cortex-M</h3>
         <h3 data-lang="fa">سیستم‌عامل بلادرنگ برای ARM Cortex-M</h3>
-        <p data-lang="en">Priority bitmap • 10μs default tick • Zero heap • Configurable safety</p>
-        <p data-lang="fa">زمان‌بند bitmap اولویت • تیک 10μs • بدون حافظه پویا • ایمنی داخلی</p>
+        <p data-lang="en">Priority bitmap • 100μs default tick • Zero heap • Configurable safety</p>
+        <p data-lang="fa">زمان‌بند bitmap اولویت • تیک 100μs • بدون حافظه پویا • ایمنی داخلی</p>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-section">📚 <span data-lang="en">Navigation</span><span data-lang="fa">ناوبری</span></div>
@@ -331,7 +331,7 @@
   <img src="https://img.shields.io/badge/License-BUSL--1.1-blue?style=flat" alt="BUSL-1.1" height="22">
   <img src="https://img.shields.io/badge/ARM%20Cortex--M-ef6c00?style=flat" alt="ARM Cortex-M" height="22">
   <img src="https://img.shields.io/badge/C%2B%2B11-6a1b9a?style=flat" alt="C++11" height="22">
-  <img src="https://img.shields.io/badge/10%C2%B5s%20Tick-00838f?style=flat" alt="10μs Tick" height="22">
+  <img src="https://img.shields.io/badge/100%C2%B5s%20Tick-00838f?style=flat" alt="100μs Tick" height="22">
   <img src="https://img.shields.io/badge/Zero%20Heap-546e7a?style=flat" alt="Zero Heap" height="22">
   <img src="https://img.shields.io/badge/Priority%20Bitmap%20Scheduler-f39c12?style=flat" alt="Priority Bitmap + Ready Queues" height="22">
   <img src="https://img.shields.io/badge/IEC%20Target%20Profiles-8e44ad?style=flat" alt="Configurable IEC Target Profiles — not a certification claim" height="22">
@@ -547,7 +547,7 @@ bool running = os_task_isActive(task_function);       // Check state</code></pre
 
         <!-- Timing -->
         <h2 id="timing">2. <span data-lang="en">Timing & Delays</span><span data-lang="fa">زمان‌بندی و تاخیرها</span></h2>
-        <p><span data-lang="en"><strong>What is Timing?</strong> Timing is how ZenOS keeps track of time and manages task execution intervals. The kernel tick (default 10μs) is the heartbeat of the system — every tick, the scheduler checks which tasks should run. Delays allow tasks to sleep for a specified time, giving other tasks a chance to execute.</span><span data-lang="fa"><strong>زمان‌بندی چیست؟</strong> زمان‌بندی نحوه ردیابی زمان و مدیریت فواصل اجرای تسک توسط ZenOS است. تیک هسته (پیش‌فرض ۱۰ میکروثانیه) ضربان قلب سیستم است — در هر تیک، زمان‌بند بررسی می‌کند کدام تسک‌ها باید اجرا شوند. تاخیرها به تسک‌ها اجازه می‌دهند برای مدت زمان مشخصی بخوابند و به تسک‌های دیگر فرصت اجرا بدهند.</span></p>
+        <p><span data-lang="en"><strong>What is Timing?</strong> Timing is how ZenOS keeps track of time and manages task execution intervals. The kernel tick (default 100μs) is the heartbeat of the system — every tick, the scheduler checks which tasks should run. Delays allow tasks to sleep for a specified time, giving other tasks a chance to execute.</span><span data-lang="fa"><strong>زمان‌بندی چیست؟</strong> زمان‌بندی نحوه ردیابی زمان و مدیریت فواصل اجرای تسک توسط ZenOS است. تیک هسته (پیش‌فرض ۱۰۰ میکروثانیه) ضربان قلب سیستم است — در هر تیک، زمان‌بند بررسی می‌کند کدام تسک‌ها باید اجرا شوند. تاخیرها به تسک‌ها اجازه می‌دهند برای مدت زمان مشخصی بخوابند و به تسک‌های دیگر فرصت اجرا بدهند.</span></p>
         <pre dir="ltr"><code class="language-cpp">os_delay_ms(100);  // Sleep ~100ms, yield CPU to other tasks
 os_delay_ms(0);    // No implicit yield; use os_yield() to yield
 
@@ -1072,7 +1072,7 @@ if (temperature > 70) {
         <p><span data-lang="en"><strong>What happens:</strong> Tasks are created but immediately stopped (dormant). They don't use CPU until <code>os_task_start()</code> is called. This is more efficient than creating/destroying tasks repeatedly. The task's stack and TCB remain allocated but the scheduler ignores stopped tasks.</span><span data-lang="fa"><strong>چه اتفاقی می‌افتد:</strong> تسک‌ها ایجاد اما فوراً متوقف می‌شوند (غیرفعال). تا فراخوانی <code>os_task_start()</code> از CPU استفاده نمی‌کنند.</span></p>
 
         <h2><span data-lang="en">Power Management with Tickless Idle</span><span data-lang="fa">مدیریت مصرف با حالت idle بدون تیک</span></h2>
-        <p><span data-lang="en"><strong>What is Tickless Idle?</strong> In normal mode, the SysTick interrupt fires every 10μs even when nothing is happening — wasting power. Tickless idle disables SysTick during long delays and uses a hardware timer to wake up exactly when the next task is due. This dramatically reduces power consumption in battery-powered devices.</span><span data-lang="fa"><strong>idle بدون تیک چیست؟</strong> در حالت عادی، وقفه SysTick هر ۱۰ میکروثانیه حتی وقتی هیچ اتفاقی نمی‌افتد فعال می‌شود — مصرف بیهوده انرژی. idle بدون تیک SysTick را در تاخیرهای طولانی غیرفعال کرده و از تایمر سخت‌افزاری برای بیدار کردن دقیقاً وقتی تسک بعدی لازم است استفاده می‌کند.</span></p>
+        <p><span data-lang="en"><strong>What is Tickless Idle?</strong> In normal mode, the SysTick interrupt fires every 100μs even when nothing is happening — wasting power. Tickless idle disables SysTick during long delays and uses a hardware timer to wake up exactly when the next task is due. This dramatically reduces power consumption in battery-powered devices.</span><span data-lang="fa"><strong>idle بدون تیک چیست؟</strong> در حالت عادی، وقفه SysTick هر ۱۰۰ میکروثانیه حتی وقتی هیچ اتفاقی نمی‌افتد فعال می‌شود — مصرف بیهوده انرژی. idle بدون تیک SysTick را در تاخیرهای طولانی غیرفعال کرده و از تایمر سخت‌افزاری برای بیدار کردن دقیقاً وقتی تسک بعدی لازم است استفاده می‌کند.</span></p>
         <pre dir="ltr"><code class="language-cpp">// Enable OS_KERNEL_TICKLESS_IDLE_EN in config
 // The OS will use WFI (Wait For Interrupt) when no tasks are ready
 // This puts the CPU into low-power mode automatically
@@ -1291,9 +1291,9 @@ void task_shutdown_handler(void) {
         <h3>2.1 <span data-lang="en">Minimal Configuration (Constrained Devices)</span><span data-lang="fa">حداقل پیکربندی (دستگاه‌های محدود)</span></h3>
         <p><span data-lang="en">For devices with &lt;20KB RAM or when you need maximum flash/RAM savings:</span><span data-lang="fa">برای دستگاه‌هایی با کمتر از ۲۰KB RAM یا زمانی که به حداکثر صرفه‌جویی نیاز دارید:</span></p>
         <pre dir="ltr"><code class="language-cpp">// ZenOS_Config.hpp — Minimal configuration (explicit overrides)
-// Source defaults: tick=10us, stack request=128B (effective floor=256B),
+// Source defaults: tick=100us, stack request=128B (effective floor=256B),
 // priorities=16 slots, IPC=1, monitoring=0, safety features=0.
-#define OS_KERNEL_TICK_PERIOD_US      1000UL  // override: valid 10..1000us; must divide 1000
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // override: valid 100..1000us; must divide 1000
 #define OS_KERNEL_DEFAULT_STACK_SIZE  128     // source default request; effective floor=256B
 #define OS_KERNEL_MAX_PRIORITIES      2       // override: valid 2..256; priority 0=idle
 
@@ -1371,7 +1371,7 @@ void task_shutdown_handler(void) {
         <h2 id="config-reference">5. <span data-lang="en">Complete Configuration Reference</span><span data-lang="fa">مرجع کامل پیکربندی</span></h2>
 <table>
             <tr><th><span data-lang="en">Constant</span><span data-lang="fa">ثابت</span></th><th><span data-lang="en">Default</span><span data-lang="fa">پیش‌فرض</span></th><th><span data-lang="en">Valid values / limit</span><span data-lang="fa">محدوده / محدودیت</span></th><th><span data-lang="en">Description</span><span data-lang="fa">توضیحات</span></th></tr>
-            <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>10</td><td><code>10..1000 µs</code>; must divide 1000 evenly</td><td><span data-lang="en">Kernel tick period.</span><span data-lang="fa">دوره تیک هسته؛ باید ۱۰۰۰ را بدون باقیمانده تقسیم کند.</span></td></tr>
+            <tr><td><code>OS_KERNEL_TICK_PERIOD_US</code></td><td>100</td><td><code>100..1000 µs</code>; must divide 1000 evenly</td><td><span data-lang="en">Kernel tick period.</span><span data-lang="fa">دوره تیک هسته؛ باید ۱۰۰۰ را بدون باقیمانده تقسیم کند.</span></td></tr>
             <tr><td><code>OS_KERNEL_DEFAULT_STACK_SIZE</code></td><td>128 B</td><td>Request ≥64 B; effective allocation floor 256 B; no explicit source max</td><td><span data-lang="en">Default task stack request; practical maximum is constrained by target RAM, linker/toolchain and <code>uint32_t</code>.</span><span data-lang="fa">درخواست پیش‌فرض پشته؛ حداکثر عملی به RAM هدف، ابزار لینک/کامپایل و <code>uint32_t</code> وابسته است.</span></td></tr>
             <tr><td><code>OS_KERNEL_MAX_PRIORITIES</code></td><td>16 slots</td><td><code>2..256</code> slots; priority 0 reserved; application range <code>1..N-1</code></td><td><span data-lang="en">At 256 slots, application priorities are <code>1..255</code>; larger numeric values mean higher priority.</span><span data-lang="fa">در ۲۵۶ اسلات، اولویت‌های کاربردی <code>1..255</code> هستند؛ عدد بزرگ‌تر یعنی اولویت بالاتر.</span></td></tr>
             <tr><td><code>OS_KERNEL_TICKLESS_IDLE_EN</code></td><td>1</td><td><code>0</code> or <code>1</code></td><td><span data-lang="en">WFI-based tickless idle.</span><span data-lang="fa">idle بدون تیک مبتنی بر WFI.</span></td></tr>
@@ -1397,7 +1397,7 @@ void task_shutdown_handler(void) {
         <h1>📊 <span data-lang="en">ZenOS vs FreeRTOS vs Zephyr</span><span data-lang="fa">مقایسه ZenOS با FreeRTOS و Zephyr</span></h1>
         <table>
             <tr><th><span data-lang="en">Feature</span><span data-lang="fa">ویژگی</span></th><th>ZenOS</th><th>FreeRTOS</th><th>Zephyr</th></tr>
-            <tr><td><span data-lang="en"><strong>Tick resolution</strong></span><span data-lang="fa"><strong>رزولوشن تیک</strong></span></td><td><strong>10μs</strong></td><td>1ms</td><td>10ms</td></tr>
+            <tr><td><span data-lang="en"><strong>Tick resolution</strong></span><span data-lang="fa"><strong>رزولوشن تیک</strong></span></td><td><strong>100μs</strong></td><td>1ms</td><td>10ms</td></tr>
             <tr><td><span data-lang="en"><strong>Scheduler</strong></span><span data-lang="fa"><strong>زمان‌بند</strong></span></td><td><strong>Priority bitmap + queue scan for eligibility</strong></td><td>O(n)</td><td>O(n)</td></tr>
             <tr><td><span data-lang="en"><strong>Heap</strong></span><span data-lang="fa"><strong>حافظه پویا</strong></span></td><td><strong>Never</strong></td><td>Available</td><td>Available</td></tr>
             <tr><td><span data-lang="en"><strong>Safety</strong></span><span data-lang="fa"><strong>ایمنی</strong></span></td><td><strong>Built-in</strong></td><td>Optional</td><td>Optional</td></tr>
