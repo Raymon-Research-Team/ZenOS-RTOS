@@ -459,7 +459,7 @@ CFLAGS += -DMEDICAL=3 -DINDUSTRIAL=3
 
 ## 9. Disclaimer
 
-ZenOS is provided as-is under the MIT license. The safety mechanisms described in this document are **best-effort** implementations intended to aid in the development of robust embedded systems. They do not constitute a certified safety product. The user is solely responsible for:
+ZenOS is provided under the Business Source License 1.1 (BUSL-1.1). Production/commercial use outside the license grant requires a separate commercial license; see `COMMERCIAL.md`. The safety mechanisms described in this document are **best-effort** implementations intended to aid in the development of robust embedded systems. They do not constitute a certified safety product. The user is solely responsible for:
 
 - Validating that ZenOS meets the safety requirements of their specific application
 - Performing formal verification, testing, and certification as required by their domain (medical, automotive, industrial, etc.)
