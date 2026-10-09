@@ -353,4 +353,4 @@ The principal configuration options are documented in [CONFIG_GUIDE.md](CONFIG_G
 
 ---
 
-**ZenOS RTOS v1.1.0 · ARM Cortex-M · C++11 · MIT License**
+**ZenOS RTOS v1.1.0 · ARM Cortex-M · C++11 · BUSL-1.1**
