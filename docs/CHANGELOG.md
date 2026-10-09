@@ -18,7 +18,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - Compile-time IEC 62304 medical and IEC 61508 industrial target-profile configuration checks.
 
 ### Changed
-- Kernel timing defaults to a `10 µs` tick; `OS_KERNEL_TICK_PERIOD_US` accepts `10..1000 µs` values that divide 1000 evenly.
+- Kernel timing defaults to a `100 µs` tick; `OS_KERNEL_TICK_PERIOD_US` accepts `100..1000 µs` values that divide 1000 evenly.
 - Default scheduler configuration uses 16 priority slots, with priority `0` reserved for idle and higher numeric values representing higher priority.
 - IPC is controlled by the unified `OS_IPC_TOOLS_EN` switch and is enabled by default.
 - Runtime monitoring is controlled by `OS_MONITORING_EN` and is disabled by default.
