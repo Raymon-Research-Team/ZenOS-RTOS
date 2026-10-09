@@ -3,7 +3,10 @@
 **Version:** 1.0.0  
 **Date:** September 2026  
 **Author:** Raymon Research Team — تیم تحقیقاتی رایمون (rahman.h22@gmail.com)  
-**License:** MIT
+**License:** BUSL-1.1
+
+
+> **License:** This release is licensed under BUSL-1.1. Production/commercial use outside the license grant requires a separate commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
 
 ---
 
