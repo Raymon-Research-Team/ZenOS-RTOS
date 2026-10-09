@@ -88,7 +88,7 @@ uint32_t ms   = os_get_ms();
 uint32_t us   = os_get_us();   // DWT-based, wrap-safe accumulator
 ```
 
-The default tick period is 100 µs and is configurable through `OS_KERNEL_TICK_PERIOD_US` (100..1000, must divide 1000 evenly).
+The default tick period is 10 µs and is configurable through `OS_KERNEL_TICK_PERIOD_US` (10..1000, must divide 1000 evenly).
 
 `os_get_us()` uses a wrap-safe DWT cycle-counter extension; after changing `SystemCoreClock`, call `os_time_reset()` (or note that subsequent windows re-synchronize automatically).
 
