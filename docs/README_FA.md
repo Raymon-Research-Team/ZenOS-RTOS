@@ -13,6 +13,9 @@
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
 
+
+> **مجوز:** این نسخه تحت مجوز BUSL-1.1 منتشر می‌شود. استفاده تجاری/تولیدی خارج از مجوز اصلی به مجوز تجاری جداگانه نیاز دارد. جزئیات: [COMMERCIAL.md](../COMMERCIAL.md).
+
 <br>
 
 [**🇮🇷 فارسی**](README_FA.md) | [**🇬🇧 English**](../README.md)

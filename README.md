@@ -12,6 +12,9 @@
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
 
+
+> **License:** This release is licensed under BUSL-1.1. Production/commercial use outside the license grant requires a separate commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
+
 <br>
 
 [**🇮🇷 فارسی**](docs/README_FA.md) | [**🇬🇧 English**](README.md)
