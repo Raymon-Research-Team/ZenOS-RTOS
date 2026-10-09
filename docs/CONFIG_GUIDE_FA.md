@@ -13,7 +13,7 @@
 ### `OS_KERNEL_TICK_PERIOD_US`
 
 - پیش‌فرض: `100` میکروثانیه
-- محدوده: `10..1000`
+- محدوده: `100..1000`
 - مقدار باید `1000` را بدون باقیمانده تقسیم کند.
 
 ### `OS_KERNEL_DEFAULT_STACK_SIZE`
@@ -151,7 +151,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 ```cpp
 // Overrideهای معتبر برای هدف محدود:
-#define OS_KERNEL_TICK_PERIOD_US      1000UL  // معتبر: 10..1000؛ باید 1000 را دقیقاً تقسیم کند
+#define OS_KERNEL_TICK_PERIOD_US      1000UL  // معتبر: 100..1000؛ باید 1000 را دقیقاً تقسیم کند
 #define OS_KERNEL_DEFAULT_STACK_SIZE  128     // پیش‌فرض فعلی؛ کف تخصیص مؤثر = 256 B
 #define OS_KERNEL_MAX_PRIORITIES      2       // معتبر: 2..256؛ اولویت 0 = idle
 
@@ -173,7 +173,7 @@ idle بدون تیک: وقتی idle اجرا می‌شود و تسک‌ها بل
 
 اعتبارسنجی زمان کامپایل شامل:
 
-- `OS_KERNEL_TICK_PERIOD_US` (محدوده 10..1000 و قاعده تقسیم بدون باقیمانده)
+- `OS_KERNEL_TICK_PERIOD_US` (محدوده 100..1000 و قاعده تقسیم بدون باقیمانده)
 - `OS_KERNEL_MAX_PRIORITIES` (2..256)
 - `OS_MONITORING_DEADLINE_ACTION` (0..2)
 - `OS_MONITORING_ERROR_LOG_SIZE` (>= 1)
