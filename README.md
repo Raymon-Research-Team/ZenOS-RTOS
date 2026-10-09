@@ -5,12 +5,15 @@
 
 **Real-Time operating system for ARM Cortex-M — written in C++11.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg?style=for-the-badge)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.1.0-green.svg?style=for-the-badge)]()
 [![Platform](https://img.shields.io/badge/Platform-ARM%20Cortex--M-orange.svg?style=for-the-badge)]()
 [![Language](https://img.shields.io/badge/Language-C%2B%2B11-purple.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-62304-red.svg?style=for-the-badge)]()
 [![Standard](https://img.shields.io/badge/IEC-61508-red.svg?style=for-the-badge)]()
+
+
+> **License:** This release is licensed under BUSL-1.1. Production/commercial use outside the license grant requires a separate commercial license. See [COMMERCIAL.md](COMMERCIAL.md).
 
 <br>
 
