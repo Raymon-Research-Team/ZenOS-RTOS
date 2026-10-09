@@ -49,7 +49,7 @@ It's built for ARM Cortex-M microcontrollers and STM32 projects. ZenOS includes 
 
 | Advantage | ZenOS | FreeRTOS | Zephyr |
 |:----------|:------|:---------|:-------|
-| **Tick resolution** | **10μs default; configurable 10–1000μs** | Configurable | Configurable |
+| **Tick resolution** | **100μs default; configurable 100–1000μs** | Configurable | Configurable |
 | **Scheduler** | **Priority bitmap + per-priority ready queues + eligibility checks** | Priority-based scheduler | Priority-based scheduler |
 | **Heap allocation** | **No general-purpose heap in the kernel task model** | Configurable | Configurable |
 | **Safety mechanisms** | **Configurable canary, MPU, watchdog, RAM, CRC, TCB checks** | Configurable | Configurable |
