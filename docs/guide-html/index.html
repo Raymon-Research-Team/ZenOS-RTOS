@@ -65,6 +65,65 @@
     @media(max-width:560px){.chip-stage{min-height:260px}.mcu-chip{padding:13px}.chip-mark{font-size:2.5rem}.chip-top{font-size:.46rem}.chip-bottom{font-size:.4rem}.stage-label{font-size:.46rem}.label-left{left:8px;bottom:8px}.label-right{right:8px;top:8px}.hero-card{padding:17px 15px;font-size:.69rem;overflow-wrap:anywhere}}
     @media(prefers-reduced-motion:reduce){.mcu-chip,.signal i{animation:none!important}.card,.feature,.btn,.donate-btn{transition:none!important;scroll-behavior:auto!important}}
 
+
+    /* Immersive full-viewport 3D hardware scene */
+    .hero{position:relative;min-height:100svh;height:100svh;overflow:hidden;border-bottom:1px solid rgba(82,216,255,.22);background:#030a14}
+    .hero-inner{position:relative;width:100%;max-width:none;height:100%;min-height:100svh;padding:0;display:block;isolation:isolate}
+    .hero-copy{position:absolute;z-index:6;left:clamp(24px,8vw,132px);top:clamp(110px,24vh,230px);width:min(44vw,600px);padding:0}
+    .hero-copy h1{font-size:clamp(3.1rem,7vw,7rem);letter-spacing:-.065em;text-shadow:0 6px 38px rgba(0,0,0,.45)}
+    .hero-copy p{font-size:clamp(1rem,1.3vw,1.22rem);max-width:520px;text-shadow:0 2px 18px #030a14}
+    .hero-copy .actions{margin-top:30px}
+    .hero-visual{position:absolute;z-index:1;inset:0;display:block;min-width:0;perspective:1400px}
+    .chip-stage{position:absolute;inset:0;min-height:100%;height:100%;border:0;border-radius:0;overflow:hidden;background:radial-gradient(ellipse at 70% 48%,rgba(13,107,177,.27),transparent 34%),radial-gradient(ellipse at 65% 80%,rgba(0,213,210,.08),transparent 38%),linear-gradient(115deg,#030a14 0%,#07182a 47%,#04101d 100%);box-shadow:none}
+    .board-grid{opacity:.35;background-size:clamp(22px,2.2vw,36px) clamp(22px,2.2vw,36px);mask-image:linear-gradient(90deg,transparent 3%,#000 40%,#000 100%)}
+    .chip-stage:before{inset:-5% -4% -8% 24%;border-radius:50%;border-color:rgba(82,216,255,.13);transform:perspective(1000px) rotateX(61deg) rotateZ(-24deg) scale(1.2);box-shadow:0 0 90px rgba(33,136,255,.13),inset 0 0 75px rgba(33,136,255,.09)}
+    .chip-stage:after{background:linear-gradient(115deg,transparent 20%,rgba(82,216,255,.04) 43%,transparent 53%),radial-gradient(ellipse at 75% 55%,transparent 20%,rgba(1,7,14,.36) 80%)}
+    .mcu-chip{left:70%;top:48%;width:clamp(280px,31vw,500px);padding:clamp(22px,2.4vw,38px);border-radius:18px;transform:translate(-50%,-50%) rotateX(16deg) rotateZ(-9deg);box-shadow:inset 0 1px rgba(255,255,255,.22),inset 0 -18px 28px rgba(0,0,0,.42),0 26px 0 #040d17,0 32px 0 #0a2b40,0 54px 64px rgba(0,0,0,.65),0 0 75px rgba(33,136,255,.25);animation:chip-float 7s ease-in-out infinite}
+    .mcu-chip:before,.mcu-chip:after{left:7%;right:7%;height:clamp(10px,1.1vw,16px);background:repeating-linear-gradient(90deg,#9cecff 0 5px,transparent 5px 23px)}
+    .mcu-chip:before{top:calc(clamp(10px,1.1vw,16px) * -1)}.mcu-chip:after{bottom:calc(clamp(10px,1.1vw,16px) * -1)}
+    .chip-top{font-size:clamp(.55rem,.72vw,.8rem)}
+    .chip-mark{display:flex;align-items:center;justify-content:center;height:clamp(100px,12vw,190px);font-size:1rem;letter-spacing:0}
+    .core-glyph{display:grid;place-items:center;width:clamp(72px,8vw,124px);aspect-ratio:1;border:1px solid rgba(82,216,255,.72);border-radius:24%;color:#eafcff;font-size:clamp(2.5rem,5vw,5rem);background:linear-gradient(145deg,rgba(82,216,255,.17),rgba(7,22,37,.3));box-shadow:0 0 35px rgba(82,216,255,.18),inset 0 0 28px rgba(82,216,255,.12);text-shadow:0 0 28px rgba(82,216,255,.55);transform:rotate(45deg)}
+    .chip-bottom{font-size:clamp(.48rem,.66vw,.72rem)}
+    .orbit{width:70%;height:44%;border-color:rgba(82,216,255,.23);left:70%;top:48%;transform:translate(-50%,-50%) rotate(-25deg) rotateX(63deg)}
+    .orbit-two{width:84%;height:57%;border-color:rgba(33,136,255,.19);transform:translate(-50%,-50%) rotate(28deg) rotateX(63deg)}
+    .trace-a{width:36%;left:34%;top:25%;transform:rotate(18deg)}.trace-b{width:34%;right:0;top:26%;transform:rotate(153deg)}.trace-c{width:36%;left:31%;bottom:23%;transform:rotate(-16deg)}.trace-d{width:35%;right:0;bottom:21%;transform:rotate(198deg)}
+    .node-a{left:42%;top:31%}.node-b{right:13%;top:34%}.node-c{left:39%;bottom:28%}.node-d{right:14%;bottom:27%}
+    .signal-one{left:48%;top:15%}.signal-two{right:10%;bottom:13%}
+    .stage-label{font-size:clamp(.52rem,.65vw,.7rem);padding:9px 12px}.label-left{left:clamp(24px,8vw,132px);bottom:clamp(24px,5vh,52px)}.label-right{right:clamp(24px,5vw,80px);top:clamp(96px,14vh,140px)}
+    .hero-card{position:absolute;right:clamp(24px,5vw,80px);bottom:clamp(24px,5vh,52px);width:min(360px,28vw);padding:17px 20px;background:rgba(4,16,29,.78);backdrop-filter:blur(18px);border-color:rgba(82,216,255,.23);box-shadow:0 18px 60px rgba(0,0,0,.28);font-size:.72rem}
+    .hero-card>div:not(:first-child){border-color:rgba(151,190,220,.11)}
+    @media(max-width:850px){
+      .hero{height:auto;min-height:100svh}
+      .hero-inner{min-height:100svh;height:auto;padding:0}
+      .hero-copy{left:26px;right:26px;top:clamp(104px,16vh,150px);width:auto;max-width:600px}
+      .hero-copy h1{font-size:clamp(3.2rem,11vw,5.5rem)}
+      .hero-visual{position:absolute;inset:0}
+      .chip-stage{min-height:100%;height:100%}
+      .mcu-chip{left:68%;top:68%;width:clamp(230px,48vw,360px);padding:22px}
+      .chip-mark{height:90px}
+      .core-glyph{width:68px;font-size:2.7rem}
+      .orbit{left:68%;top:68%;width:110%;height:38%}.orbit-two{width:122%;height:50%}
+      .hero-card{right:22px;bottom:22px;width:min(320px,48vw);font-size:.65rem}
+      .label-left{left:26px;bottom:25px}.label-right{right:22px;top:88px}
+      .trace-a{left:10%;top:53%;width:35%}.trace-b{right:0;top:48%;width:36%}.trace-c{left:7%;bottom:24%;width:34%}.trace-d{right:0;bottom:25%;width:34%}
+    }
+    @media(max-width:560px){
+      .hero-copy{top:112px;left:22px;right:22px}
+      .hero-copy h1{font-size:clamp(3rem,13vw,4.4rem);margin-bottom:14px}
+      .hero-copy p{font-size:.98rem;max-width:390px}
+      .hero-copy .actions{gap:9px;margin-top:22px}
+      .hero-copy .btn{padding:10px 12px;font-size:.8rem}
+      .mcu-chip{left:60%;top:70%;width:clamp(205px,63vw,285px);padding:17px}
+      .chip-mark{height:70px}.core-glyph{width:54px;font-size:2.2rem;border-radius:20%}
+      .chip-top{font-size:.47rem}.chip-bottom{font-size:.4rem}
+      .hero-card{right:14px;bottom:14px;width:calc(100% - 28px);padding:12px 14px;font-size:.61rem;line-height:1.65}
+      .hero-card>div:first-child{margin-bottom:2px}.hero-card br{display:none}
+      .label-left{left:15px;bottom:152px;font-size:.42rem;padding:6px 8px}
+      .label-right{right:14px;top:78px;font-size:.42rem;padding:6px 8px}
+      .signal-one{left:24%;top:49%}.signal-two{right:10%;bottom:37%}
+    }
+
   </style>
 </head>
 <body>
@@ -80,7 +139,7 @@
         <span class="trace trace-a"></span><span class="trace trace-b"></span><span class="trace trace-c"></span><span class="trace trace-d"></span>
         <span class="node node-a"></span><span class="node node-b"></span><span class="node node-c"></span><span class="node node-d"></span>
         <div class="chip-shadow"></div>
-        <div class="mcu-chip"><div class="chip-top"><span>RRT / EMBEDDED</span><span class="chip-dot"></span></div><div class="chip-mark">Z<span>OS</span></div><div class="chip-rule"></div><div class="chip-bottom">REAL-TIME KERNEL <span>ARM · C++11</span></div></div>
+        <div class="mcu-chip"><div class="chip-top"><span>RRT / EMBEDDED</span><span class="chip-dot"></span></div><div class="chip-mark" aria-hidden="true"><span class="core-glyph">◆</span></div><div class="chip-rule"></div><div class="chip-bottom">REAL-TIME KERNEL <span>ARM · C++11</span></div></div>
         <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
         <div class="signal signal-one"><i></i><i></i><i></i></div><div class="signal signal-two"><i></i><i></i><i></i></div>
         <div class="stage-label label-left"><span class="pulse-dot"></span> DETERMINISTIC SCHEDULING</div>
