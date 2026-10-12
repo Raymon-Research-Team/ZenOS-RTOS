@@ -66,64 +66,44 @@
     @media(prefers-reduced-motion:reduce){.mcu-chip,.signal i{animation:none!important}.card,.feature,.btn,.donate-btn{transition:none!important;scroll-behavior:auto!important}}
 
 
-    /* Immersive full-viewport 3D hardware scene */
-    .hero{position:relative;min-height:100svh;height:100svh;overflow:hidden;border-bottom:1px solid rgba(82,216,255,.22);background:#030a14}
-    .hero-inner{position:relative;width:100%;max-width:none;height:100%;min-height:100svh;padding:0;display:block;isolation:isolate}
-    .hero-copy{position:absolute;z-index:6;left:clamp(24px,8vw,132px);top:clamp(110px,24vh,230px);width:min(44vw,600px);padding:0}
-    .hero-copy h1{font-size:clamp(3.1rem,7vw,7rem);letter-spacing:-.065em;text-shadow:0 6px 38px rgba(0,0,0,.45)}
-    .hero-copy p{font-size:clamp(1rem,1.3vw,1.22rem);max-width:520px;text-shadow:0 2px 18px #030a14}
-    .hero-copy .actions{margin-top:30px}
-    .hero-visual{position:absolute;z-index:1;inset:0;display:block;min-width:0;perspective:1400px}
-    .chip-stage{position:absolute;inset:0;min-height:100%;height:100%;border:0;border-radius:0;overflow:hidden;background:radial-gradient(ellipse at 70% 48%,rgba(13,107,177,.27),transparent 34%),radial-gradient(ellipse at 65% 80%,rgba(0,213,210,.08),transparent 38%),linear-gradient(115deg,#030a14 0%,#07182a 47%,#04101d 100%);box-shadow:none}
-    .board-grid{opacity:.35;background-size:clamp(22px,2.2vw,36px) clamp(22px,2.2vw,36px);mask-image:linear-gradient(90deg,transparent 3%,#000 40%,#000 100%)}
-    .chip-stage:before{inset:-5% -4% -8% 24%;border-radius:50%;border-color:rgba(82,216,255,.13);transform:perspective(1000px) rotateX(61deg) rotateZ(-24deg) scale(1.2);box-shadow:0 0 90px rgba(33,136,255,.13),inset 0 0 75px rgba(33,136,255,.09)}
-    .chip-stage:after{background:linear-gradient(115deg,transparent 20%,rgba(82,216,255,.04) 43%,transparent 53%),radial-gradient(ellipse at 75% 55%,transparent 20%,rgba(1,7,14,.36) 80%)}
-    .mcu-chip{left:70%;top:48%;width:clamp(280px,31vw,500px);padding:clamp(22px,2.4vw,38px);border-radius:18px;transform:translate(-50%,-50%) rotateX(16deg) rotateZ(-9deg);box-shadow:inset 0 1px rgba(255,255,255,.22),inset 0 -18px 28px rgba(0,0,0,.42),0 26px 0 #040d17,0 32px 0 #0a2b40,0 54px 64px rgba(0,0,0,.65),0 0 75px rgba(33,136,255,.25);animation:chip-float 7s ease-in-out infinite}
-    .mcu-chip:before,.mcu-chip:after{left:7%;right:7%;height:clamp(10px,1.1vw,16px);background:repeating-linear-gradient(90deg,#9cecff 0 5px,transparent 5px 23px)}
-    .mcu-chip:before{top:calc(clamp(10px,1.1vw,16px) * -1)}.mcu-chip:after{bottom:calc(clamp(10px,1.1vw,16px) * -1)}
-    .chip-top{font-size:clamp(.55rem,.72vw,.8rem)}
-    .chip-mark{display:flex;align-items:center;justify-content:center;height:clamp(100px,12vw,190px);font-size:1rem;letter-spacing:0}
-    .core-glyph{display:grid;place-items:center;width:clamp(72px,8vw,124px);aspect-ratio:1;border:1px solid rgba(82,216,255,.72);border-radius:24%;color:#eafcff;font-size:clamp(2.5rem,5vw,5rem);background:linear-gradient(145deg,rgba(82,216,255,.17),rgba(7,22,37,.3));box-shadow:0 0 35px rgba(82,216,255,.18),inset 0 0 28px rgba(82,216,255,.12);text-shadow:0 0 28px rgba(82,216,255,.55);transform:rotate(45deg)}
-    .chip-bottom{font-size:clamp(.48rem,.66vw,.72rem)}
-    .orbit{width:70%;height:44%;border-color:rgba(82,216,255,.23);left:70%;top:48%;transform:translate(-50%,-50%) rotate(-25deg) rotateX(63deg)}
-    .orbit-two{width:84%;height:57%;border-color:rgba(33,136,255,.19);transform:translate(-50%,-50%) rotate(28deg) rotateX(63deg)}
-    .trace-a{width:36%;left:34%;top:25%;transform:rotate(18deg)}.trace-b{width:34%;right:0;top:26%;transform:rotate(153deg)}.trace-c{width:36%;left:31%;bottom:23%;transform:rotate(-16deg)}.trace-d{width:35%;right:0;bottom:21%;transform:rotate(198deg)}
-    .node-a{left:42%;top:31%}.node-b{right:13%;top:34%}.node-c{left:39%;bottom:28%}.node-d{right:14%;bottom:27%}
-    .signal-one{left:48%;top:15%}.signal-two{right:10%;bottom:13%}
-    .stage-label{font-size:clamp(.52rem,.65vw,.7rem);padding:9px 12px}.label-left{left:clamp(24px,8vw,132px);bottom:clamp(24px,5vh,52px)}.label-right{right:clamp(24px,5vw,80px);top:clamp(96px,14vh,140px)}
-    .hero-card{position:absolute;right:clamp(24px,5vw,80px);bottom:clamp(24px,5vh,52px);width:min(360px,28vw);padding:17px 20px;background:rgba(4,16,29,.78);backdrop-filter:blur(18px);border-color:rgba(82,216,255,.23);box-shadow:0 18px 60px rgba(0,0,0,.28);font-size:.72rem}
+    /* Restored content-first layout with an illustrated isometric hardware hero */
+    .hero{position:relative;min-height:0;height:auto;overflow:hidden;border-bottom:1px solid rgba(82,216,255,.22);background:radial-gradient(ellipse at 78% 48%,rgba(13,107,177,.2),transparent 42%),linear-gradient(115deg,#030a14 0%,#07182a 57%,#04101d 100%)}
+    .hero-inner{position:relative;width:min(1240px,100%);max-width:1240px;height:auto;min-height:610px;margin:0 auto;padding:64px 28px 56px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(26px,4vw,58px);align-items:center;isolation:isolate}
+    .hero-copy{position:relative;z-index:3;left:auto;right:auto;top:auto;bottom:auto;width:auto;max-width:580px;padding:0}
+    .hero-copy h1{font-size:clamp(3rem,5.4vw,5.4rem);letter-spacing:-.065em;text-shadow:0 6px 38px rgba(0,0,0,.35)}
+    .hero-copy p{font-size:clamp(1rem,1.25vw,1.18rem);max-width:540px;text-shadow:none}
+    .hero-copy .actions{margin-top:26px}
+    .hero-visual{position:relative;z-index:1;inset:auto;display:flex;flex-direction:column;gap:14px;min-width:0;perspective:1200px}
+    .chip-stage{position:relative;isolation:isolate;inset:auto;height:auto;min-height:440px;aspect-ratio:1.18;overflow:hidden;border:1px solid rgba(82,216,255,.22);border-radius:24px;background:radial-gradient(ellipse at 52% 44%,rgba(13,107,177,.22),transparent 55%),linear-gradient(145deg,#081a2b,#030b15 82%);box-shadow:inset 0 1px rgba(255,255,255,.06),0 28px 70px rgba(0,0,0,.34)}
+    .chip-stage:before{content:"";position:absolute;inset:5%;border:1px solid rgba(82,216,255,.11);border-radius:18px;transform:rotateX(55deg) rotateZ(-24deg) scale(1.12);box-shadow:0 0 65px rgba(33,136,255,.12),inset 0 0 45px rgba(33,136,255,.07)}
+    .chip-stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 24%,rgba(82,216,255,.045) 46%,transparent 58%),radial-gradient(ellipse at 50% 50%,transparent 38%,rgba(1,7,14,.38) 100%)}
+    .hardware-art{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block}
+    .chip-stage .mcu-chip,.chip-stage .chip-shadow,.chip-stage .board-grid,.chip-stage .trace,.chip-stage .node,.chip-stage .orbit,.chip-stage .signal{display:none}
+    .stage-label{z-index:3;font-size:clamp(.5rem,.65vw,.68rem);padding:9px 12px;letter-spacing:.06em;background:rgba(3,13,24,.78);backdrop-filter:blur(10px);border-color:rgba(82,216,255,.22)}
+    .label-left{left:14px;bottom:14px}.label-right{right:14px;top:14px}
+    .hero-card{position:relative;right:auto;bottom:auto;width:100%;padding:17px 20px;background:rgba(4,16,29,.82);backdrop-filter:blur(16px);border-color:rgba(82,216,255,.2);box-shadow:0 18px 55px rgba(0,0,0,.24);font-size:.72rem}
     .hero-card>div:not(:first-child){border-color:rgba(151,190,220,.11)}
     @media(max-width:850px){
-      .hero{height:auto;min-height:100svh}
-      .hero-inner{min-height:100svh;height:auto;padding:0}
-      .hero-copy{left:26px;right:26px;top:clamp(104px,16vh,150px);width:auto;max-width:600px}
-      .hero-copy h1{font-size:clamp(3.2rem,11vw,5.5rem)}
-      .hero-visual{position:absolute;inset:0}
-      .chip-stage{min-height:100%;height:100%}
-      .mcu-chip{left:68%;top:68%;width:clamp(230px,48vw,360px);padding:22px}
-      .chip-mark{height:90px}
-      .core-glyph{width:68px;font-size:2.7rem}
-      .orbit{left:68%;top:68%;width:110%;height:38%}.orbit-two{width:122%;height:50%}
-      .hero-card{right:22px;bottom:22px;width:min(320px,48vw);font-size:.65rem}
-      .label-left{left:26px;bottom:25px}.label-right{right:22px;top:88px}
-      .trace-a{left:10%;top:53%;width:35%}.trace-b{right:0;top:48%;width:36%}.trace-c{left:7%;bottom:24%;width:34%}.trace-d{right:0;bottom:25%;width:34%}
+      .hero-inner{min-height:0;grid-template-columns:1fr;gap:30px;padding:48px 24px 38px}
+      .hero-copy{max-width:720px}
+      .hero-copy h1{font-size:clamp(3.2rem,9vw,5.2rem)}
+      .hero-visual{width:100%;max-width:760px;margin:0 auto}
+      .chip-stage{min-height:0;aspect-ratio:1.18}
+      .hero-card{font-size:.68rem}
     }
     @media(max-width:560px){
-      .hero-copy{top:112px;left:22px;right:22px}
-      .hero-copy h1{font-size:clamp(3rem,13vw,4.4rem);margin-bottom:14px}
-      .hero-copy p{font-size:.98rem;max-width:390px}
-      .hero-copy .actions{gap:9px;margin-top:22px}
+      .hero-inner{padding:36px 16px 28px;gap:22px}
+      .hero-copy h1{font-size:clamp(2.8rem,12vw,4rem);margin-bottom:12px}
+      .hero-copy p{font-size:.98rem}
+      .hero-copy .actions{gap:9px;margin-top:20px}
       .hero-copy .btn{padding:10px 12px;font-size:.8rem}
-      .mcu-chip{left:60%;top:70%;width:clamp(205px,63vw,285px);padding:17px}
-      .chip-mark{height:70px}.core-glyph{width:54px;font-size:2.2rem;border-radius:20%}
-      .chip-top{font-size:.47rem}.chip-bottom{font-size:.4rem}
-      .hero-card{right:14px;bottom:14px;width:calc(100% - 28px);padding:12px 14px;font-size:.61rem;line-height:1.65}
-      .hero-card>div:first-child{margin-bottom:2px}.hero-card br{display:none}
-      .label-left{left:15px;bottom:152px;font-size:.42rem;padding:6px 8px}
-      .label-right{right:14px;top:78px;font-size:.42rem;padding:6px 8px}
-      .signal-one{left:24%;top:49%}.signal-two{right:10%;bottom:37%}
+      .chip-stage{aspect-ratio:.98;border-radius:18px}
+      .stage-label{font-size:.42rem;padding:6px 8px}
+      .label-left{left:8px;bottom:8px}.label-right{right:8px;top:8px}
+      .hero-card{padding:12px 14px;font-size:.61rem;line-height:1.65}
+      .hero-card br{display:none}
     }
-
+    @media(prefers-reduced-motion:reduce){.hardware-art *{animation:none!important;transition:none!important}}
   </style>
 </head>
 <body>
@@ -135,17 +115,76 @@
   </nav></header>
 <section class="hero"><div class="hero-inner"><div><div class="eyebrow">Real-time • Cortex-M • C++11</div><h1>ZenOS-RTOS</h1><p>A compact real-time operating system for ARM Cortex-M, with a bitmap-based scheduler, static task resources, IPC primitives, monitoring, and configurable safety mechanisms.</p><div class="actions"><a class="btn" href="guide.html">Read the Guide</a><a class="btn alt" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">View on GitHub</a></div></div><div class="hero-visual">
       <div class="chip-stage" aria-hidden="true">
-        <div class="board-grid"></div>
-        <span class="trace trace-a"></span><span class="trace trace-b"></span><span class="trace trace-c"></span><span class="trace trace-d"></span>
-        <span class="node node-a"></span><span class="node node-b"></span><span class="node node-c"></span><span class="node node-d"></span>
-        <div class="chip-shadow"></div>
-        <div class="mcu-chip"><div class="chip-top"><span>RRT / EMBEDDED</span><span class="chip-dot"></span></div><div class="chip-mark" aria-hidden="true"><span class="core-glyph">◆</span></div><div class="chip-rule"></div><div class="chip-bottom">REAL-TIME KERNEL <span>ARM · C++11</span></div></div>
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="signal signal-one"><i></i><i></i><i></i></div><div class="signal signal-two"><i></i><i></i><i></i></div>
+        <svg class="hardware-art" viewBox="0 0 900 760" role="img" aria-label="Isometric 3D microcontroller and circuit board illustration" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="pcbTop" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#174a65"/><stop offset=".48" stop-color="#0a2a40"/><stop offset="1" stop-color="#061521"/></linearGradient>
+            <linearGradient id="pcbSide" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#06111e"/><stop offset=".55" stop-color="#0a3045"/><stop offset="1" stop-color="#04101b"/></linearGradient>
+            <linearGradient id="chipTop" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35657a"/><stop offset=".36" stop-color="#17364c"/><stop offset="1" stop-color="#081725"/></linearGradient>
+            <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e5faff"/><stop offset=".45" stop-color="#62cce9"/><stop offset="1" stop-color="#246d8c"/></linearGradient>
+            <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#52d8ff" stop-opacity=".75"/><stop offset="1" stop-color="#2188ff" stop-opacity=".04"/></linearGradient>
+            <filter id="shadow3d" x="-40%" y="-40%" width="180%" height="200%"><feGaussianBlur in="SourceAlpha" stdDeviation="18"/><feOffset dy="24"/><feComponentTransfer><feFuncA type="linear" slope=".65"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="cyanGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <pattern id="microGrid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#54cbe9" stroke-opacity=".12" stroke-width="1"/></pattern>
+          </defs>
+          <rect width="900" height="760" fill="url(#microGrid)" opacity=".72"/>
+          <g fill="none" stroke="#39bce8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".58">
+            <path d="M50 300H185V340H254L294 380"/><path d="M60 352H160V398H230L274 442"/><path d="M86 420H177L223 466H258"/>
+            <path d="M670 270H745V320H825"/><path d="M646 320H705V385H842"/><path d="M664 415H733L770 452H842"/>
+            <path d="M330 115V180L362 212"/><path d="M480 90V160L515 195"/><path d="M330 610V655H270V695"/><path d="M590 600V650H660V700"/>
+          </g>
+          <g fill="#6be6ff" filter="url(#cyanGlow)">
+            <circle cx="185" cy="340" r="5"/><circle cx="160" cy="398" r="5"/><circle cx="745" cy="320" r="5"/><circle cx="705" cy="385" r="5"/><circle cx="330" cy="180" r="5"/><circle cx="590" cy="650" r="5"/>
+          </g>
+          <g transform="translate(450 388) rotate(-22) skewY(9)" filter="url(#shadow3d)">
+            <rect x="-285" y="-215" width="570" height="430" rx="24" fill="#020811" opacity=".8" transform="translate(0 30)"/>
+            <path d="M-300 -210H270L320 -165V220L270 250H-300Z" fill="url(#pcbSide)" stroke="#246a87" stroke-width="2"/>
+            <path d="M-300 -210L-250 -255H320L270 -210Z" fill="#1d526b" stroke="#4b9db9" stroke-width="2"/>
+            <path d="M270 -210L320 -255V175L270 220Z" fill="#061522" stroke="#1d526b" stroke-width="2"/>
+            <path d="M-300 -210H270V220H-300Z" fill="url(#pcbTop)" stroke="#48b5d7" stroke-opacity=".8" stroke-width="2"/>
+            <path d="M-270 -180H240V190H-270Z" fill="none" stroke="#50d9ff" stroke-opacity=".22" stroke-width="2"/>
+            <g fill="none" stroke="#6ce5ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85">
+              <path d="M-270 -120H-190V-60H-128"/><path d="M-270 -78H-220V5H-145"/><path d="M-270 72H-205V130H-125"/>
+              <path d="M260 -115H200V-70H142"/><path d="M260 -50H222V26H160"/><path d="M260 105H205V145H128"/>
+              <path d="M-155 -180V-135H-100"/><path d="M-75 -180V-145H-35"/><path d="M75 190V155H125"/><path d="M155 190V145H205"/>
+            </g>
+            <g fill="#9af0ff"><circle cx="-190" cy="-60" r="5"/><circle cx="-220" cy="5" r="5"/><circle cx="-205" cy="130" r="5"/><circle cx="200" cy="-70" r="5"/><circle cx="222" cy="26" r="5"/><circle cx="205" cy="145" r="5"/></g>
+            <g transform="translate(0 -8)">
+              <rect x="-118" y="-120" width="236" height="240" rx="12" fill="#03101b" stroke="#63dfff" stroke-width="3"/>
+              <rect x="-103" y="-105" width="206" height="210" rx="8" fill="url(#chipTop)" stroke="#377c99" stroke-width="2"/>
+              <g fill="url(#metal)" stroke="#0b2b3d" stroke-width="1">
+                <path d="M-94 -145h18v40h-18z M-62 -145h18v40h-18z M-30 -145h18v40h-18z M2 -145h18v40H2z M34 -145h18v40H34z M66 -145h18v40H66z"/>
+                <path d="M-94 105h18v40h-18z M-62 105h18v40h-18z M-30 105h18v40h-18z M2 105h18v40H2z M34 105h18v40H34z M66 105h18v40H66z"/>
+                <path d="M-158 -84h40v18h-40z M-158 -50h40v18h-40z M-158 -16h40v18h-40z M-158 18h40v18h-40z M-158 52h40v18h-40z"/>
+                <path d="M118 -84h40v18h-40z M118 -50h40v18h-40z M118 -16h40v18h-40z M118 18h40v18h-40z M118 52h40v18h-40z"/>
+              </g>
+              <rect x="-78" y="-78" width="156" height="156" rx="5" fill="#071b2b" stroke="#59dfff" stroke-opacity=".75" stroke-width="2"/>
+              <path d="M-58 -50H58M-58 -32H58M-58 32H58M-58 50H58" stroke="#24617c" stroke-width="2"/>
+              <path d="M-50 -55L50 55M50 -55L-50 55" stroke="#4bd5f5" stroke-opacity=".12" stroke-width="1.5"/>
+              <circle r="42" fill="url(#glow)" stroke="#79e8ff" stroke-width="2" filter="url(#cyanGlow)"/>
+              <path d="M-20 -12L0 -32L20 -12L0 8Z M-20 12L0 -8L20 12L0 32Z" fill="#d8f9ff" fill-opacity=".92" stroke="#52d8ff" stroke-width="2"/>
+              <text x="0" y="96" fill="#a7efff" font-size="13" font-family="monospace" letter-spacing="3" text-anchor="middle">REAL-TIME CORE</text>
+            </g>
+            <g transform="translate(-210 -155)">
+              <rect width="78" height="55" rx="5" fill="#061522" stroke="#53c9eb" stroke-width="2"/><rect x="8" y="8" width="62" height="39" rx="3" fill="#17445b"/><path d="M14 17H64M14 25H50M14 33H59" stroke="#7ce6ff" stroke-width="2" opacity=".65"/>
+            </g>
+            <g transform="translate(175 145)">
+              <rect width="65" height="48" rx="4" fill="#061522" stroke="#53c9eb" stroke-width="2"/><rect x="8" y="8" width="49" height="32" rx="3" fill="#17445b"/><circle cx="22" cy="24" r="5" fill="#54e4d2"/><path d="M33 19H49M33 28H49" stroke="#7ce6ff" stroke-width="2"/>
+            </g>
+            <g fill="#a7efff" opacity=".85"><circle cx="-245" cy="-168" r="5"/><circle cx="230" cy="-170" r="5"/><circle cx="-245" cy="175" r="5"/><circle cx="230" cy="175" r="5"/></g>
+          </g>
+          <g transform="translate(635 120)">
+            <rect width="190" height="92" rx="12" fill="#061522" fill-opacity=".94" stroke="#3ba6ca" stroke-opacity=".7"/>
+            <circle cx="22" cy="24" r="5" fill="#58e3d3"/><text x="38" y="29" fill="#aeefff" font-size="13" font-family="monospace">SCHEDULER</text>
+            <path d="M20 47H166" stroke="#24516b" stroke-width="2"/><path d="M20 62H95M20 75H135" stroke="#4fd8f8" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+          </g>
+          <g transform="translate(55 550)">
+            <rect width="170" height="80" rx="12" fill="#061522" fill-opacity=".94" stroke="#3ba6ca" stroke-opacity=".7"/>
+            <text x="18" y="28" fill="#aeefff" font-size="12" font-family="monospace">CORTEX-M</text><text x="18" y="52" fill="#6ca9c0" font-size="11" font-family="monospace">STATIC TASKS</text><circle cx="145" cy="24" r="6" fill="#58e3d3"/>
+          </g>
+        </svg>
         <div class="stage-label label-left"><span class="pulse-dot"></span> DETERMINISTIC SCHEDULING</div>
         <div class="stage-label label-right">CORTEX-M <b>●</b></div>
-      </div>
-      <div class="hero-card"><div><span class="g">ZenOS</span> <span class="m">// kernel map</span></div><br><div><span class="g">Scheduler</span>  bitmap + priority queues</div><div><span class="g">Tasks</span>      static stack allocation</div><div><span class="g">IPC</span>        events / mutex / queue / semaphore</div><div><span class="g">Safety</span>      watchdog / MPU / CRC / RAM test</div><div><span class="g">Monitor</span>     CPU / stack / errors / deadlines</div></div>
+      </div>      <div class="hero-card"><div><span class="g">ZenOS</span> <span class="m">// kernel map</span></div><br><div><span class="g">Scheduler</span>  bitmap + priority queues</div><div><span class="g">Tasks</span>      static stack allocation</div><div><span class="g">IPC</span>        events / mutex / queue / semaphore</div><div><span class="g">Safety</span>      watchdog / MPU / CRC / RAM test</div><div><span class="g">Monitor</span>     CPU / stack / errors / deadlines</div></div>
     </div></div></section>
 <main>
   <section class="wrap"><div class="section-head"><div><h2>Documentation</h2><p>Start with the guide, then move to the API and safety references.</p></div></div><div class="grid">
