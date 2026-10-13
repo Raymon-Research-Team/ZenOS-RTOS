@@ -29,81 +29,29 @@
     .hero{border-bottom:1px solid var(--line);background:radial-gradient(circle at 85% 25%,rgba(33,136,255,.14),transparent 32%),linear-gradient(135deg,#0b1828 0%,#10243a 100%)}.hero-inner{max-width:1180px;margin:auto;padding:72px 22px 62px;display:grid;grid-template-columns:1.4fr .6fr;gap:40px;align-items:center}.eyebrow{color:var(--cyan);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}h1{font-size:clamp(2.5rem,6vw,4.6rem);line-height:1.05;margin:12px 0 18px;letter-spacing:-.04em}.hero p{font-size:1.15rem;color:var(--muted);max-width:720px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.btn.alt{background:rgba(255,255,255,.05);color:var(--ink)!important;border:1px solid var(--line)}.hero-card{background:#07111f;color:#dff1ff;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--shadow);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88rem}.hero-card .g{color:#7bdcff}.hero-card .w{color:#fff}.hero-card .m{color:#8da8bf}.wrap{max-width:1180px;margin:auto;padding:48px 22px}.section-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:22px}h2{font-size:1.9rem;margin:0 0 5px}.section-head p{margin:0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:linear-gradient(145deg,rgba(16,36,58,.92),rgba(13,28,46,.92));border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:0 3px 12px rgba(0,0,0,.12)}.card:hover{box-shadow:var(--shadow);transform:translateY(-2px);transition:.2s}.icon{font-size:1.7rem}.card h3{margin:12px 0 6px}.card p{color:var(--muted);margin:0 0 15px}.link{color:var(--cyan);font-weight:700}.feature{background:linear-gradient(145deg,rgba(16,36,58,.92),rgba(13,28,46,.92));border:1px solid var(--line);border-radius:var(--radius);padding:26px}.features{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.feature strong{display:block;margin-bottom:4px}.feature span{color:var(--muted);font-size:.9rem}.banner{margin-top:18px;background:linear-gradient(135deg,rgba(33,136,255,.1),rgba(155,108,255,.1));border:1px solid rgba(82,216,255,.2);border-radius:var(--radius);padding:24px}.banner strong{color:var(--cyan)}footer{background:#07111f;color:#b8c8d8;margin-top:20px;border-top:1px solid var(--line)}footer .wrap{padding-top:34px;padding-bottom:34px}.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.foot a{color:#e5f4ff}.small{font-size:.86rem;color:#91a7bb}@media(max-width:850px){.hero-inner{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.features{grid-template-columns:1fr 1fr}.nav a.hide-mobile{display:none}}@media(max-width:560px){.grid,.features{grid-template-columns:1fr}.nav{gap:10px}.brand span{display:none}.hero-inner{padding-top:48px}}
   .site-home-link{color:#334155!important;font-weight:800!important;white-space:nowrap}.top nav>a{white-space:nowrap;flex-shrink:0}.brand{flex-shrink:1;min-width:0}.brand img{flex-shrink:0}.top .nav .btn.alt{display:inline-flex!important;visibility:visible!important;opacity:1!important;flex:0 0 auto;min-width:92px;white-space:nowrap;text-align:center}.top .nav .donate-btn{flex:0 0 auto;white-space:nowrap}@media(max-width:850px){.top .nav .btn.alt{display:none!important}}
 
-    /* 3D hardware hero: CSS-only, responsive, and dependency-free */
-    .hero-inner{grid-template-columns:1fr 1fr;gap:clamp(28px,4vw,58px)}
-    .hero-visual{min-width:0;display:flex;flex-direction:column;gap:14px;perspective:1100px}
-    .chip-stage{position:relative;isolation:isolate;min-height:340px;overflow:hidden;border:1px solid rgba(82,216,255,.24);border-radius:22px;background:radial-gradient(ellipse at 50% 46%,rgba(27,139,226,.25),transparent 48%),linear-gradient(145deg,#0a1c30,#06101e 78%);box-shadow:inset 0 1px rgba(255,255,255,.06),0 24px 55px rgba(0,0,0,.26);transform-style:preserve-3d}
-    .board-grid{position:absolute;inset:0;opacity:.3;background-image:linear-gradient(rgba(61,172,229,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(61,172,229,.14) 1px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent)}
-    .chip-stage:before{content:"";position:absolute;inset:12% 9%;border:1px solid rgba(82,216,255,.13);border-radius:16px;transform:rotateX(58deg) rotateZ(-23deg) scale(1.05);box-shadow:0 0 35px rgba(33,136,255,.09),inset 0 0 28px rgba(33,136,255,.08)}
-    .chip-stage:after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 25%,rgba(82,216,255,.06) 45%,transparent 62%);pointer-events:none}
-    .mcu-chip{position:absolute;z-index:3;left:50%;top:48%;width:min(58%,245px);aspect-ratio:1.13;transform:translate(-50%,-50%) rotateX(13deg) rotateZ(-7deg);padding:18px;display:flex;flex-direction:column;justify-content:space-between;color:#c8f3ff;border:1px solid #3b91b8;border-radius:12px;background:linear-gradient(145deg,#163c56 0%,#0b2237 48%,#071522 100%);box-shadow:inset 0 1px rgba(255,255,255,.2),inset 0 -9px 20px rgba(0,0,0,.38),0 18px 0 #06101a,0 22px 0 #0c3147,0 35px 38px rgba(0,0,0,.55),0 0 34px rgba(33,136,255,.24);animation:chip-float 6s ease-in-out infinite}
-    .mcu-chip:before,.mcu-chip:after{content:"";position:absolute;left:8%;right:8%;height:9px;background:repeating-linear-gradient(90deg,#82dff5 0 3px,transparent 3px 13px);opacity:.9}
-    .mcu-chip:before{top:-10px;filter:drop-shadow(0 -1px 1px #4cbde7)}.mcu-chip:after{bottom:-10px;filter:drop-shadow(0 1px 1px #4cbde7)}
-    .chip-top,.chip-bottom{display:flex;justify-content:space-between;gap:8px;font:700 .55rem/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;color:#8db8cc}
-    .chip-dot{width:7px;height:7px;flex:none;border-radius:50%;background:#5be7c4;box-shadow:0 0 12px #5be7c4}
-    .chip-mark{font-weight:900;font-size:clamp(2.4rem,5vw,4rem);line-height:1;letter-spacing:-.08em;color:#f1fcff;text-shadow:0 0 22px rgba(82,216,255,.2)}
-    .chip-mark span{color:#50d9ff}.chip-rule{height:2px;background:linear-gradient(90deg,#52d8ff,rgba(82,216,255,.06));width:100%}
-    .chip-bottom{font-size:.48rem;letter-spacing:.08em;color:#52d8ff}
-    .chip-bottom span{color:#9bb0c5;white-space:nowrap}
-    .chip-shadow{position:absolute;z-index:1;left:50%;top:57%;width:52%;height:23%;transform:translate(-50%,-50%) rotate(-8deg);background:rgba(0,0,0,.45);filter:blur(22px);border-radius:50%}
-    .orbit{position:absolute;z-index:2;left:50%;top:48%;width:76%;height:42%;border:1px solid rgba(82,216,255,.2);border-radius:50%;transform:translate(-50%,-50%) rotate(-25deg) rotateX(58deg)}
-    .orbit-two{width:88%;height:56%;border-color:rgba(33,136,255,.16);transform:translate(-50%,-50%) rotate(28deg) rotateX(58deg)}
-    .trace{position:absolute;z-index:2;height:1px;background:linear-gradient(90deg,transparent,#36bce9,transparent);transform-origin:left center;opacity:.75}
-    .trace-a{width:29%;left:4%;top:31%;transform:rotate(25deg)}.trace-b{width:31%;right:2%;top:32%;transform:rotate(150deg)}.trace-c{width:27%;left:5%;bottom:27%;transform:rotate(-21deg)}.trace-d{width:29%;right:3%;bottom:25%;transform:rotate(205deg)}
-    .node{position:absolute;z-index:3;width:6px;height:6px;border:1px solid #6de3ff;border-radius:50%;background:#0c2e45;box-shadow:0 0 12px rgba(82,216,255,.8)}
-    .node-a{left:18%;top:35%}.node-b{right:18%;top:35%}.node-c{left:20%;bottom:26%}.node-d{right:19%;bottom:27%}
-    .signal{position:absolute;z-index:2;display:flex;gap:4px;align-items:center}.signal i{display:block;width:4px;height:4px;border-radius:50%;background:#53dcff;box-shadow:0 0 8px #53dcff;animation:signal-pulse 2.4s ease-in-out infinite}.signal i:nth-child(2){animation-delay:.35s}.signal i:nth-child(3){animation-delay:.7s}.signal-one{left:13%;top:18%}.signal-two{right:13%;bottom:17%}
-    .stage-label{position:absolute;z-index:4;padding:7px 10px;border:1px solid rgba(82,216,255,.17);border-radius:8px;background:rgba(4,17,30,.78);backdrop-filter:blur(8px);font:700 .55rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.08em;color:#a9d8e8}.label-left{left:12px;bottom:12px}.label-right{right:12px;top:12px}.label-right b{color:#52d8ff}.pulse-dot{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#5be7c4;box-shadow:0 0 10px #5be7c4}
-    .hero-card{position:relative;z-index:2;padding:20px 22px;border-color:rgba(82,216,255,.19);background:linear-gradient(145deg,rgba(12,31,50,.96),rgba(5,16,29,.98));font-size:.78rem;line-height:1.9;box-shadow:0 16px 34px rgba(0,0,0,.22)}
-    .hero-card>div:not(:first-child){border-bottom:1px solid rgba(151,190,220,.08);padding:2px 0}.hero-card>div:last-child{border-bottom:0}
+    /* ===== ZenOS hero: fullscreen interactive 3D hardware scene (Three.js) ===== */
     .card,.feature,.quick-card,.banner{backdrop-filter:blur(8px);transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease}
     .card:hover,.feature:hover{transform:translateY(-4px);border-color:rgba(82,216,255,.34);box-shadow:0 18px 38px rgba(0,0,0,.22),0 0 22px rgba(33,136,255,.06)}
     .btn,.donate-btn{transition:transform .22s ease,filter .22s ease,box-shadow .22s ease}.btn:hover,.donate-btn:hover{transform:translateY(-2px)}
-    @keyframes chip-float{0%,100%{translate:0 0}50%{translate:0 -7px}}
-    @keyframes signal-pulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.25)}}
-    @media(max-width:850px){.hero-inner{grid-template-columns:1fr;gap:30px}.chip-stage{min-height:300px}.mcu-chip{width:min(56%,245px)}}
-    @media(max-width:560px){.chip-stage{min-height:260px}.mcu-chip{padding:13px}.chip-mark{font-size:2.5rem}.chip-top{font-size:.46rem}.chip-bottom{font-size:.4rem}.stage-label{font-size:.46rem}.label-left{left:8px;bottom:8px}.label-right{right:8px;top:8px}.hero-card{padding:17px 15px;font-size:.69rem;overflow-wrap:anywhere}}
-    @media(prefers-reduced-motion:reduce){.mcu-chip,.signal i{animation:none!important}.card,.feature,.btn,.donate-btn{transition:none!important;scroll-behavior:auto!important}}
-
-
-    /* Restored content-first layout with an illustrated isometric hardware hero */
-    .hero{position:relative;min-height:0;height:auto;overflow:hidden;border-bottom:1px solid rgba(82,216,255,.22);background:radial-gradient(ellipse at 78% 48%,rgba(13,107,177,.2),transparent 42%),linear-gradient(115deg,#030a14 0%,#07182a 57%,#04101d 100%)}
-    .hero-inner{position:relative;width:min(1240px,100%);max-width:1240px;height:auto;min-height:610px;margin:0 auto;padding:64px 28px 56px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(26px,4vw,58px);align-items:center;isolation:isolate}
-    .hero-copy{position:relative;z-index:3;left:auto;right:auto;top:auto;bottom:auto;width:auto;max-width:580px;padding:0}
-    .hero-copy h1{font-size:clamp(3rem,5.4vw,5.4rem);letter-spacing:-.065em;text-shadow:0 6px 38px rgba(0,0,0,.35)}
-    .hero-copy p{font-size:clamp(1rem,1.25vw,1.18rem);max-width:540px;text-shadow:none}
-    .hero-copy .actions{margin-top:26px}
-    .hero-visual{position:relative;z-index:1;inset:auto;display:flex;flex-direction:column;gap:14px;min-width:0;perspective:1200px}
-    .chip-stage{position:relative;isolation:isolate;inset:auto;height:auto;min-height:440px;aspect-ratio:1.18;overflow:hidden;border:1px solid rgba(82,216,255,.22);border-radius:24px;background:radial-gradient(ellipse at 52% 44%,rgba(13,107,177,.22),transparent 55%),linear-gradient(145deg,#081a2b,#030b15 82%);box-shadow:inset 0 1px rgba(255,255,255,.06),0 28px 70px rgba(0,0,0,.34)}
-    .chip-stage:before{content:"";position:absolute;inset:5%;border:1px solid rgba(82,216,255,.11);border-radius:18px;transform:rotateX(55deg) rotateZ(-24deg) scale(1.12);box-shadow:0 0 65px rgba(33,136,255,.12),inset 0 0 45px rgba(33,136,255,.07)}
-    .chip-stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 24%,rgba(82,216,255,.045) 46%,transparent 58%),radial-gradient(ellipse at 50% 50%,transparent 38%,rgba(1,7,14,.38) 100%)}
-    .hardware-art{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block}
-    .chip-stage .mcu-chip,.chip-stage .chip-shadow,.chip-stage .board-grid,.chip-stage .trace,.chip-stage .node,.chip-stage .orbit,.chip-stage .signal{display:none}
-    .stage-label{z-index:3;font-size:clamp(.5rem,.65vw,.68rem);padding:9px 12px;letter-spacing:.06em;background:rgba(3,13,24,.78);backdrop-filter:blur(10px);border-color:rgba(82,216,255,.22)}
-    .label-left{left:14px;bottom:14px}.label-right{right:14px;top:14px}
-    .hero-card{position:relative;right:auto;bottom:auto;width:100%;padding:17px 20px;background:rgba(4,16,29,.82);backdrop-filter:blur(16px);border-color:rgba(82,216,255,.2);box-shadow:0 18px 55px rgba(0,0,0,.24);font-size:.72rem}
-    .hero-card>div:not(:first-child){border-color:rgba(151,190,220,.11)}
+    .hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;min-height:calc(100vh - 78px);min-height:calc(100svh - 78px)}
+    .hero-canvas{position:absolute;inset:0;z-index:0;display:block;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity 1s ease}
+    .hero.scene-ready .hero-canvas{opacity:1}
+    .hero-veil{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(100deg,rgba(3,7,13,.90) 0%,rgba(4,9,16,.74) 26%,rgba(5,11,19,.30) 46%,rgba(5,11,19,.06) 62%,rgba(4,9,16,.42) 100%),radial-gradient(130% 100% at 50% 116%,rgba(2,5,10,.72) 0%,rgba(2,5,10,0) 58%),linear-gradient(180deg,rgba(3,7,13,.62) 0%,rgba(3,7,13,0) 20%,rgba(3,7,13,0) 74%,rgba(3,7,13,.66) 100%)}
+    .hero-inner{position:relative;z-index:2;width:100%}
+    .hero .hero-card{background:rgba(5,12,21,.74);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(151,190,220,.24)}
+    .hero-hud{position:absolute;z-index:2;left:22px;right:22px;bottom:14px;display:flex;justify-content:space-between;gap:16px;font:600 .68rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(160,196,222,.62);pointer-events:none}
+    .hero-hud span{display:inline-flex;align-items:center;gap:8px}
+    .hero-hud i{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px rgba(82,216,255,.8);animation:hud-pulse 2.8s ease-in-out infinite}
+    @keyframes hud-pulse{0%,100%{opacity:.3}50%{opacity:1}}
+    @media(prefers-reduced-motion:reduce){.hero-canvas{transition:none}.hero-hud i{animation:none}.card,.feature,.btn,.donate-btn{transition:none!important;scroll-behavior:auto!important}}
+    .hero.no-scene .hero-canvas{display:none}
     @media(max-width:850px){
-      .hero-inner{min-height:0;grid-template-columns:1fr;gap:30px;padding:48px 24px 38px}
-      .hero-copy{max-width:720px}
-      .hero-copy h1{font-size:clamp(3.2rem,9vw,5.2rem)}
-      .hero-visual{width:100%;max-width:760px;margin:0 auto}
-      .chip-stage{min-height:0;aspect-ratio:1.18}
-      .hero-card{font-size:.68rem}
+      .hero{min-height:calc(100vh - 56px);min-height:calc(100svh - 56px);align-items:flex-start}
+      .hero-veil{background:linear-gradient(180deg,rgba(3,7,13,.94) 0%,rgba(3,7,13,.86) 38%,rgba(4,9,16,.30) 66%,rgba(3,7,13,.72) 100%)}
+      .hero .hero-card{padding:20px;font-size:.82rem}
+      .hero-hud{left:20px;right:20px;bottom:10px;font-size:.62rem}
+      .hero-hud .hud-scroll{display:none}
     }
-    @media(max-width:560px){
-      .hero-inner{padding:36px 16px 28px;gap:22px}
-      .hero-copy h1{font-size:clamp(2.8rem,12vw,4rem);margin-bottom:12px}
-      .hero-copy p{font-size:.98rem}
-      .hero-copy .actions{gap:9px;margin-top:20px}
-      .hero-copy .btn{padding:10px 12px;font-size:.8rem}
-      .chip-stage{aspect-ratio:.98;border-radius:18px}
-      .stage-label{font-size:.42rem;padding:6px 8px}
-      .label-left{left:8px;bottom:8px}.label-right{right:8px;top:8px}
-      .hero-card{padding:12px 14px;font-size:.61rem;line-height:1.65}
-      .hero-card br{display:none}
-    }
-    @media(prefers-reduced-motion:reduce){.hardware-art *{animation:none!important;transition:none!important}}
   </style>
 </head>
 <body>
@@ -113,79 +61,7 @@
     <a class="btn alt" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/releases">Releases</a>
     <a class="donate-btn" href="https://donatr.ee/raymon-research-team" target="_blank" rel="noopener">Donate</a>
   </nav></header>
-<section class="hero"><div class="hero-inner"><div><div class="eyebrow">Real-time • Cortex-M • C++11</div><h1>ZenOS-RTOS</h1><p>A compact real-time operating system for ARM Cortex-M, with a bitmap-based scheduler, static task resources, IPC primitives, monitoring, and configurable safety mechanisms.</p><div class="actions"><a class="btn" href="guide.html">Read the Guide</a><a class="btn alt" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">View on GitHub</a></div></div><div class="hero-visual">
-      <div class="chip-stage" aria-hidden="true">
-        <svg class="hardware-art" viewBox="0 0 900 760" role="img" aria-label="Isometric 3D microcontroller and circuit board illustration" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="pcbTop" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#174a65"/><stop offset=".48" stop-color="#0a2a40"/><stop offset="1" stop-color="#061521"/></linearGradient>
-            <linearGradient id="pcbSide" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#06111e"/><stop offset=".55" stop-color="#0a3045"/><stop offset="1" stop-color="#04101b"/></linearGradient>
-            <linearGradient id="chipTop" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#35657a"/><stop offset=".36" stop-color="#17364c"/><stop offset="1" stop-color="#081725"/></linearGradient>
-            <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e5faff"/><stop offset=".45" stop-color="#62cce9"/><stop offset="1" stop-color="#246d8c"/></linearGradient>
-            <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#52d8ff" stop-opacity=".75"/><stop offset="1" stop-color="#2188ff" stop-opacity=".04"/></linearGradient>
-            <filter id="shadow3d" x="-40%" y="-40%" width="180%" height="200%"><feGaussianBlur in="SourceAlpha" stdDeviation="18"/><feOffset dy="24"/><feComponentTransfer><feFuncA type="linear" slope=".65"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            <filter id="cyanGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            <pattern id="microGrid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#54cbe9" stroke-opacity=".12" stroke-width="1"/></pattern>
-          </defs>
-          <rect width="900" height="760" fill="url(#microGrid)" opacity=".72"/>
-          <g fill="none" stroke="#39bce8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".58">
-            <path d="M50 300H185V340H254L294 380"/><path d="M60 352H160V398H230L274 442"/><path d="M86 420H177L223 466H258"/>
-            <path d="M670 270H745V320H825"/><path d="M646 320H705V385H842"/><path d="M664 415H733L770 452H842"/>
-            <path d="M330 115V180L362 212"/><path d="M480 90V160L515 195"/><path d="M330 610V655H270V695"/><path d="M590 600V650H660V700"/>
-          </g>
-          <g fill="#6be6ff" filter="url(#cyanGlow)">
-            <circle cx="185" cy="340" r="5"/><circle cx="160" cy="398" r="5"/><circle cx="745" cy="320" r="5"/><circle cx="705" cy="385" r="5"/><circle cx="330" cy="180" r="5"/><circle cx="590" cy="650" r="5"/>
-          </g>
-          <g transform="translate(450 388) rotate(-22) skewY(9)" filter="url(#shadow3d)">
-            <rect x="-285" y="-215" width="570" height="430" rx="24" fill="#020811" opacity=".8" transform="translate(0 30)"/>
-            <path d="M-300 -210H270L320 -165V220L270 250H-300Z" fill="url(#pcbSide)" stroke="#246a87" stroke-width="2"/>
-            <path d="M-300 -210L-250 -255H320L270 -210Z" fill="#1d526b" stroke="#4b9db9" stroke-width="2"/>
-            <path d="M270 -210L320 -255V175L270 220Z" fill="#061522" stroke="#1d526b" stroke-width="2"/>
-            <path d="M-300 -210H270V220H-300Z" fill="url(#pcbTop)" stroke="#48b5d7" stroke-opacity=".8" stroke-width="2"/>
-            <path d="M-270 -180H240V190H-270Z" fill="none" stroke="#50d9ff" stroke-opacity=".22" stroke-width="2"/>
-            <g fill="none" stroke="#6ce5ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85">
-              <path d="M-270 -120H-190V-60H-128"/><path d="M-270 -78H-220V5H-145"/><path d="M-270 72H-205V130H-125"/>
-              <path d="M260 -115H200V-70H142"/><path d="M260 -50H222V26H160"/><path d="M260 105H205V145H128"/>
-              <path d="M-155 -180V-135H-100"/><path d="M-75 -180V-145H-35"/><path d="M75 190V155H125"/><path d="M155 190V145H205"/>
-            </g>
-            <g fill="#9af0ff"><circle cx="-190" cy="-60" r="5"/><circle cx="-220" cy="5" r="5"/><circle cx="-205" cy="130" r="5"/><circle cx="200" cy="-70" r="5"/><circle cx="222" cy="26" r="5"/><circle cx="205" cy="145" r="5"/></g>
-            <g transform="translate(0 -8)">
-              <rect x="-118" y="-120" width="236" height="240" rx="12" fill="#03101b" stroke="#63dfff" stroke-width="3"/>
-              <rect x="-103" y="-105" width="206" height="210" rx="8" fill="url(#chipTop)" stroke="#377c99" stroke-width="2"/>
-              <g fill="url(#metal)" stroke="#0b2b3d" stroke-width="1">
-                <path d="M-94 -145h18v40h-18z M-62 -145h18v40h-18z M-30 -145h18v40h-18z M2 -145h18v40H2z M34 -145h18v40H34z M66 -145h18v40H66z"/>
-                <path d="M-94 105h18v40h-18z M-62 105h18v40h-18z M-30 105h18v40h-18z M2 105h18v40H2z M34 105h18v40H34z M66 105h18v40H66z"/>
-                <path d="M-158 -84h40v18h-40z M-158 -50h40v18h-40z M-158 -16h40v18h-40z M-158 18h40v18h-40z M-158 52h40v18h-40z"/>
-                <path d="M118 -84h40v18h-40z M118 -50h40v18h-40z M118 -16h40v18h-40z M118 18h40v18h-40z M118 52h40v18h-40z"/>
-              </g>
-              <rect x="-78" y="-78" width="156" height="156" rx="5" fill="#071b2b" stroke="#59dfff" stroke-opacity=".75" stroke-width="2"/>
-              <path d="M-58 -50H58M-58 -32H58M-58 32H58M-58 50H58" stroke="#24617c" stroke-width="2"/>
-              <path d="M-50 -55L50 55M50 -55L-50 55" stroke="#4bd5f5" stroke-opacity=".12" stroke-width="1.5"/>
-              <circle r="42" fill="url(#glow)" stroke="#79e8ff" stroke-width="2" filter="url(#cyanGlow)"/>
-              <path d="M-20 -12L0 -32L20 -12L0 8Z M-20 12L0 -8L20 12L0 32Z" fill="#d8f9ff" fill-opacity=".92" stroke="#52d8ff" stroke-width="2"/>
-              <text x="0" y="96" fill="#a7efff" font-size="13" font-family="monospace" letter-spacing="3" text-anchor="middle">REAL-TIME CORE</text>
-            </g>
-            <g transform="translate(-210 -155)">
-              <rect width="78" height="55" rx="5" fill="#061522" stroke="#53c9eb" stroke-width="2"/><rect x="8" y="8" width="62" height="39" rx="3" fill="#17445b"/><path d="M14 17H64M14 25H50M14 33H59" stroke="#7ce6ff" stroke-width="2" opacity=".65"/>
-            </g>
-            <g transform="translate(175 145)">
-              <rect width="65" height="48" rx="4" fill="#061522" stroke="#53c9eb" stroke-width="2"/><rect x="8" y="8" width="49" height="32" rx="3" fill="#17445b"/><circle cx="22" cy="24" r="5" fill="#54e4d2"/><path d="M33 19H49M33 28H49" stroke="#7ce6ff" stroke-width="2"/>
-            </g>
-            <g fill="#a7efff" opacity=".85"><circle cx="-245" cy="-168" r="5"/><circle cx="230" cy="-170" r="5"/><circle cx="-245" cy="175" r="5"/><circle cx="230" cy="175" r="5"/></g>
-          </g>
-          <g transform="translate(635 120)">
-            <rect width="190" height="92" rx="12" fill="#061522" fill-opacity=".94" stroke="#3ba6ca" stroke-opacity=".7"/>
-            <circle cx="22" cy="24" r="5" fill="#58e3d3"/><text x="38" y="29" fill="#aeefff" font-size="13" font-family="monospace">SCHEDULER</text>
-            <path d="M20 47H166" stroke="#24516b" stroke-width="2"/><path d="M20 62H95M20 75H135" stroke="#4fd8f8" stroke-width="3" stroke-linecap="round" opacity=".7"/>
-          </g>
-          <g transform="translate(55 550)">
-            <rect width="170" height="80" rx="12" fill="#061522" fill-opacity=".94" stroke="#3ba6ca" stroke-opacity=".7"/>
-            <text x="18" y="28" fill="#aeefff" font-size="12" font-family="monospace">CORTEX-M</text><text x="18" y="52" fill="#6ca9c0" font-size="11" font-family="monospace">STATIC TASKS</text><circle cx="145" cy="24" r="6" fill="#58e3d3"/>
-          </g>
-        </svg>
-        <div class="stage-label label-left"><span class="pulse-dot"></span> DETERMINISTIC SCHEDULING</div>
-        <div class="stage-label label-right">CORTEX-M <b>●</b></div>
-      </div>      <div class="hero-card"><div><span class="g">ZenOS</span> <span class="m">// kernel map</span></div><br><div><span class="g">Scheduler</span>  bitmap + priority queues</div><div><span class="g">Tasks</span>      static stack allocation</div><div><span class="g">IPC</span>        events / mutex / queue / semaphore</div><div><span class="g">Safety</span>      watchdog / MPU / CRC / RAM test</div><div><span class="g">Monitor</span>     CPU / stack / errors / deadlines</div></div>
-    </div></div></section>
+<section class="hero" id="hero"><canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas><div class="hero-veil" aria-hidden="true"></div><div class="hero-inner"><div><div class="eyebrow">Real-time • Cortex-M • C++11</div><h1>ZenOS-RTOS</h1><p>A compact real-time operating system for ARM Cortex-M, with a bitmap-based scheduler, static task resources, IPC primitives, monitoring, and configurable safety mechanisms.</p><div class="actions"><a class="btn" href="guide.html">Read the Guide</a><a class="btn alt" href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">View on GitHub</a></div></div><div class="hero-card"><div><span class="g">ZenOS</span> <span class="m">// kernel map</span></div><br><div><span class="g">Scheduler</span>  bitmap + priority queues</div><div><span class="g">Tasks</span>      static stack allocation</div><div><span class="g">IPC</span>        events / mutex / queue / semaphore</div><div><span class="g">Safety</span>      watchdog / MPU / CRC / RAM test</div><div><span class="g">Monitor</span>     CPU / stack / errors / deadlines</div></div><div class="hero-hud" aria-hidden="true"><span><i></i>Live hardware stack — move the pointer to steer</span><span class="hud-scroll">Scroll for documentation</span></div></section>
 <main>
   <section class="wrap"><div class="section-head"><div><h2>Documentation</h2><p>Start with the guide, then move to the API and safety references.</p></div></div><div class="grid">
       <a class="card" href="guide.html"><div class="icon">📘</div><h3>Complete Guide</h3><p>Quick start, installation, task management, timing, IPC, monitoring, safety, configuration, troubleshooting, and examples.</p><span class="link">Open guide →</span></a>
@@ -206,6 +82,7 @@ os_task_create(task_led_toggle);
 os_start();</code></pre></div></div></section>
   <section class="wrap" style="padding-top:0"><div class="section-head"><div><h2>Kernel at a glance</h2><p>Capabilities reflected in the current source tree.</p></div></div><div class="features"><div class="feature"><strong>Priority-bitmap scheduling</strong><span>Priority-bitmap scheduler with per-priority task queues and configurable priority slots (default 16, range 2–256).</span></div><div class="feature"><strong>Static task resources</strong><span>Task stacks are allocated without a general-purpose heap.</span></div><div class="feature"><strong>IPC primitives</strong><span>Events, mutexes, queues, and semaphores.</span></div><div class="feature"><strong>Runtime diagnostics</strong><span>Stack, CPU, errors, watchdog, deadline, and integrity checks.</span></div></div><div class="banner"><strong>Safety note:</strong> ZenOS provides safety mechanisms and configurable target profiles; the project documentation does not claim that ZenOS itself is certified to IEC 62304, IEC 61508, ISO 26262, or DO-178C.</div></section>
 </main>
+<script type="module" src="hero-scene.js"></script>
 <footer><div class="wrap"><div class="foot"><div><strong>ZenOS RTOS</strong><div class="small">Real-time operating system for ARM Cortex-M</div></div><div><a href="guide.html">Docs</a> · <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS">GitHub</a> · <a href="https://github.com/Raymon-Research-Team/ZenOS-RTOS/issues">Issues</a></div></div><div class="small" style="margin-top:20px">BUSL-1.1 · Raymon Research Team</div></div></footer>
 </body>
 </html>
